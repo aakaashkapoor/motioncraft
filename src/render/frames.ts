@@ -1,10 +1,15 @@
 // Which frames to render as stills. Pure, so it is easy to test.
 
-import type { Timeline } from "../engine/timeline";
+import type { Timeline, TimelineScene } from "../engine/timeline";
 
 /** Sorted, de-duplicated frame numbers. */
 function unique(frames: Iterable<number>): number[] {
   return [...new Set(frames)].sort((a, b) => a - b);
+}
+
+/** The middle frame of a scene (the earlier one when it has an even frame count). */
+export function sceneMiddleFrame({ startFrame, frames }: TimelineScene): number {
+  return startFrame + Math.floor((frames - 1) / 2);
 }
 
 /**
@@ -13,11 +18,7 @@ function unique(frames: Iterable<number>): number[] {
  */
 export function perSceneFrames(timeline: Timeline): number[] {
   return unique(
-    timeline.scenes.flatMap(({ startFrame, frames }) => [
-      startFrame,
-      startFrame + Math.floor((frames - 1) / 2),
-      startFrame + frames - 1,
-    ]),
+    timeline.scenes.flatMap((scene) => [scene.startFrame, sceneMiddleFrame(scene), scene.startFrame + scene.frames - 1]),
   );
 }
 
