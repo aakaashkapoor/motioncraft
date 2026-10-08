@@ -12,7 +12,9 @@ import {
   judge,
   minReadMs,
   parseCssColor,
+  contentOpacity,
   runChecks,
+  sampleVisibleFrames,
   textContrast,
   type CheckResult,
   type FrameMeasurement,
@@ -239,6 +241,63 @@ describe("judge", () => {
   });
 });
 
+describe("sampleVisibleFrames", () => {
+  // 30 fps: "a" is frames 0..29, "b" is frames 30..89.
+  const sb = storyboard({
+    title: "T",
+    aspect: "9:16",
+    scenes: [
+      { id: "a", component: "TitleCard", props: {}, durationMs: 1000 },
+      { id: "b", component: "TitleCard", props: {}, durationMs: 2000 },
+    ],
+  });
+  const timeline = buildTimeline(sb, {});
+
+  /** Fades in over the first 5 frames and out over the last 5 of each scene. */
+  function fadeOpacity(n: number): number {
+    const scene = timeline.scenes.find((s) => n >= s.startFrame && n < s.startFrame + s.frames)!;
+    const local = n - scene.startFrame;
+    return Math.min(1, local / 5, (scene.frames - 1 - local) / 5);
+  }
+
+  it("reads content opacity as the faintest element on the frame", () => {
+    expect(contentOpacity(frame())).toBe(0);
+    expect(contentOpacity(frame(text({ opacity: 1 }), text({ opacity: 0.4 })))).toBe(0.4);
+    expect(contentOpacity({ texts: [text()], keys: [{ label: "logo", rect: { x: 0, y: 0, width: 1, height: 1 }, opacity: 0.5 }] })).toBe(0.5);
+  });
+
+  it("picks the first and last fully visible frames and the middle of each scene", async () => {
+    const measured: number[] = [];
+    const result = await sampleVisibleFrames(timeline, async (n) => {
+      measured.push(n);
+      return frame(text({ opacity: fadeOpacity(n) }));
+    });
+    expect(result.map((m) => m.frame)).toEqual([5, 14, 24, 35, 59, 84]);
+    // Each frame is measured at most once.
+    expect(new Set(measured).size).toBe(measured.length);
+  });
+
+  it("falls back to the middle when a scene is never fully visible", async () => {
+    const result = await sampleVisibleFrames(timeline, async () => frame(text({ opacity: 0.5 })));
+    expect(result.map((m) => m.frame)).toEqual([14, 59]);
+  });
+
+  it("catches content that is out of bounds only during its entrance", async () => {
+    // Scene "b" fades in over 5 frames but keeps sliding in from below the
+    // frame until its 10th frame: out of bounds while fully visible.
+    const result = await sampleVisibleFrames(timeline, async (n) => {
+      const local = n - 30;
+      const y = local >= 0 && local < 10 ? 1900 : 400;
+      return frame(text({ text: "Sliding", opacity: fadeOpacity(n), rect: { x: 200, y, width: 400, height: 100 } }));
+    });
+    const problems = judge(sb, timeline, result).problems.filter((p) => p.check !== "readability");
+    expect(problems.map(({ check, sceneId, frame: n }) => [check, sceneId, n])).toEqual([
+      ["overflow", "b", 35],
+      ["safe-area", "b", 35],
+    ]);
+  });
+});
+
 async function loadStoryboard(...path: string[]): Promise<Storyboard> {
   return storyboard(JSON.parse(await readFile(join(import.meta.dirname, ...path), "utf8")));
 }
@@ -263,9 +322,11 @@ describe("runChecks (integration)", { timeout: 60_000 }, () => {
     expect(sb.aspect).toBe("9:16");
     const result = await check(ctx, sb);
     expect(result.passed).toBe(false);
-    const checks = new Set(result.problems.map((p) => p.check));
-    expect(checks.has("overflow") || checks.has("safe-area")).toBe(true);
+    const layout = result.problems.filter((p) => p.check === "overflow" || p.check === "safe-area");
+    expect(layout.length).toBeGreaterThan(0);
     expect(result.problems.every((p) => p.sceneId === "too-long")).toBe(true);
+    // Seen on the first and last fully visible frames and the middle, not only the middle.
+    expect(new Set(layout.map((p) => p.frame)).size).toBe(3);
   });
 
   it("measures real colors and timing in the page", async (ctx) => {

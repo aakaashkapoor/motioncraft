@@ -4,6 +4,8 @@ export { runChecks } from "./run";
 export type { RunChecksOptions } from "./run";
 export { formatProblem, judge } from "./judge";
 export type { MeasuredFrame } from "./judge";
+export { contentOpacity, FULLY_VISIBLE, sampleVisibleFrames } from "./sample";
+export type { MeasureFrame } from "./sample";
 export { checkOverflow } from "./overflow";
 export { checkSafeArea } from "./safeArea";
 export { checkContrast, effectiveBackground, MIN_CONTRAST, parseCssColor, textContrast } from "./contrast";
