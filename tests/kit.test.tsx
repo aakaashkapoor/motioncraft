@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ASPECTS, neutralTheme, safeArea, type Aspect } from "../src/index";
-import { Caption, TitleCard, kit } from "../src/kit";
+import { Caption, TitleCard, captionLimits, kit, pageCaption } from "../src/kit";
 
 interface Box {
   opacity: number;
@@ -94,14 +94,80 @@ describe("TitleCard", () => {
   });
 });
 
+describe("pageCaption", () => {
+  const limits = { maxCharsPerLine: 20, maxLines: 2 };
+  const words = (text: string) => text.split(/\s+/).filter(Boolean);
+  const wrap = (page: string, max: number) => {
+    const lines: string[] = [];
+    for (const word of words(page)) {
+      const last = lines.at(-1);
+      if (last !== undefined && last.length + 1 + word.length <= max) lines[lines.length - 1] = `${last} ${word}`;
+      else lines.push(word);
+    }
+    return lines;
+  };
+  const texts = [
+    "",
+    "Short.",
+    "The quick brown fox jumps over the lazy dog while the cat watches from the window sill.",
+    "First, we load the data. Then we clean it; finally, we chart it and ship the result to everyone.",
+    "Supercalifragilisticexpialidocious is a word that does not fit on one line at all.",
+    "  extra   spaces\nand\tnewlines   everywhere  ",
+  ];
+
+  it.each(texts)("keeps every word exactly once, in order, unsplit (%j)", (text) => {
+    const pages = pageCaption(text, limits);
+    expect(pages.flatMap(words)).toEqual(words(text));
+  });
+
+  it.each(texts)("fits each page in the limits (%j)", (text) => {
+    for (const page of pageCaption(text, limits)) {
+      const lines = wrap(page, limits.maxCharsPerLine);
+      expect(lines.length).toBeLessThanOrEqual(limits.maxLines);
+      // A single word longer than a line can only be given a line of its own.
+      for (const line of lines) {
+        if (words(line).length > 1) expect(line.length).toBeLessThanOrEqual(limits.maxCharsPerLine);
+      }
+    }
+  });
+
+  it("returns no pages for empty text and one page for text that fits", () => {
+    expect(pageCaption("   ", limits)).toEqual([]);
+    expect(pageCaption("Hello there world", limits)).toEqual(["Hello there world"]);
+  });
+
+  it("prefers ending a page at a sentence break", () => {
+    const pages = pageCaption("We load the data first. Then we clean it and chart it.", limits);
+    expect(pages[0]).toBe("We load the data first.");
+  });
+
+  it("prefers ending a page at a clause break over the middle of a clause", () => {
+    const pages = pageCaption("After loading the data, we clean it and chart it for you.", limits);
+    expect(pages[0]).toBe("After loading the data,");
+  });
+
+  it("does not make a tiny page just to reach a break", () => {
+    const pages = pageCaption("Yes, we load all of the data and then clean it up nicely.", limits);
+    expect(pages[0]).not.toBe("Yes,");
+  });
+
+  it("rejects limits below one", () => {
+    expect(() => pageCaption("a b", { maxCharsPerLine: 0, maxLines: 2 })).toThrow();
+    expect(() => pageCaption("a b", { maxCharsPerLine: 10, maxLines: 0 })).toThrow();
+  });
+});
+
 describe("Caption", () => {
   const text = "Captions come from the narration text and are burned in.";
-  const render = (aspect: Aspect, progress: number) =>
-    renderToStaticMarkup(<Caption progress={progress} theme={neutralTheme} aspect={aspect} text={text} />);
+  const render = (aspect: Aspect, progress: number, caption = text) =>
+    renderToStaticMarkup(<Caption progress={progress} theme={neutralTheme} aspect={aspect} text={caption} />);
+  /** The visible caption text, read back out of server-rendered HTML. */
+  const shown = (html: string) => /<p[^>]*>([^<]*)<\/p>/.exec(html)?.[1] ?? "";
 
-  it.each(cases)("renders text inside the safe area (%s, progress %s)", (aspect, progress) => {
+  it.each(cases)("renders caption text inside the safe area (%s, progress %s)", (aspect, progress) => {
     const html = render(aspect, progress);
-    expect(html).toContain(text);
+    expect(shown(html).length).toBeGreaterThan(0);
+    expect(text).toContain(shown(html));
     expectInsideSafeArea(rootBox(html), aspect);
   });
 
@@ -117,10 +183,40 @@ describe("Caption", () => {
     expect(rootBox(render(aspect, 0.5)).opacity).toBeCloseTo(1, 3);
   });
 
-  it("clamps to two lines on a solid plate", () => {
+  it("draws on a solid plate and never truncates with an ellipsis", () => {
     const html = render("9:16", 0.5);
-    expect(html).toContain("-webkit-line-clamp:2");
+    expect(html).not.toContain("line-clamp");
+    expect(html).not.toContain("ellipsis");
     expect(html).toContain(`background-color:${neutralTheme.colors.background}`);
     expect(html).toContain(`color:${neutralTheme.colors.text}`);
+  });
+
+  describe("long narration", () => {
+    const sentence =
+      "Every week our team ships small changes, measures how people use them, and keeps what works " +
+      "while quietly removing the parts that nobody seems to need or use any more.";
+
+    it("is a 30-word sentence", () => {
+      expect(sentence.split(" ")).toHaveLength(30);
+    });
+
+    it("pages into 2+ pages at 9:16", () => {
+      expect(pageCaption(sentence, captionLimits(neutralTheme, "9:16")).length).toBeGreaterThanOrEqual(2);
+    });
+
+    it.each(ASPECTS)("shows different pages early and late in the scene (%s)", (aspect) => {
+      const early = shown(render(aspect, 0.1, sentence));
+      const late = shown(render(aspect, 0.9, sentence));
+      expect(early).not.toBe(late);
+      expect(sentence.startsWith(early)).toBe(true);
+      expect(sentence.endsWith(late)).toBe(true);
+    });
+
+    it.each(ASPECTS)("shows every word over the scene (%s)", (aspect) => {
+      const pages = pageCaption(sentence, captionLimits(neutralTheme, aspect));
+      const seen = new Set<string>();
+      for (let i = 0; i <= 100; i++) seen.add(shown(render(aspect, i / 100, sentence)));
+      expect([...seen]).toEqual(pages);
+    });
   });
 });

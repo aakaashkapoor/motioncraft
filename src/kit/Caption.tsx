@@ -1,8 +1,11 @@
 // A burned-in caption: up to two lines of text on a solid plate at the bottom
-// of the safe area.
+// of the safe area. Longer text is split into pages shown one after another,
+// so every word is seen and nothing is cut off.
 
-import { safeArea } from "../layout/frame";
+import { safeArea, type Aspect } from "../layout/frame";
 import { fontSize } from "../layout/type";
+import type { Theme } from "../theme/types";
+import { pageAt, pageCaption, type CaptionLimits } from "./captionPages";
 import { presence, themeEasing } from "./motion";
 import type { KitProps } from "./types";
 
@@ -15,11 +18,28 @@ const LINE_HEIGHT = 1.3;
 // Captions follow speech, so they appear and leave quickly.
 const ENTER = 0.05;
 const EXIT = 0.05;
+// Average glyph width as a fraction of font size. Generous for semibold sans
+// text, so estimated lines err short and never wrap past MAX_LINES.
+const CHAR_WIDTH = 0.6;
+
+function captionFontSize(theme: Theme, aspect: Aspect): number {
+  return fontSize(theme, "body", aspect);
+}
+
+/** How much caption text fits on one page for a theme and aspect (an estimate). */
+export function captionLimits(theme: Theme, aspect: Aspect): CaptionLimits {
+  const textWidth = safeArea(aspect).width - 2 * theme.spacing.md;
+  const maxCharsPerLine = Math.max(1, Math.floor(textWidth / (captionFontSize(theme, aspect) * CHAR_WIDTH)));
+  return { maxCharsPerLine, maxLines: MAX_LINES };
+}
 
 export function Caption({ progress, theme, aspect, text }: CaptionProps) {
   const safe = safeArea(aspect);
   const opacity = presence(progress, ENTER, EXIT, themeEasing(theme));
-  const size = fontSize(theme, "body", aspect);
+  // Pages get equal shares of the scene; with narration timing they will follow the audio.
+  const page = pageAt(pageCaption(text, captionLimits(theme, aspect)), progress);
+  if (page === undefined) return null;
+  const size = captionFontSize(theme, aspect);
   const padY = theme.spacing.sm;
   const padX = theme.spacing.md;
   // Tall enough for MAX_LINES of text plus the plate's padding.
@@ -53,13 +73,11 @@ export function Caption({ progress, theme, aspect, text }: CaptionProps) {
           fontWeight: 600,
           lineHeight: LINE_HEIGHT,
           textAlign: "center",
-          overflow: "hidden",
-          display: "-webkit-box",
-          WebkitBoxOrient: "vertical",
-          WebkitLineClamp: MAX_LINES,
+          // Only a single word wider than the line can need this.
+          overflowWrap: "anywhere",
         }}
       >
-        {text}
+        {page}
       </p>
     </div>
   );
