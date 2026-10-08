@@ -1,0 +1,16 @@
+{
+  "title": "Too long title (must fail layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "neutral",
+  "scenes": [
+    {
+      "id": "too-long",
+      "component": "TitleCard",
+      "props": {
+        "title": "This headline keeps going and going far past anything that could ever fit on one vertical phone screen at display size, because nobody stopped to edit it down before rendering"
+      },
+      "durationMs": 12000
+    }
+  ]
+}

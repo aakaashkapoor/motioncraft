@@ -5,6 +5,8 @@
 
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
+import type { FrameMeasurement } from "../checks/types";
 import { buildTimeline, frameAt, type SceneDurations, type Timeline } from "../engine/timeline";
 import { Caption, kit } from "../kit";
 import { frameSize } from "../layout/frame";
@@ -52,7 +54,11 @@ export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
       }}
     >
       <Component {...scene.props} {...common} />
-      {scene.narration !== undefined && <Caption {...common} text={scene.narration} />}
+      {scene.narration !== undefined && (
+        <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
+          <Caption {...common} text={scene.narration} />
+        </div>
+      )}
     </div>
   );
 }
@@ -60,6 +66,8 @@ export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
 export interface PageApi {
   totalFrames: number;
   renderFrame(frame: number): void;
+  /** Measures the frame on screen for the layer-1 checks. */
+  measureFrame(): FrameMeasurement;
 }
 
 declare global {
@@ -93,6 +101,11 @@ export function mountPage(): void {
         root.render(<Frame storyboard={storyboard} theme={theme} timeline={timeline} frame={frame} />);
       });
       if (renderError !== undefined) throw renderError;
+    },
+    measureFrame() {
+      const frame = container.firstElementChild;
+      if (!frame) throw new Error("motioncraft page: no frame rendered yet");
+      return measureFrame(frame);
     },
   };
 }
