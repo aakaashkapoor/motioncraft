@@ -22,4 +22,7 @@ Read `docs/design.md` first. It's the design this code implements.
   Pin dependency versions exactly.
 - **Aspect ratios.** Every visual component must lay out correctly in both 9:16
   (1080×1920, primary) and 16:9 (1920×1080). Never hard-code one shape.
+- **Dependencies:** add them with `npm install --save-exact <pkg>`, then run
+  `npm ci`. A second `npm install` can silently delete the Windows native
+  binding the test runner needs (npm/cli#4828); `npm ci` restores it.
 - Keep files small and focused: one responsibility per file.
