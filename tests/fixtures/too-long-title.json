@@ -8,7 +8,7 @@
       "id": "too-long",
       "component": "TitleCard",
       "props": {
-        "title": "This headline keeps going and going far past anything that could ever fit on one vertical phone screen at display size, because nobody stopped to edit it down before rendering"
+        "title": "This headline keeps going and going far past anything that could ever fit on one vertical phone screen at display size, because nobody stopped to edit it down before rendering, and then it kept going: every clause the writer thought of went in, every aside, every second thought, every qualification and footnote, until even the smallest title size in the type scale could not hold it above the caption band, and the only honest thing left for the layout to do was to overflow where the checks can see it instead of quietly cutting the end off"
       },
       "durationMs": 12000
     }

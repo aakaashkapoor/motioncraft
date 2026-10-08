@@ -19,6 +19,9 @@ export { contrastRatio, relativeLuminance } from "./theme/contrast";
 export { frameSize, safeArea } from "./layout/frame";
 export type { Rect, Size } from "./layout/frame";
 export { fontScale, fontSize } from "./layout/type";
+export { CAPTION_LINE_HEIGHT, CAPTION_MAX_LINES, captionBand, captionBandHeight, contentArea } from "./layout/caption";
+export { AVG_CHAR_EM, charsPerLine, estimateLines, estimateTextHeight } from "./layout/textFit";
+export type { TextStyle } from "./layout/textFit";
 
 export { buildTimeline, frameAt } from "./engine/timeline";
 export type { FrameInfo, SceneDurations, Timeline, TimelineScene } from "./engine/timeline";
@@ -35,5 +38,6 @@ export {
   pageCaption,
   presence,
   themeEasing,
+  titleCardStep,
 } from "./kit";
 export type { CaptionLimits, CaptionProps, KitComponent, KitProps, TitleCardProps } from "./kit";

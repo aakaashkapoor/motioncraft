@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, neutralTheme, safeArea, type Aspect } from "../src/index";
-import { Caption, TitleCard, captionLimits, kit, pageCaption } from "../src/kit";
+import { ASPECTS, captionBand, fontSize, neutralTheme, safeArea, type Aspect } from "../src/index";
+import { Caption, TitleCard, captionLimits, kit, pageCaption, titleCardStep } from "../src/kit";
 
 interface Box {
   opacity: number;
@@ -92,6 +92,50 @@ describe("TitleCard", () => {
     const html = render("9:16", 0.5, { kicker: "<b>" });
     expect(html).toContain("&lt;b&gt;");
   });
+
+  const longTitle = "My owner taught his coding robot to accept a reviewer before building my video engine";
+  const titleSize = (html: string): number => {
+    const m = /<h1 style="[^"]*font-size:(\d+(?:\.\d+)?)px/.exec(html);
+    if (m?.[1] === undefined) throw new Error(`no h1 font-size in ${html}`);
+    return parseFloat(m[1]);
+  };
+  const renderTitle = (aspect: Aspect, title: string) =>
+    renderToStaticMarkup(
+      <TitleCard progress={0.5} theme={neutralTheme} aspect={aspect} title={title} subtitle="A short subtitle" kicker="Launch" />,
+    );
+
+  it.each(ASPECTS)("keeps short titles at the display size (%s)", (aspect) => {
+    expect(titleSize(renderTitle(aspect, "Ship it"))).toBe(fontSize(neutralTheme, "display", aspect));
+    expect(titleSize(render(aspect, 0.5))).toBe(fontSize(neutralTheme, "display", aspect));
+  });
+
+  it("shrinks a long title to a smaller step at 9:16 and still renders the subtitle", () => {
+    const html = renderTitle("9:16", longTitle);
+    expect(titleSize(html)).toBeLessThan(titleSize(renderTitle("9:16", "Ship it")));
+    expect(titleCardStep(neutralTheme, "9:16", { title: longTitle, subtitle: "A short subtitle", kicker: "Launch" })).not.toBe(
+      "display",
+    );
+    expect(html).toContain("A short subtitle");
+    expect(html).toContain("Launch");
+  });
+
+  it("keeps the smallest step when nothing fits, without clipping", () => {
+    const huge = Array.from({ length: 40 }, () => longTitle).join(" ");
+    expect(titleCardStep(neutralTheme, "9:16", { title: huge })).toBe("subtitle");
+    const html = renderTitle("9:16", huge);
+    expect(titleSize(html)).toBe(fontSize(neutralTheme, "subtitle", "9:16"));
+    expect(html).toContain("A short subtitle");
+    expect(html).not.toContain("overflow:hidden");
+  });
+
+  it.each(ASPECTS)("ends above the caption band (%s)", (aspect) => {
+    const band = captionBand(neutralTheme, aspect);
+    for (const title of ["Ship it", longTitle]) {
+      const box = rootBox(renderTitle(aspect, title));
+      expect(box.y + box.height).toBeLessThanOrEqual(band.y);
+      expectInsideSafeArea(box, aspect);
+    }
+  });
 });
 
 describe("pageCaption", () => {
@@ -176,6 +220,12 @@ describe("Caption", () => {
     const safe = safeArea(aspect);
     expect(box.y + box.height).toBeCloseTo(safe.y + safe.height, 0);
     expect(box.y).toBeGreaterThan(safe.y + safe.height / 2);
+  });
+
+  it.each(ASPECTS)("fills the shared caption band (%s)", (aspect) => {
+    const box = rootBox(render(aspect, 0.5));
+    const band = captionBand(neutralTheme, aspect);
+    expect({ x: box.x, y: box.y, width: box.width, height: box.height }).toEqual(band);
   });
 
   it.each(ASPECTS)("is hidden at the start and visible mid-scene (%s)", (aspect) => {
