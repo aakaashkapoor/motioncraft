@@ -1,0 +1,126 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { ASPECTS, neutralTheme, safeArea, type Aspect } from "../src/index";
+import { Caption, TitleCard, kit } from "../src/kit";
+
+interface Box {
+  opacity: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Reads the root element's inline style back out of server-rendered HTML. */
+function rootBox(html: string): Box {
+  const style = /^<[a-z]+[^>]*?style="([^"]*)"/.exec(html)?.[1];
+  if (style === undefined) throw new Error(`no root style in ${html}`);
+  const decls = new Map(
+    style.split(";").map((d) => {
+      const i = d.indexOf(":");
+      return [d.slice(0, i).trim(), d.slice(i + 1).trim()] as const;
+    }),
+  );
+  const num = (key: string): number => {
+    const value = decls.get(key);
+    if (value === undefined) throw new Error(`root style has no ${key}: ${style}`);
+    return parseFloat(value);
+  };
+  return { opacity: num("opacity"), x: num("left"), y: num("top"), width: num("width"), height: num("height") };
+}
+
+function expectInsideSafeArea(box: Box, aspect: Aspect): void {
+  const safe = safeArea(aspect);
+  expect(box.x).toBeGreaterThanOrEqual(safe.x);
+  expect(box.y).toBeGreaterThanOrEqual(safe.y);
+  expect(box.x + box.width).toBeLessThanOrEqual(safe.x + safe.width);
+  expect(box.y + box.height).toBeLessThanOrEqual(safe.y + safe.height);
+}
+
+const PROGRESSES = [0, 0.5, 1] as const;
+const cases = ASPECTS.flatMap((aspect) => PROGRESSES.map((progress) => [aspect, progress] as const));
+
+describe("kit registry", () => {
+  it("maps storyboard component names to components", () => {
+    expect(kit.TitleCard).toBe(TitleCard);
+    expect(kit.Caption).toBe(Caption);
+  });
+});
+
+describe("TitleCard", () => {
+  const render = (aspect: Aspect, progress: number, extra: { subtitle?: string; kicker?: string } = {}) =>
+    renderToStaticMarkup(
+      <TitleCard progress={progress} theme={neutralTheme} aspect={aspect} title="Ship it" {...extra} />,
+    );
+
+  it.each(cases)("renders title, subtitle and kicker inside the safe area (%s, progress %s)", (aspect, progress) => {
+    const html = render(aspect, progress, { subtitle: "A short subtitle", kicker: "Launch" });
+    expect(html).toContain("Ship it");
+    expect(html).toContain("A short subtitle");
+    expect(html).toContain("Launch");
+    expectInsideSafeArea(rootBox(html), aspect);
+  });
+
+  it.each(ASPECTS)("fades in, holds and fades out (%s)", (aspect) => {
+    expect(rootBox(render(aspect, 0)).opacity).toBeCloseTo(0, 3);
+    expect(rootBox(render(aspect, 0.5)).opacity).toBeCloseTo(1, 3);
+    expect(rootBox(render(aspect, 1)).opacity).toBeCloseTo(0, 3);
+  });
+
+  it("is fully in by 20% and still in at 90%", () => {
+    expect(rootBox(render("9:16", 0.2)).opacity).toBeCloseTo(1, 3);
+    expect(rootBox(render("9:16", 0.9)).opacity).toBeCloseTo(1, 3);
+    expect(rootBox(render("9:16", 0.1)).opacity).toBeGreaterThan(0);
+    expect(rootBox(render("9:16", 0.1)).opacity).toBeLessThan(1);
+  });
+
+  it("rises into place", () => {
+    const offset = (progress: number) => {
+      const m = /translateY\((-?[\d.]+)px\)/.exec(render("9:16", progress));
+      return m?.[1] === undefined ? 0 : parseFloat(m[1]);
+    };
+    expect(offset(0)).toBeGreaterThan(0);
+    expect(offset(0.5)).toBe(0);
+  });
+
+  it("leaves out subtitle and kicker when not given", () => {
+    const html = render("16:9", 0.5);
+    expect(html.match(/<(h1|p)\b/g)).toEqual(["<h1"]);
+  });
+
+  it("escapes text", () => {
+    const html = render("9:16", 0.5, { kicker: "<b>" });
+    expect(html).toContain("&lt;b&gt;");
+  });
+});
+
+describe("Caption", () => {
+  const text = "Captions come from the narration text and are burned in.";
+  const render = (aspect: Aspect, progress: number) =>
+    renderToStaticMarkup(<Caption progress={progress} theme={neutralTheme} aspect={aspect} text={text} />);
+
+  it.each(cases)("renders text inside the safe area (%s, progress %s)", (aspect, progress) => {
+    const html = render(aspect, progress);
+    expect(html).toContain(text);
+    expectInsideSafeArea(rootBox(html), aspect);
+  });
+
+  it.each(ASPECTS)("sits at the bottom of the safe area (%s)", (aspect) => {
+    const box = rootBox(render(aspect, 0.5));
+    const safe = safeArea(aspect);
+    expect(box.y + box.height).toBeCloseTo(safe.y + safe.height, 0);
+    expect(box.y).toBeGreaterThan(safe.y + safe.height / 2);
+  });
+
+  it.each(ASPECTS)("is hidden at the start and visible mid-scene (%s)", (aspect) => {
+    expect(rootBox(render(aspect, 0)).opacity).toBeCloseTo(0, 3);
+    expect(rootBox(render(aspect, 0.5)).opacity).toBeCloseTo(1, 3);
+  });
+
+  it("clamps to two lines on a solid plate", () => {
+    const html = render("9:16", 0.5);
+    expect(html).toContain("-webkit-line-clamp:2");
+    expect(html).toContain(`background-color:${neutralTheme.colors.background}`);
+    expect(html).toContain(`color:${neutralTheme.colors.text}`);
+  });
+});
