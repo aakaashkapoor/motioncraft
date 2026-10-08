@@ -24,3 +24,6 @@ export { buildTimeline, frameAt } from "./engine/timeline";
 export type { FrameInfo, SceneDurations, Timeline, TimelineScene } from "./engine/timeline";
 export { easeInOutCubic, easeOutBack, easeSpring, interpolate, linear, spring } from "./engine/easing";
 export type { Easing, InterpolateOptions, SpringOptions } from "./engine/easing";
+
+export { Caption, TitleCard, asKitComponent, kit, presence, themeEasing } from "./kit";
+export type { CaptionProps, KitComponent, KitProps, TitleCardProps } from "./kit";
