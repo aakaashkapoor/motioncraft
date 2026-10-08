@@ -6,6 +6,7 @@ import { TitleCard } from "./TitleCard";
 import { asKitComponent, type KitComponent } from "./types";
 
 export { Caption, TitleCard, captionLimits };
+export { titleCardStep } from "./TitleCard";
 export { pageAt, pageCaption } from "./captionPages";
 export type { CaptionLimits } from "./captionPages";
 export type { CaptionProps } from "./Caption";

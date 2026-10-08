@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { ASPECTS, fontScale, fontSize, frameSize, neutralTheme, safeArea, type Aspect } from "../src/index";
+import {
+  ASPECTS,
+  captionBand,
+  captionBandHeight,
+  charsPerLine,
+  contentArea,
+  estimateLines,
+  estimateTextHeight,
+  fontScale,
+  fontSize,
+  frameSize,
+  neutralTheme,
+  safeArea,
+  type Aspect,
+} from "../src/index";
 
 describe("frameSize", () => {
   it("is 1080x1920 for 9:16", () => {
@@ -63,5 +77,42 @@ describe("fontScale", () => {
     expect(fontSize(neutralTheme, "title", "16:9")).toBe(
       Math.round(neutralTheme.typeScale.title * fontScale("16:9")),
     );
+  });
+});
+
+describe("text fit estimate", () => {
+  it("counts characters per line from font size and width", () => {
+    expect(charsPerLine(600, 100)).toBe(10);
+    expect(charsPerLine(10, 100)).toBe(1);
+  });
+
+  it("wraps on word boundaries", () => {
+    // 10 chars per line.
+    expect(estimateLines("", 600, 100)).toBe(0);
+    expect(estimateLines("short", 600, 100)).toBe(1);
+    expect(estimateLines("aaaa bbbbb", 600, 100)).toBe(1);
+    expect(estimateLines("aaaa bbbbbb", 600, 100)).toBe(2);
+    expect(estimateLines("aaa bbb ccc ddd", 600, 100)).toBe(2);
+  });
+
+  it("breaks words longer than a line", () => {
+    expect(estimateLines("a".repeat(25), 600, 100)).toBe(3);
+    expect(estimateLines(`aa ${"b".repeat(25)} cc`, 600, 100)).toBe(4);
+  });
+
+  it("estimates height from lines and line height", () => {
+    expect(estimateTextHeight("aaa bbb ccc ddd", 600, { size: 100, lineHeight: 1.2 })).toBeCloseTo(240);
+  });
+});
+
+describe("caption band", () => {
+  it.each(ASPECTS)("sits at the bottom of the safe area, with content above it (%s)", (aspect: Aspect) => {
+    const safe = safeArea(aspect);
+    const band = captionBand(neutralTheme, aspect);
+    expect(band.height).toBe(captionBandHeight(neutralTheme, aspect));
+    expect(band.y + band.height).toBe(safe.y + safe.height);
+    const content = contentArea(neutralTheme, aspect);
+    expect(content.y).toBe(safe.y);
+    expect(content.y + content.height).toBeLessThan(band.y);
   });
 });
