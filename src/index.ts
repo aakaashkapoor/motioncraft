@@ -19,3 +19,8 @@ export { contrastRatio, relativeLuminance } from "./theme/contrast";
 export { frameSize, safeArea } from "./layout/frame";
 export type { Rect, Size } from "./layout/frame";
 export { fontScale, fontSize } from "./layout/type";
+
+export { buildTimeline, frameAt } from "./engine/timeline";
+export type { FrameInfo, SceneDurations, Timeline, TimelineScene } from "./engine/timeline";
+export { easeInOutCubic, easeOutBack, easeSpring, interpolate, linear, spring } from "./engine/easing";
+export type { Easing, InterpolateOptions, SpringOptions } from "./engine/easing";
