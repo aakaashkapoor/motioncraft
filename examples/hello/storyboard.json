@@ -1,0 +1,27 @@
+{
+  "title": "Hello, motioncraft",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "neutral",
+  "scenes": [
+    {
+      "id": "hello",
+      "component": "TitleCard",
+      "props": {
+        "kicker": "Introducing",
+        "title": "motioncraft",
+        "subtitle": "Videos drawn in code"
+      },
+      "narration": "Meet motioncraft: short videos, drawn entirely in code."
+    },
+    {
+      "id": "local",
+      "component": "TitleCard",
+      "props": {
+        "title": "Runs on your machine",
+        "subtitle": "No cloud. No accounts."
+      },
+      "narration": "Everything runs locally, in the browser you already have."
+    }
+  ]
+}
