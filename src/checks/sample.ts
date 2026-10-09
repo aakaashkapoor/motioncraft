@@ -1,9 +1,9 @@
 // Which frames the checks measure by default: the frames of each scene where
 // its content is fully on screen, so problems during entrance and exit motion
 // are seen, not hidden by the fades at the very start and end of the scene.
+// Frames inside a scene transition, where two scenes overlap, are skipped.
 
-import type { Timeline } from "../engine/timeline";
-import { sceneMiddleFrame } from "../render/frames";
+import { soloFrames, type Timeline } from "../engine/timeline";
 import type { MeasuredFrame } from "./judge";
 import type { FrameMeasurement } from "./types";
 
@@ -22,8 +22,8 @@ export function contentOpacity(measurement: FrameMeasurement): number {
 /**
  * For every scene, measures its first fully visible frame after the entrance,
  * its middle frame, and its last fully visible frame before the exit, stepping
- * inward from each end of the scene until content opacity reaches
- * `FULLY_VISIBLE`. The middle frame is always included, even when the scene is
+ * inward from each end of the scene's solo frames (outside transitions) until
+ * content opacity reaches `FULLY_VISIBLE`. The middle frame is always included, even when the scene is
  * never fully visible. Returns the chosen frames' measurements in frame order.
  */
 export async function sampleVisibleFrames(timeline: Timeline, measure: MeasureFrame): Promise<MeasuredFrame[]> {
@@ -44,11 +44,11 @@ export async function sampleVisibleFrames(timeline: Timeline, measure: MeasureFr
   };
 
   const chosen = new Set<number>();
-  for (const scene of timeline.scenes) {
-    const middle = sceneMiddleFrame(scene);
-    const last = scene.startFrame + scene.frames - 1;
+  for (let i = 0; i < timeline.scenes.length; i++) {
+    const { first, last } = soloFrames(timeline, i);
+    const middle = first + Math.floor((last - first) / 2);
     chosen.add(middle);
-    const entered = await firstVisible(scene.startFrame, middle, 1);
+    const entered = await firstVisible(first, middle, 1);
     if (entered !== undefined) chosen.add(entered);
     const leaving = await firstVisible(last, middle, -1);
     if (leaving !== undefined) chosen.add(leaving);
