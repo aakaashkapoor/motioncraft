@@ -1,6 +1,8 @@
 node_modules/
 out/
 *.mp4
+# Committed sample clips (each under 1 MB).
+!examples/showcase/media/*.mp4
 .cache/
 coverage/
 *.stackdump

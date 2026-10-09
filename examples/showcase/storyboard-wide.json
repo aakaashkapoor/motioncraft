@@ -1,0 +1,273 @@
+{
+  "title": "motioncraft showcase (16:9)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "open",
+      "component": "TitleCard",
+      "props": {
+        "title": "Videos from a prompt",
+        "subtitle": "Code-drawn, rendered locally"
+      },
+      "narration": "motioncraft turns a prompt into a video.",
+      "transition": {
+        "type": "zoomBlur",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "ask",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "launch",
+        "messages": [
+          {
+            "author": "Maya",
+            "time": "9:41",
+            "text": "Intro video for launch?"
+          },
+          {
+            "author": "Agent",
+            "badge": "BOT",
+            "time": "9:42",
+            "text": "On it.",
+            "highlight": true
+          }
+        ],
+        "shareId": "chat"
+      },
+      "narration": "It starts in chat: someone asks for a video.",
+      "durationMs": 6500,
+      "transition": {
+        "type": "fade",
+        "durationMs": 800
+      }
+    },
+    {
+      "id": "plan",
+      "component": "Pinned",
+      "props": {
+        "pinned": {
+          "component": "ChatWindow",
+          "props": {
+            "channel": "launch",
+            "messages": [
+              {
+                "author": "Maya",
+                "time": "9:41",
+                "text": "Intro video for launch?"
+              },
+              {
+                "author": "Agent",
+                "badge": "BOT",
+                "time": "9:42",
+                "text": "On it.",
+                "highlight": true
+              }
+            ],
+            "shareId": "chat"
+          }
+        },
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              {
+                "icon": "file",
+                "title": "Write"
+              },
+              {
+                "icon": "check",
+                "title": "Check"
+              },
+              {
+                "icon": "play",
+                "title": "Render"
+              }
+            ],
+            "highlight": 1
+          }
+        }
+      },
+      "narration": "The agent writes a storyboard, checks every frame, then renders.",
+      "durationMs": 7300,
+      "transition": {
+        "type": "slide",
+        "direction": "left",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "prompt",
+      "component": "Handoff",
+      "props": {
+        "from": {
+          "component": "Card",
+          "props": {
+            "icon": "chat",
+            "title": "The prompt",
+            "subtitle": "A launch intro"
+          }
+        },
+        "to": {
+          "component": "AppWindow",
+          "props": {
+            "title": "storyboard.json",
+            "shareId": "board",
+            "content": {
+              "component": "StepList",
+              "props": {
+                "items": [
+                  "Hook",
+                  "Ask",
+                  "Plan",
+                  "Demo"
+                ],
+                "marker": "dot"
+              }
+            }
+          }
+        },
+        "label": "plan"
+      },
+      "narration": "One prompt becomes a plan, scene by scene.",
+      "durationMs": 4800,
+      "transition": {
+        "type": "fade",
+        "durationMs": 800
+      }
+    },
+    {
+      "id": "render",
+      "component": "Pinned",
+      "props": {
+        "pinned": {
+          "component": "AppWindow",
+          "props": {
+            "title": "storyboard.json",
+            "shareId": "board",
+            "content": {
+              "component": "StepList",
+              "props": {
+                "items": [
+                  "Hook",
+                  "Ask",
+                  "Plan",
+                  "Demo"
+                ],
+                "marker": "dot"
+              }
+            }
+          }
+        },
+        "content": {
+          "component": "TerminalWindow",
+          "props": {
+            "title": "terminal",
+            "lines": [
+              {
+                "prompt": true,
+                "text": "npx tsx scripts/render.ts intro.json"
+              },
+              {
+                "text": "checks passed"
+              },
+              {
+                "text": "wrote intro.mp4"
+              }
+            ]
+          }
+        }
+      },
+      "narration": "Then one command checks it, and another renders it.",
+      "durationMs": 5500,
+      "transition": {
+        "type": "slide",
+        "direction": "left",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "features",
+      "component": "Section",
+      "props": {
+        "headline": "Made for agents",
+        "content": {
+          "component": "FeatureList",
+          "props": {
+            "items": [
+              {
+                "icon": "lock",
+                "text": "Runs locally"
+              },
+              {
+                "icon": "code",
+                "text": "Every frame is code"
+              },
+              {
+                "icon": "check",
+                "text": "Checked before render"
+              }
+            ]
+          }
+        }
+      },
+      "narration": "Local, code-drawn, and checked before it renders.",
+      "durationMs": 4800,
+      "transition": {
+        "type": "wipe",
+        "direction": "up",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "stat",
+      "component": "BigNumber",
+      "props": {
+        "value": 100,
+        "suffix": "%",
+        "label": "code-drawn frames"
+      },
+      "narration": "No stock footage, no generated images.",
+      "durationMs": 2800,
+      "transition": {
+        "type": "slide",
+        "direction": "left",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "demo",
+      "component": "AppWindow",
+      "props": {
+        "title": "sample.mp4",
+        "content": {
+          "component": "VideoClip",
+          "props": {
+            "src": "media/sample.mp4",
+            "fit": "contain",
+            "muted": true
+          }
+        }
+      },
+      "narration": "Real footage plays frame-accurately inside any window.",
+      "durationMs": 3500,
+      "transition": {
+        "type": "fade",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "end",
+      "component": "TitleCard",
+      "props": {
+        "title": "motioncraft",
+        "subtitle": "Prompt in, video out"
+      },
+      "narration": "Prompt in, video out.",
+      "durationMs": 2800
+    }
+  ]
+}
