@@ -1,10 +1,12 @@
 // 2-6 feature rows, each an icon in a soft accent-tinted circle beside a line
-// of text, with an optional title, centered in its area (the content area by
-// default). Rows spring in one after another, rising and sliding from the left.
+// of text, with an optional title, on the frame's optical center (or centered
+// in its slot), no wider than the text column. Rows spring in one after
+// another, rising and sliding from the left.
 
 import { interpolate } from "../engine/easing";
 import { Icon } from "../icons";
-import { contentArea } from "../layout/caption";
+import { blockCenterY, placeBlock } from "../layout/block";
+import { contentArea, textColumn } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
@@ -81,7 +83,10 @@ function featureListLayout(theme: Theme, aspect: Aspect, title: string | undefin
 
 export function FeatureList({ progress, theme, aspect, area: slot, items, title }: FeatureListProps) {
   const area = slot ?? contentArea(theme, aspect);
-  const layout = featureListLayout(theme, aspect, title, items, area);
+  const width = Math.min(area.width, textColumn(theme, aspect).width);
+  const layout = featureListLayout(theme, aspect, title, items, { ...area, width });
+  const height = estimateHeight(theme, aspect, width, title, items, layout);
+  const box = placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot));
   const easing = themeEasing(theme);
   const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
   const titleIn = interpolate(progress, [0, TITLE_ENTER], [0, 1], { easing });
@@ -92,10 +97,10 @@ export function FeatureList({ progress, theme, aspect, area: slot, items, title 
     <div
       style={{
         position: "absolute",
-        left: area.x,
-        top: area.y,
-        width: area.width,
-        height: area.height,
+        left: box.x,
+        top: box.y,
+        width: box.width,
+        height: box.height,
         opacity: exit,
         display: "flex",
         flexDirection: "column",
@@ -103,7 +108,7 @@ export function FeatureList({ progress, theme, aspect, area: slot, items, title 
         alignItems: "center",
       }}
     >
-      <div style={{ maxWidth: area.width - 2 * layout.slide }}>
+      <div data-block="FeatureList" style={{ maxWidth: width - 2 * layout.slide }}>
         {title !== undefined && (
           <h2
             style={{

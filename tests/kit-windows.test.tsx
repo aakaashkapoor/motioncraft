@@ -11,6 +11,7 @@ import {
   darkTheme,
   kit,
   lightTheme,
+  safeZones,
   slotTransform,
   windowLayout,
   type Aspect,
@@ -74,10 +75,12 @@ const browser = (aspect: Aspect, progress: number, extra: Record<string, unknown
   );
 
 describe("windowLayout", () => {
-  it.each(ASPECTS)("fills the content area with a content box below the chrome (%s)", (aspect) => {
+  it.each(ASPECTS)("fills the content area (9:16: the primary width, centered) with a content box below the chrome (%s)", (aspect) => {
     for (const toolbar of [false, true]) {
       const layout = windowLayout(lightTheme, aspect, toolbar);
-      const area = contentArea(lightTheme, aspect);
+      const full = contentArea(lightTheme, aspect);
+      const width = aspect === "9:16" ? safeZones(aspect).primaryWidth : full.width;
+      const area = { ...full, x: full.x + (full.width - width) / 2, width };
       expect(layout.box).toEqual(area);
       expect(layout.titleBar).toBeGreaterThan(0);
       expect(layout.toolbar > 0).toBe(toolbar);

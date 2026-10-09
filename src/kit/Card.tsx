@@ -3,13 +3,21 @@
 // soft long card shadow. Highlighted, it lights up in the accent: an accent
 // ring and icon circle (subtle), or an accent fill (bold).
 //
+// A label card (a title alone) is centered: icon above, text centered. A card
+// with a subtitle keeps its text left-aligned but hugs its content, and its
+// content sits centered in the card, so nothing hugs one edge with an empty
+// half (design v3, section C).
+//
 // `CardFace` draws one card into a given box (CardRow lays several out);
-// `Card` is the scene component: one card centered in the content area.
+// `Card` is the scene component: one card on the frame's optical center.
 
 import { interpolate } from "../engine/easing";
 import { Icon } from "../icons";
+import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
-import { estimateTextHeight } from "../layout/textFit";
+import type { Rect } from "../layout/frame";
+import { safeZones } from "../layout/safe";
+import { AVG_CHAR_EM, charsPerLine, estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { mixColors, withAlpha } from "../theme/color";
@@ -74,12 +82,43 @@ export function cardMetrics(theme: Theme, aspect: Aspect, titleStep: CardTitleSt
   };
 }
 
-/** Width in px left for the title and subtitle in a card of `width`. */
+/** A card with a title alone: its content is centered, icon above the text. */
+export const isLabelCard = (card: Pick<CardData, "subtitle">): boolean => card.subtitle === undefined;
+
+/** Estimated width in px of one line of `text` in `spec`: generous, like the height estimates. */
+const lineWidth = (text: string, spec: TypeSpec) => Math.ceil(text.length * spec.size * AVG_CHAR_EM);
+
+/**
+ * The width in px `card` needs to show its title and its subtitle each on one
+ * line: the width of a card that hugs its content, before any maximum.
+ */
+export function cardContentWidth(theme: Theme, card: CardData, m: CardMetrics): number {
+  let text = lineWidth(card.title, m.title);
+  if (card.subtitle !== undefined) text = Math.max(text, lineWidth(card.subtitle, m.subtitle));
+  const icon = card.icon === undefined ? 0 : m.badge;
+  let width = m.orientation === "row" ? text + (icon > 0 ? icon + theme.spacing.md : 0) : Math.max(text, icon);
+  if (card.step !== undefined) width += m.stepSize + theme.spacing.xs;
+  return width + 2 * (m.padding + m.border);
+}
+
+/**
+ * Width in px left for the title and subtitle in a card of `width`. Beside the
+ * icon, the text also shares its row with the step number.
+ */
 function textWidth(card: CardData, width: number, m: CardMetrics, theme: Theme): number {
   let w = width - 2 * (m.padding + m.border);
-  if (card.step !== undefined) w -= m.stepSize + theme.spacing.xs;
+  if (m.orientation === "row" && card.step !== undefined) w -= m.stepSize + theme.spacing.xs;
   if (m.orientation === "row" && card.icon !== undefined) w -= m.badge + theme.spacing.md;
   return Math.max(1, w);
+}
+
+const longestWord = (text: string) => Math.max(0, ...text.split(" ").map((word) => word.length));
+
+/** True when no word of the title or subtitle has to break to fit a card `width` px wide: a broken word is hard to read. */
+export function cardWordsFit(theme: Theme, card: CardData, width: number, m: CardMetrics): boolean {
+  const tw = textWidth(card, width, m, theme);
+  const fits = (text: string, spec: TypeSpec) => charsPerLine(tw, spec.size) >= longestWord(text);
+  return fits(card.title, m.title) && (card.subtitle === undefined || fits(card.subtitle, m.subtitle));
 }
 
 /** Estimated height in px of `card` laid out `width` px wide. */
@@ -101,7 +140,7 @@ export interface CardFaceProps extends CardData {
   highlight?: number;
 }
 
-/** One card filling its parent box. */
+/** One card filling its parent box, its content centered in it. */
 export function CardFace({ theme, metrics: m, icon, title, subtitle, step, highlight = 0 }: CardFaceProps) {
   const { colors, fonts, spacing, cardShadow } = theme;
   const lit = Math.min(1, Math.max(0, highlight));
@@ -113,6 +152,7 @@ export function CardFace({ theme, metrics: m, icon, title, subtitle, step, highl
   const shadow = `0 ${cardShadow.y}px ${cardShadow.blur}px ${withAlpha(colors.shadow, cardShadow.opacity)}`;
   const ring = lit > 0 ? `, 0 0 0 ${Math.round(2 * theme.hairline * lit * 100) / 100}px ${colors.accent}` : "";
   const row = m.orientation === "row";
+  const label = isLabelCard({ subtitle });
 
   return (
     <div
@@ -129,53 +169,65 @@ export function CardFace({ theme, metrics: m, icon, title, subtitle, step, highl
         boxShadow: shadow + ring,
         transform: `scale(${1 + LIFT * highlight})`,
         display: "flex",
-        flexDirection: row ? "row" : "column",
-        alignItems: row ? "center" : "flex-start",
-        justifyContent: "flex-start",
-        gap: row ? spacing.md : spacing.xs,
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      {icon !== undefined && (
-        <div
-          style={{
-            flex: "none",
-            width: m.badge,
-            height: m.badge,
-            borderRadius: "50%",
-            backgroundColor: on ? (bold ? colors.accentText : colors.accent) : withAlpha(colors.accent, 0.14),
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Icon name={icon} size={m.iconSize} color={on ? (bold ? colors.accent : colors.accentText) : colors.accent} />
-        </div>
-      )}
-      <div style={{ minWidth: 0, paddingRight: step !== undefined ? m.stepSize + spacing.xs : 0 }}>
-        <div
-          style={{
-            color: text,
-            fontFamily: fonts.display,
-            ...typeCss(m.title),
-            overflowWrap: "break-word",
-            textWrap: "balance",
-          }}
-        >
-          {title}
-        </div>
-        {subtitle !== undefined && (
+      <div
+        data-card-content={label ? "label" : "text"}
+        style={{
+          display: "flex",
+          flexDirection: row ? "row" : "column",
+          // A label centers under its icon; longer text keeps a left edge, the icon above it.
+          alignItems: row || label ? "center" : "flex-start",
+          gap: row ? spacing.md : spacing.xs,
+          minWidth: 0,
+          maxWidth: "100%",
+        }}
+      >
+        {icon !== undefined && (
           <div
             style={{
-              marginTop: spacing.xxs,
-              color: muted,
-              fontFamily: fonts.body,
-              ...typeCss(m.subtitle),
-              overflowWrap: "break-word",
+              flex: "none",
+              width: m.badge,
+              height: m.badge,
+              borderRadius: "50%",
+              backgroundColor: on ? (bold ? colors.accentText : colors.accent) : withAlpha(colors.accent, 0.14),
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            {subtitle}
+            <Icon name={icon} size={m.iconSize} color={on ? (bold ? colors.accent : colors.accentText) : colors.accent} />
           </div>
         )}
+        {/* Beside the icon the text shares its row with the step number; above, the icon's row holds it. */}
+        <div data-card-text="" style={{ minWidth: 0, textAlign: label && !row ? "center" : "left", paddingRight: step !== undefined && row ? m.stepSize + spacing.xs : 0 }}>
+          <div
+            style={{
+              color: text,
+              fontFamily: fonts.display,
+              ...typeCss(m.title),
+              overflowWrap: "break-word",
+              textWrap: "balance",
+            }}
+          >
+            {title}
+          </div>
+          {subtitle !== undefined && (
+            <div
+              style={{
+                marginTop: spacing.xxs,
+                color: muted,
+                fontFamily: fonts.body,
+                ...typeCss(m.subtitle),
+                overflowWrap: "break-word",
+              }}
+            >
+              {subtitle}
+            </div>
+          )}
+        </div>
       </div>
       {step !== undefined && (
         <div
@@ -219,17 +271,37 @@ export interface CardProps extends KitProps, CardData {
 const ENTER = 0.25;
 const EXIT = 0.1;
 
-/** A single card, centered in its area (the content area by default), springing in. */
+/** In 16:9 a lone card is at most this share of the content area's width. */
+const WIDE_CARD_SHARE = 0.4;
+
+/**
+ * The widest a card gets in `area`: the primary width in 9:16 (760 in
+ * `shorts`, which keeps its text off the right rail), a share of the content
+ * area in 16:9, and never more than `area`.
+ */
+export function maxCardWidth(theme: Theme, aspect: Aspect, area: Rect): number {
+  const max = aspect === "9:16" ? safeZones(aspect, theme.safe).primaryWidth : Math.round(contentArea(theme, aspect).width * WIDE_CARD_SHARE);
+  return Math.min(area.width, max);
+}
+
+/**
+ * A single card springing in: a label card at the full card width, one with a
+ * subtitle hugging its content. The icon sits above the text, or beside it at
+ * a step where there is no room above. On the frame's optical center, or
+ * centered in its slot.
+ */
 export function Card({ progress, theme, aspect, area: slot, highlighted = false, ...card }: CardProps) {
   const area = slot ?? contentArea(theme, aspect);
-  // As wide as it would be in the full content area, but never wider than its area.
-  const full = contentArea(theme, aspect);
-  const width = Math.min(area.width, aspect === "9:16" ? full.width : Math.round(full.width * 0.4));
-  const metrics =
-    CARD_TITLE_STEPS.map((step) => cardMetrics(theme, aspect, step, "column")).find(
-      (m) => cardHeight(theme, card, width, m) <= area.height,
-    ) ?? cardMetrics(theme, aspect, CARD_TITLE_STEPS.at(-1)!, "column");
-  const height = Math.min(area.height, cardHeight(theme, card, width, metrics));
+  const max = maxCardWidth(theme, aspect, area);
+  const widthFor = (m: CardMetrics) => (isLabelCard(card) ? max : Math.min(max, cardContentWidth(theme, card, m)));
+  // Largest text first; at each step, the icon above the text before beside it.
+  const candidates = CARD_TITLE_STEPS.flatMap((step) => (["column", "row"] as const).map((orientation) => cardMetrics(theme, aspect, step, orientation)));
+  const fits = (m: CardMetrics) => cardHeight(theme, card, widthFor(m), m) <= area.height && cardWordsFit(theme, card, widthFor(m), m);
+  const metrics = candidates.find(fits) ?? candidates.at(-1)!;
+  const width = widthFor(metrics);
+  // Never shorter than its content: a card too tall for its area overflows it evenly.
+  const height = cardHeight(theme, card, width, metrics);
+  const box = placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot));
   const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing: themeEasing(theme) });
   const entrance = cardEntrance(springIn(progress, 0, ENTER, theme.motion.springs.enter), theme);
 
@@ -237,10 +309,11 @@ export function Card({ progress, theme, aspect, area: slot, highlighted = false,
     <div style={{ position: "absolute", left: area.x, top: area.y, width: area.width, height: area.height, opacity: exit }}>
       <div
         data-card="0"
+        data-block="Card"
         style={{
           position: "absolute",
-          left: (area.width - width) / 2,
-          top: (area.height - height) / 2,
+          left: box.x - area.x,
+          top: box.y - area.y,
           width,
           height,
           ...entrance,

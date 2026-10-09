@@ -31,10 +31,12 @@ export { accentInk, cardColors, headlineColor, type CardColors } from "./theme/r
 export { mixColors, withAlpha } from "./theme/color";
 export { contrastRatio, relativeLuminance } from "./theme/contrast";
 
-export { frameSize, safeArea } from "./layout/frame";
+export { frameSize } from "./layout/frame";
+export { clearOfKeepOuts, safeArea, safeZones, type SafeZones } from "./layout/safe";
+export { blockCenterY, placeBlock } from "./layout/block";
 export type { Rect, Size } from "./layout/frame";
 export { fontSize, rampSizes, rampSteps, TYPE_FIT_ATTRIBUTE, typeCss, typeSpec, type TypeCss } from "./layout/type";
-export { CAPTION_MAX_LINES, captionBand, captionBandHeight, contentArea } from "./layout/caption";
+export { CAPTION_MAX_LINES, captionBand, captionBandHeight, contentArea, textColumn } from "./layout/caption";
 export { AVG_CHAR_EM, charsPerLine, estimateLines, estimateTextHeight } from "./layout/textFit";
 export type { TextStyle } from "./layout/textFit";
 

@@ -1,5 +1,6 @@
 import { MONO_FAMILY, SANS_FAMILY } from "../render/fontFaces";
 import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { DEFAULT_SAFE_PROFILE } from "../storyboard/types";
 import type { Theme } from "./types";
 
 // The default theme, from the owner's reference (design v3): a flat warm-grey
@@ -36,4 +37,5 @@ export const lightTheme: Theme = {
   cardShadow: { y: 24, blur: 80, opacity: 0.08 },
   hairline: 2,
   motion: baseMotion,
+  safe: DEFAULT_SAFE_PROFILE,
 };

@@ -7,6 +7,7 @@
 
 import type { CSSProperties } from "react";
 import { interpolate, type Easing } from "../engine/easing";
+import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
@@ -17,6 +18,7 @@ import { contrastRatio } from "../theme/contrast";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { themeEasing } from "./motion";
 import type { KitProps } from "./types";
+import { windowWidth } from "./windowLayout";
 
 export interface ChatAvatar {
   /** One or two letters. */
@@ -161,25 +163,22 @@ function messageHeight(theme: Theme, m: ChatMessage, width: number, text: TypeSp
 }
 
 /**
- * Where the window and the cards go inside `area` (the content area by
- * default), and the largest message text size at which every message fits.
- * The window is as tall as its
- * content needs (never under `MIN_HEIGHT_SHARE` of the room) and centered. If
+ * Where the window and the cards go inside `slot` (the content area when
+ * there is none), and the largest message text size at which every message
+ * fits. The window is as tall as its content needs (never under
+ * `MIN_HEIGHT_SHARE` of the room); alone, it centers on the frame's optical
+ * center (see `blockCenterY`). Stacked, it is a window's width, centered. If
  * no size fits, the smallest: the window then overflows visibly and the
  * layer-1 checks report it.
  */
-export function chatWindowLayout(
-  theme: Theme,
-  aspect: Aspect,
-  { messages, sidebar, cards }: LayoutInput,
-  area: Rect = contentArea(theme, aspect),
-): ChatWindowLayout {
+export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sidebar, cards }: LayoutInput, slot?: Rect): ChatWindowLayout {
+  const area = slot ?? contentArea(theme, aspect);
   const { spacing } = theme;
   const gap = spacing.md;
   const hasCards = (cards?.length ?? 0) > 0;
   const wide = aspect === "16:9" && area.width >= area.height * WIDE_RATIO;
-  const width = !wide ? area.width : hasCards ? Math.floor((area.width - gap) * WINDOW_SHARE_WITH_CARDS) : Math.min(area.width, MAX_WINDOW_WIDTH);
-  const x = wide && !hasCards ? area.x + Math.floor((area.width - width) / 2) : area.x;
+  const width = !wide ? windowWidth(theme, aspect, area).width : hasCards ? Math.floor((area.width - gap) * WINDOW_SHARE_WITH_CARDS) : Math.min(area.width, MAX_WINDOW_WIDTH);
+  const x = wide && hasCards ? area.x : area.x + Math.floor((area.width - width) / 2);
   const room = !wide && hasCards ? Math.floor((area.height - gap) * WINDOW_SHARE_TALL) : area.height;
   const sidebarWidth = wide && sidebar ? Math.min(MAX_SIDEBAR_WIDTH, Math.floor(width * SIDEBAR_SHARE)) : 0;
   const listWidth = width - sidebarWidth - 2 * spacing.md;
@@ -193,12 +192,17 @@ export function chatWindowLayout(
   };
   const sizes = candidates.find((s) => needed(s) <= room) ?? candidates.at(-1)!;
   const height = Math.min(room, Math.max(Math.ceil(needed(sizes) * CONTENT_SLACK), Math.floor(room * MIN_HEIGHT_SHARE)));
-  // Alone, the window is centered; in 9:16 with cards it sits on top and the cards follow it.
-  const y = !wide && hasCards ? area.y : area.y + Math.floor((area.height - height) / 2);
+  // Alone, the window is centered; stacked with cards it sits on top and the cards follow it.
+  const y = !wide && hasCards ? area.y : Math.floor(placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot)).y);
   const window = { x, y, width, height };
   let cardsRect: Rect | undefined;
-  if (hasCards && wide) cardsRect = { x: x + width + gap, y: area.y, width: area.x + area.width - (x + width + gap), height: area.height };
-  if (hasCards && !wide) cardsRect = { x: area.x, y: y + height + gap, width: area.width, height: area.y + area.height - (y + height + gap) };
+  if (hasCards && wide) {
+    // A band centered on the window, as tall as the area allows, so the cards center on it.
+    const middle = y + height / 2;
+    const half = Math.min(middle - area.y, area.y + area.height - middle);
+    cardsRect = { x: x + width + gap, y: middle - half, width: area.x + area.width - (x + width + gap), height: 2 * half };
+  }
+  if (hasCards && !wide) cardsRect = { x, y: y + height + gap, width, height: area.y + area.height - (y + height + gap) };
   return { window, cards: cardsRect, sidebarWidth, ...sizes };
 }
 
@@ -453,7 +457,7 @@ function typingOpacity(progress: number, [start, end]: [number, number]): number
 
 export function ChatWindow({ progress, theme, aspect, area: slot, channel, messages, sidebar, cards, shareId }: ChatWindowProps) {
   const area = slot ?? contentArea(theme, aspect);
-  const layout = chatWindowLayout(theme, aspect, { messages, sidebar, cards }, area);
+  const layout = chatWindowLayout(theme, aspect, { messages, sidebar, cards }, slot);
   const easing = themeEasing(theme);
   const { colors, spacing, radius, cardShadow } = theme;
   const enter = interpolate(progress, [0, WINDOW_ENTER], [0, 1], { easing });
@@ -468,6 +472,7 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
     <div style={{ position: "absolute", left: area.x, top: area.y, width: area.width, height: area.height, opacity: exit }}>
       <div
         data-share-id={shareId}
+        data-block="chat window"
         style={{
           ...at(layout.window),
           opacity: enter,

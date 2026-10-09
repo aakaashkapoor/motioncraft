@@ -1,5 +1,5 @@
 // A burned-in caption: up to two lines of text, set in the ramp's `subtitle`
-// step, on a solid plate in the caption band at the bottom of the safe area
+// step, on a solid plate centered in the caption band, low in the safe area
 // (see `layout/caption`). Longer text is split into pages shown one after
 // another, so every word is seen and nothing is cut off.
 
@@ -55,6 +55,7 @@ export function Caption({ progress, theme, aspect, text }: CaptionProps) {
       }}
     >
       <p
+        data-block="Caption"
         style={{
           margin: 0,
           maxWidth: "100%",

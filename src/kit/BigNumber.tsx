@@ -1,10 +1,12 @@
 // A big stat: a number that counts up from 0 over the first half of the scene,
-// with an optional prefix/suffix and a label below. An accent underline grows
-// with the count. Fades in with a slight rise, holds, then fades out.
+// with an optional prefix/suffix and a label below, on the frame's optical
+// center. An accent underline grows with the count. Fades in with a slight
+// rise, holds, then fades out.
 
 import { interpolate, type Easing } from "../engine/easing";
-import { contentArea } from "../layout/caption";
-import { AVG_CHAR_EM } from "../layout/textFit";
+import { blockCenterY, placeBlock } from "../layout/block";
+import { contentArea, textColumn } from "../layout/caption";
+import { AVG_CHAR_EM, estimateTextHeight } from "../layout/textFit";
 import { fontSize, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole } from "../theme/types";
@@ -28,6 +30,15 @@ const ENTER = 0.2;
 const EXIT = 0.1;
 /** The count finishes at this fraction of the scene, then holds. */
 const COUNT_END = 0.5;
+
+/** Separators and the decimal point are narrow: about half a digit. */
+const NARROW_CHAR_EM = AVG_CHAR_EM / 2;
+const NARROW = new Set([",", ".", " ", "'", ":"]);
+
+/** Estimated width of `text` in em: digits and signs at the average glyph width, separators at half. */
+function textEm(text: string): number {
+  return [...text].reduce((sum, ch) => sum + (NARROW.has(ch) ? NARROW_CHAR_EM : AVG_CHAR_EM), 0);
+}
 
 /** Number steps to try, largest first: the ramp's `numeral`, then smaller steps for long numbers. */
 const NUMBER_STEPS: readonly TypeRole[] = ["numeral", "hero", "display", "headline"];
@@ -54,7 +65,7 @@ export function formatBigNumber(value: number, decimals: number): string {
  * layer-1 checks report it.
  */
 export function bigNumberStep(theme: Theme, aspect: Aspect, text: string, width = contentArea(theme, aspect).width): TypeRole {
-  const fits = NUMBER_STEPS.find((step) => text.length * fontSize(theme, step, aspect) * AVG_CHAR_EM <= width);
+  const fits = NUMBER_STEPS.find((step) => textEm(text) * fontSize(theme, step, aspect) <= width);
   return fits ?? NUMBER_STEPS[NUMBER_STEPS.length - 1]!;
 }
 
@@ -64,22 +75,28 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
   const step = bigNumberStep(theme, aspect, finalText, area.width);
   const spec = theme.type[step][aspect];
   const size = spec.size;
+  const { colors, fonts, spacing } = theme;
+  // The label is free-standing text: no wider than the text column, clear of the right rail.
+  const labelWidth = Math.min(area.width, textColumn(theme, aspect).width);
+  const labelSpec = theme.type.subtitle[aspect];
+  const height =
+    size * spec.lineHeight + spacing.xs + spacing.xxs + (label === undefined ? 0 : spacing.md + estimateTextHeight(label, labelWidth, labelSpec));
+  const box = placeBlock(area, { width: area.width, height }, blockCenterY(theme, aspect, slot));
   const easing = themeEasing(theme);
   const opacity = presence(progress, ENTER, EXIT, easing);
   const rise = interpolate(progress, [0, ENTER], [theme.spacing.lg, 0], { easing });
   const counted = countedValue(progress, value);
-  const fullUnderline = Math.min(area.width, finalText.length * size * AVG_CHAR_EM);
+  const fullUnderline = Math.min(area.width, textEm(finalText) * size);
   const underline = value === 0 ? fullUnderline : fullUnderline * (counted / value);
-  const { colors, fonts, spacing } = theme;
 
   return (
     <div
       style={{
         position: "absolute",
-        left: area.x,
-        top: area.y,
-        width: area.width,
-        height: area.height,
+        left: box.x,
+        top: box.y,
+        width: box.width,
+        height: box.height,
         opacity,
         display: "flex",
         flexDirection: "column",
@@ -89,6 +106,7 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
       }}
     >
       <div
+        data-block="BigNumber"
         style={{
           transform: `translateY(${rise}px)`,
           maxWidth: "100%",
@@ -126,8 +144,9 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
             style={{
               margin: 0,
               marginTop: spacing.md,
+              maxWidth: labelWidth,
               fontFamily: fonts.body,
-              ...typeCss(theme.type.subtitle[aspect]),
+              ...typeCss(labelSpec),
               color: colors.textMuted,
               overflowWrap: "break-word",
               textWrap: "balance",

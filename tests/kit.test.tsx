@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, captionBand, fontSize, neutralTheme, safeArea, type Aspect } from "../src/index";
+import { ASPECTS, captionBand, fontSize, neutralTheme, safeArea, safeZones, type Aspect } from "../src/index";
 import { Caption, TitleCard, captionLimits, kit, pageCaption, titleCardStep } from "../src/kit";
 
 interface Box {
@@ -216,10 +216,11 @@ describe("Caption", () => {
     expectInsideSafeArea(rootBox(html), aspect);
   });
 
-  it.each(ASPECTS)("sits at the bottom of the safe area (%s)", (aspect) => {
+  it.each(ASPECTS)("sits low in the safe area, on the profile's caption bottom (%s)", (aspect) => {
     const box = rootBox(render(aspect, 0.5));
     const safe = safeArea(aspect);
-    expect(box.y + box.height).toBeCloseTo(safe.y + safe.height, 0);
+    expect(box.y + box.height).toBeCloseTo(safeZones(aspect).captionBottom, 0);
+    expect(box.y + box.height).toBeLessThanOrEqual(safe.y + safe.height);
     expect(box.y).toBeGreaterThan(safe.y + safe.height / 2);
   });
 

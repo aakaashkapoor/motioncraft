@@ -9,6 +9,7 @@ import {
   contentArea,
   contentFade,
   frameAt,
+  frameSize,
   interpolateSharedBox,
   kit,
   lightTheme,
@@ -179,13 +180,15 @@ describe("Frame with shared elements", () => {
 describe("Pinned", () => {
   const props = board().scenes[1]!.props as Record<string, unknown>;
 
-  it.each(ASPECTS)("%s: docks the pinned frame in a corner, scaled down, beside the content", (aspect) => {
+  it.each(ASPECTS)("%s: docks the pinned frame scaled down, at least 40%% of the frame wide, beside the content", (aspect) => {
     const area = contentArea(lightTheme, aspect);
     const { pinned, content, scale } = pinnedLayout(lightTheme, aspect);
-    expect(scale).toBeGreaterThan(0.15);
-    expect(scale).toBeLessThan(0.5);
-    // Top-right corner of the content area.
-    expect(pinned.x + pinned.width).toBeCloseTo(area.x + area.width);
+    expect(scale).toBeGreaterThan(0.4);
+    expect(scale).toBeLessThan(1);
+    expect(pinned.width).toBeGreaterThanOrEqual(0.4 * frameSize(aspect).width - 0.5);
+    // At the top of the content area: in the right corner in 16:9, centered in 9:16.
+    if (aspect === "16:9") expect(pinned.x + pinned.width).toBeCloseTo(area.x + area.width);
+    else expect(pinned.x + pinned.width / 2).toBeCloseTo(area.x + area.width / 2);
     expect(pinned.y).toBeCloseTo(area.y);
     // The content box stays inside the area and clear of the pinned box.
     expect(content.x).toBeGreaterThanOrEqual(area.x);
@@ -241,7 +244,9 @@ describe("shared-element morph in the browser", () => {
         // The morph ends where B's window sits once the transition is over.
         expect(Math.abs(b!.x - solo!.x)).toBeLessThan(8);
         expect(Math.abs(b!.width - solo!.width)).toBeLessThan(8);
-        expect(b!.width).toBeLessThan(a!.width * 0.6);
+        // Docked, the window shrinks, but never below 40% of the frame width (design v3).
+        expect(b!.width).toBeLessThan(a!.width * 0.8);
+        expect(b!.width).toBeGreaterThanOrEqual(0.4 * frameSize(aspect).width - 1);
         for (const key of ["x", "y", "width", "height"] as const) {
           const [lo, hi] = [Math.min(a![key], b![key]), Math.max(a![key], b![key])];
           expect(mid![key]).toBeGreaterThanOrEqual(lo - 0.5);

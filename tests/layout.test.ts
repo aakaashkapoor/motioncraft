@@ -36,22 +36,16 @@ describe("safeArea", () => {
     expect(safe.y + safe.height).toBeLessThan(height);
   });
 
-  it("keeps clear of the right 12%, bottom 18% and a top margin in 9:16", () => {
+  it("keeps clear of the platform UI at the top and bottom in 9:16, symmetric left and right", () => {
     const { width, height } = frameSize("9:16");
     const safe = safeArea("9:16");
-    expect(safe.x + safe.width).toBeLessThanOrEqual(width * 0.88);
-    expect(safe.y + safe.height).toBeLessThanOrEqual(height * 0.82);
-    expect(safe.y).toBeGreaterThan(0);
+    expect(safe.y).toBeGreaterThanOrEqual(240);
+    expect(height - (safe.y + safe.height)).toBeGreaterThanOrEqual(480);
+    expect(safe.x).toBe(width - (safe.x + safe.width));
   });
 
-  it("uses a uniform 5% margin in 16:9", () => {
-    const { width, height } = frameSize("16:9");
-    const safe = safeArea("16:9");
-    expect(safe.x).toBeGreaterThanOrEqual(width * 0.05);
-    expect(safe.y).toBeGreaterThanOrEqual(height * 0.05);
-    expect(width - (safe.x + safe.width)).toBeGreaterThanOrEqual(width * 0.05);
-    expect(height - (safe.y + safe.height)).toBeGreaterThanOrEqual(height * 0.05);
-    expect(safe).toEqual({ x: 96, y: 54, width: 1728, height: 972 });
+  it("uses 96 px sides and 64 px top and bottom in 16:9", () => {
+    expect(safeArea("16:9")).toEqual({ x: 96, y: 64, width: 1728, height: 952 });
   });
 });
 
@@ -102,11 +96,12 @@ describe("text fit estimate", () => {
 });
 
 describe("caption band", () => {
-  it.each(ASPECTS)("sits at the bottom of the safe area, with content above it (%s)", (aspect: Aspect) => {
+  it.each(ASPECTS)("sits low in the safe area, with content above it (%s)", (aspect: Aspect) => {
     const safe = safeArea(aspect);
     const band = captionBand(neutralTheme, aspect);
     expect(band.height).toBe(captionBandHeight(neutralTheme, aspect));
-    expect(band.y + band.height).toBe(safe.y + safe.height);
+    expect(band.y + band.height).toBeLessThanOrEqual(safe.y + safe.height);
+    expect(band.y).toBeGreaterThan(safe.y + safe.height / 2);
     const content = contentArea(neutralTheme, aspect);
     expect(content.y).toBe(safe.y);
     expect(content.y + content.height).toBeLessThan(band.y);

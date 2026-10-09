@@ -1,5 +1,6 @@
 import { MONO_FAMILY, SANS_FAMILY } from "../render/fontFaces";
 import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { DEFAULT_SAFE_PROFILE } from "../storyboard/types";
 import type { Theme } from "./types";
 
 // A deep blue-tinted ground with raised surfaces, light text and a periwinkle
@@ -33,4 +34,5 @@ export const darkTheme: Theme = {
   cardShadow: { y: 24, blur: 72, opacity: 0.5 },
   hairline: 2,
   motion: baseMotion,
+  safe: DEFAULT_SAFE_PROFILE,
 };

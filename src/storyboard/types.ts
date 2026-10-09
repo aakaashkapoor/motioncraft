@@ -6,6 +6,16 @@ import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 export const ASPECTS = ["9:16", "16:9"] as const;
 export type Aspect = (typeof ASPECTS)[number];
 
+/**
+ * Which platform UI a 9:16 frame keeps its text clear of (design v3, section
+ * C): `shorts` (YouTube Shorts, the default) or `crosspost` (the union of
+ * TikTok, Reels and Shorts: smaller, but safe on all three). 16:9 has no
+ * overlaid UI, so both profiles are the same there.
+ */
+export const SAFE_PROFILES = ["shorts", "crosspost"] as const;
+export type SafeProfile = (typeof SAFE_PROFILES)[number];
+export const DEFAULT_SAFE_PROFILE: SafeProfile = "shorts";
+
 export const DEFAULT_FPS = 30;
 export const DEFAULT_THEME = "light";
 
@@ -54,6 +64,8 @@ export interface Storyboard {
   accent?: string;
   /** Shortcut for `themeOverrides.accentIntensity`. */
   accentIntensity?: AccentIntensity;
+  /** The 9:16 safe profile. Defaults to the theme's (`shorts` in every built-in theme). */
+  safe?: SafeProfile;
   scenes: StoryboardScene[];
 }
 

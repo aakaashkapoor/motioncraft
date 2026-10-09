@@ -58,11 +58,14 @@ function leafError(path: string, reference: unknown, value: unknown): string | u
   return typeof value === "string" && value.trim() !== "" ? undefined : `${label} must be a non-empty string (got ${describe(value)})`;
 }
 
+/** Theme fields a storyboard sets elsewhere: the theme's name (`theme`) and its safe profile (`safe`). */
+const NOT_OVERRIDABLE = new Set(["name", "safe"]);
+
 /** Walks `value` alongside `reference` (a full theme), pushing every problem in order. */
 function walk(path: string, reference: Record<string, unknown>, value: Record<string, unknown>, errors: string[]): void {
   for (const [key, child] of Object.entries(value)) {
     const childPath = path === "" ? key : `${path}.${key}`;
-    const ref = Object.hasOwn(reference, key) && !(path === "" && key === "name") ? reference[key] : undefined;
+    const ref = Object.hasOwn(reference, key) && !(path === "" && NOT_OVERRIDABLE.has(key)) ? reference[key] : undefined;
     if (ref === undefined) {
       errors.push(`themeOverrides${path === "" ? "" : `.${path}`}: unknown field "${key}"`);
     } else if (isObject(ref)) {

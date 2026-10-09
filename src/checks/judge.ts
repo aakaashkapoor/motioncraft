@@ -9,6 +9,7 @@ import type { Theme } from "../theme/types";
 import { checkContrast } from "./contrast";
 import { checkOverflow } from "./overflow";
 import { checkReadability, sceneMs, sceneWords } from "./readability";
+import { checkCentering } from "./centering";
 import { checkSafeArea } from "./safeArea";
 import { checkTypeScale } from "./typeScale";
 import { WARNING_CHECKS, type CheckName, type CheckResult, type FrameMeasurement, type Problem } from "./types";
@@ -46,9 +47,10 @@ export function judge(storyboard: Storyboard, timeline: Timeline, frames: readon
   for (const { frame, measurement } of frames) {
     const { sceneIndex, sceneId } = frameAt(timeline, frame);
     add("overflow", sceneId, frame, checkOverflow(measurement, frameSize(storyboard.aspect)));
-    add("safe-area", sceneId, frame, checkSafeArea(measurement, storyboard.aspect));
+    add("safe-area", sceneId, frame, checkSafeArea(measurement, storyboard.aspect, theme.safe));
     add("contrast", sceneId, frame, checkContrast(measurement));
     add("type-scale", sceneId, frame, checkTypeScale(measurement, steps));
+    add("centering", sceneId, frame, checkCentering(measurement, storyboard.aspect));
     words.set(sceneIndex, Math.max(words.get(sceneIndex) ?? 0, sceneWords(measurement)));
   }
 

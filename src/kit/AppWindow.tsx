@@ -17,7 +17,7 @@ import type { Theme } from "../theme/types";
 import { themeEasing } from "./motion";
 import { Slot, type SlotContent } from "./Slot";
 import type { KitProps } from "./types";
-import { windowMetrics } from "./windowLayout";
+import { windowMetrics, windowWidth } from "./windowLayout";
 
 /**
  * `traffic` (default): three muted window buttons at the left. `color`: the
@@ -62,9 +62,14 @@ export interface WindowLayout {
   content: Rect;
 }
 
-/** Where the window and its parts go: it fills `area` (the content area by default). Pure. */
+/**
+ * Where the window and its parts go: it fills `area` (the content area by
+ * default), but in 9:16 is no wider than the primary width, centered, so the
+ * text inside stays off the right rail. Pure.
+ */
 export function windowLayout(theme: Theme, aspect: Aspect, toolbar: boolean, area: Rect = contentArea(theme, aspect)): WindowLayout {
-  const box = area;
+  const width = aspect === "9:16" ? windowWidth(theme, aspect, area).width : area.width;
+  const box = { ...area, x: area.x + (area.width - width) / 2, width };
   const em = theme.type.label[aspect].size;
   const titleBar = windowMetrics(theme, aspect).barHeight;
   const toolbarHeight = toolbar ? Math.round(em * TOOLBAR_EM) : 0;
@@ -139,6 +144,7 @@ export function WindowShell({ progress, theme, aspect, area, kind, shareId, cont
   return (
     <div
       data-window={kind}
+      data-block={`${kind} window`}
       {...(shareId === undefined ? {} : { "data-share-id": shareId })}
       style={{
         position: "absolute",

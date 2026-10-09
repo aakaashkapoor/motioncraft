@@ -1,13 +1,15 @@
 // The standard frame for explanatory scenes (design v2, section 4): an optional
 // eyebrow, a headline, a content slot holding any other kit component, and an
 // optional one-line note at the bottom. In 16:9 narrow content sits beside the
-// headline and wide content below it; 9:16 always stacks. The eyebrow fades in
-// first, the headline rises word by word, then the content and the note arrive.
+// headline and wide content below it; 9:16 always stacks. Stacked, the text is
+// centered on the frame (design v3); beside, it keeps a left edge. The eyebrow
+// fades in first, the headline rises word by word, then the content and the
+// note arrive.
 
 import { Fragment } from "react";
 import { stagger } from "../engine/choreography";
 import { expoOut, interpolate } from "../engine/easing";
-import { contentArea } from "../layout/caption";
+import { contentArea, textColumn } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
@@ -92,7 +94,9 @@ export function sectionLayout(
   const { spacing, type } = theme;
   const arrangement = aspect === "16:9" && contentWidth === "narrow" ? "beside" : "below";
 
-  const noteHeight = height(text.note, area.width, type.label[aspect]);
+  // The note sits low in the frame: no wider than the text column, so it stays off the right rail.
+  const noteWidth = Math.min(area.width, textColumn(theme, aspect).width);
+  const noteHeight = height(text.note, noteWidth, type.label[aspect]);
   const bodyHeight = text.note === undefined ? area.height : area.height - noteHeight - spacing.lg;
   const textWidth = arrangement === "beside" ? Math.floor((area.width - spacing.xxl) * TEXT_COLUMN_SHARE) : area.width;
 
@@ -121,7 +125,9 @@ export function sectionLayout(
     ...(text.eyebrow !== undefined && { eyebrow: { x: area.x, y: top, width: textWidth, height: eyebrowHeight } }),
     headline,
     content,
-    ...(text.note !== undefined && { note: { x: area.x, y: area.y + area.height - noteHeight, width: area.width, height: noteHeight } }),
+    ...(text.note !== undefined && {
+      note: { x: area.x + (area.width - noteWidth) / 2, y: area.y + area.height - noteHeight, width: noteWidth, height: noteHeight },
+    }),
   };
 }
 
@@ -184,6 +190,7 @@ export function Section({ progress, theme, aspect, area, headline, eyebrow, cont
   const headlineSpec = type[layout.headlineRole][aspect];
   const eyebrowSpec = type.eyebrow[aspect];
   const noteSpec = type.label[aspect];
+  const centered = layout.arrangement === "below";
   // Each part keeps its glyph padding inside its box (see `glyphPad`).
   const textStyle = (spec: TypeSpec) => ({
     margin: 0,
@@ -191,6 +198,7 @@ export function Section({ progress, theme, aspect, area, headline, eyebrow, cont
     padding: `${glyphPad(spec)}px 0`,
     ...typeCss(spec),
     overflowWrap: "break-word" as const,
+    ...(centered && { textAlign: "center" as const }),
   });
 
   // A full-frame layer, so nested components position in frame px like a scene.

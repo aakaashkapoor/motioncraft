@@ -5,7 +5,7 @@ import type { SpringPreset } from "../engine/spring";
 // components read from it and never hard-code values. A storyboard can
 // override any token (see `resolveTheme`).
 
-import type { Aspect, TransitionType } from "../storyboard/types";
+import type { Aspect, SafeProfile, TransitionType } from "../storyboard/types";
 
 /**
  * Colors by role, as hex strings (`#rgb` or `#rrggbb`). Neutrals are tinted,
@@ -167,9 +167,11 @@ export interface Theme {
   /** Width of hairline borders, in px. */
   hairline: number;
   motion: ThemeMotion;
+  /** The 9:16 safe profile layout keeps clear of (design v3, section C). Set by the storyboard's `safe`. */
+  safe: SafeProfile;
 }
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
 
-/** Any subset of a theme's tokens, deep-merged over a named theme. */
-export type ThemeOverrides = DeepPartial<Omit<Theme, "name">>;
+/** Any subset of a theme's tokens, deep-merged over a named theme. The safe profile has its own storyboard field. */
+export type ThemeOverrides = DeepPartial<Omit<Theme, "name" | "safe">>;

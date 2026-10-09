@@ -1,0 +1,128 @@
+{
+  "title": "Centering on x = 540 (9:16)",
+  "aspect": "9:16",
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "title",
+      "component": "TitleCard",
+      "props": { "kicker": "Launch", "title": "Videos from a prompt", "subtitle": "Code-drawn, rendered locally" },
+      "narration": "motioncraft turns a prompt into a video.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "card",
+      "component": "Card",
+      "props": { "icon": "chat", "title": "The prompt", "subtitle": "A launch intro" },
+      "narration": "It starts with one prompt.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "label-card",
+      "component": "Card",
+      "props": { "icon": "check", "title": "Checked" },
+      "narration": "Every frame is checked.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "cards",
+      "component": "CardRow",
+      "props": { "cards": [{ "icon": "file", "title": "Write" }, { "icon": "check", "title": "Check" }, { "icon": "play", "title": "Render" }], "highlight": 1 },
+      "narration": "Write, check, then render.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "grid",
+      "component": "CardRow",
+      "props": {
+        "cards": [
+          { "icon": "zap", "title": "Fast", "subtitle": "Cached fonts" },
+          { "icon": "box", "title": "Small", "subtitle": "No extras" },
+          { "icon": "lock", "title": "Local", "subtitle": "No cloud" },
+          { "icon": "code", "title": "Code", "subtitle": "Every frame" },
+          { "icon": "star", "title": "Ship", "subtitle": "An MP4" }
+        ]
+      },
+      "narration": "Five reasons in a grid.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "number",
+      "component": "BigNumber",
+      "props": { "value": 100, "suffix": "%", "label": "code-drawn frames" },
+      "narration": "No stock footage at all.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "app",
+      "component": "AppWindow",
+      "props": { "title": "storyboard.json", "content": { "component": "StepList", "props": { "items": ["Hook", "Ask", "Plan", "Demo"], "marker": "dot" } } },
+      "narration": "The plan, scene by scene.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "browser",
+      "component": "BrowserWindow",
+      "props": { "url": "https://example.com/docs", "content": { "component": "TitleCard", "props": { "title": "Docs" } } },
+      "narration": "The docs are one click away.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "terminal",
+      "component": "TerminalWindow",
+      "props": { "lines": [{ "prompt": true, "text": "npx tsx scripts/render.ts intro.json" }, { "text": "checks passed" }, { "text": "wrote intro.mp4" }] },
+      "narration": "One command renders it.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "code",
+      "component": "CodeWindow",
+      "props": { "language": "ts", "code": "const video = await render(storyboard);\nawait save(video, \"intro.mp4\");" },
+      "narration": "It is all code underneath.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "chat",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "launch",
+        "messages": [
+          { "author": "Maya", "time": "9:41", "text": "Intro video for launch?" },
+          { "author": "Agent", "badge": "BOT", "time": "9:42", "text": "On it.", "highlight": true }
+        ]
+      },
+      "narration": "Someone asks for a video in chat.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "features",
+      "component": "FeatureList",
+      "props": { "items": [{ "icon": "lock", "text": "Runs locally" }, { "icon": "code", "text": "Every frame is code" }, { "icon": "check", "text": "Checked before render" }] },
+      "narration": "Local, code-drawn and checked.",
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "pinned",
+      "component": "Pinned",
+      "props": {
+        "arrive": "animate",
+        "pinned": { "component": "TerminalWindow", "props": { "lines": [{ "prompt": true, "text": "npm test" }, { "text": "42 passed" }] } },
+        "content": { "component": "CardRow", "props": { "cards": [{ "icon": "check", "title": "All green" }, { "icon": "clock", "title": "Under a minute" }] } }
+      },
+      "narration": "All tests pass in under a minute.",
+      "durationMs": 7000
+    }
+  ]
+}

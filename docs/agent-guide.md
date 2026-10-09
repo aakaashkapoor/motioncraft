@@ -69,9 +69,9 @@ same on both sides so its content does not jump.
 
 A storyboard is one JSON document. Top-level fields: `title`, `aspect`
 (`"9:16"`, the primary format, or `"16:9"`), `fps` (default 30), `theme`
-(default `"light"`), the theme fields in section 3, and `scenes`. Each scene has
-an `id` (unique), a `component` (a kit name from section 5), `props`, and
-optionally `narration`, `durationMs` and `transition`.
+(default `"light"`), the theme fields in section 3, `safe` (below), and
+`scenes`. Each scene has an `id` (unique), a `component` (a kit name from
+section 5), `props`, and optionally `narration`, `durationMs` and `transition`.
 
 ```json
 {
@@ -115,6 +115,28 @@ optionally `narration`, `durationMs` and `transition`.
     }
   ]
 }
+```
+
+### Safe areas and layout
+
+Layout is automatic, and you never place anything by hand. Every component
+centers on the frame's center line (x = 540 in 9:16). A scene's main block sits
+on the optical center of the safe area (y 840 in 9:16), not at the top of it.
+Windows and card stacks are the primary width (760 px in 9:16), and the
+narration caption sits in a band above the platform's own captions and
+buttons. In 9:16, `safe` picks which platform UI the frame keeps clear of:
+
+- `"shorts"` (the default): YouTube Shorts. Text stays in x 120-960 between
+  y 240 and 1440, and off the like/share rail (x > 900 for y 960-1600).
+- `"crosspost"`: safe on TikTok, Reels and Shorts at once. Text stays in
+  x 200-880 between y 290 and 1240. This leaves less room: a docked window
+  becomes an icon chip, and long text steps down sooner.
+
+16:9 has no overlaid UI (96 px at the sides, 64 px at the top and bottom), so
+`safe` changes nothing there.
+
+```json
+{ "safe": "crosspost" }
 ```
 
 ## 3. Theme and overrides
@@ -257,10 +279,13 @@ and after every fix. Storyboard checks run first, then the frame checks.
     Paths resolve from the storyboard's folder. Frames are not checked until
     these are fixed.
 - **Frame checks** on the start, middle and end of every scene: `overflow`
-  (text clipped or off frame), `safe-area` (inside the platform's UI-free zone),
-  `contrast` (WCAG) and `readability` (time on screen for the words shown).
-  `type-scale` (warn) reports rendered text whose size is not a step of the
-  type ramp; text a terminal or code window shrank to fit is allowed.
+  (text clipped or off frame), `safe-area` (inside the `safe` profile's UI-free
+  zone, with text also off the 9:16 button rail), `contrast` (WCAG) and
+  `readability` (time on screen for the words shown). `type-scale` (warn)
+  reports rendered text whose size is not a step of the type ramp; text a
+  terminal or code window shrank to fit is allowed. `centering` (warn, 9:16)
+  reports a scene whose main block (its cards, windows and text blocks
+  together, without the caption) is more than 8 px off the frame's center line.
 
 Warnings do not fail the run, but treat them as mistakes unless you meant it.
 
@@ -370,9 +395,13 @@ Content sits beside the headline in 16:9 and below it in 9:16;
 
 #### `Pinned`
 
-Docks one component (`pinned`) small in a `corner` (`topLeft`, `topRight`
-(default), `bottomLeft`, `bottomRight`) while `content` fills the rest. Built
-for shared elements: with the default `"arrive": "settled"` the pinned
+Docks one component (`pinned`) at 40% of the frame width while `content`
+fills the rest at its own size. `corner` (`topLeft`, `topRight` (default),
+`bottomLeft`, `bottomRight`) picks the spot: a column at that side in 16:9; in
+9:16 the dock is centered at the top or the bottom. Where docking at that size
+would crowd out the content (a short area, the `crosspost` profile), the
+pinned component becomes an icon chip with its title instead of a tiny window.
+Built for shared elements: with the default `"arrive": "settled"` the pinned
 component is already in place, because it morphs in from the previous scene;
 use `"animate"` when nothing morphs into it.
 
@@ -534,7 +563,9 @@ work out. Give the receiver a `shareId` to carry it into the next scene.
 #### `Card`
 
 One card: `icon`, `title`, `subtitle`, an optional `step` number, and
-`highlighted` for the accent fill.
+`highlighted` for the accent fill. A title alone is a label, centered under its
+icon. With a subtitle the text stays left-aligned and the card hugs it,
+centered as a block.
 
 ```json
 {

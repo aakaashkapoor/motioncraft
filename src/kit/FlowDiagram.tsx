@@ -5,8 +5,10 @@
 // ...) over the scene's entrance, holds, then fades out.
 
 import { interpolate } from "../engine/easing";
-import { contentArea } from "../layout/caption";
+import { blockCenterY, placeBlock } from "../layout/block";
+import { contentArea, textColumn } from "../layout/caption";
 import type { Rect } from "../layout/frame";
+import { safeZones } from "../layout/safe";
 import { charsPerLine, estimateTextHeight } from "../layout/textFit";
 import { fontSize, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
@@ -58,10 +60,11 @@ function cardInsets(theme: Theme): { padding: number; border: number } {
 }
 
 /**
- * Lays the diagram out in `area` (the content area by default): equal cards
- * along the flow with an arrow in each gap, the caption under them, the whole
- * block centered. The flow runs left to right when the area is landscape,
- * unless top to bottom fits larger labels (a narrow Section slot). Uses the
+ * Lays the diagram out in `slot` (the content area when there is none): equal
+ * cards along the flow with an arrow in each gap, the caption under them, the
+ * whole block centered (on the frame's optical center without a slot). The
+ * flow runs left to right when the area is landscape, unless top to bottom
+ * fits larger labels (a narrow Section slot). Uses the
  * largest label step at which every card fits with no word broken; if none
  * fits, the smallest, and the layer-1 checks report the overflow.
  */
@@ -70,21 +73,25 @@ export function flowDiagramLayout(
   aspect: Aspect,
   nodes: readonly string[],
   caption?: string,
-  area: Rect = contentArea(theme, aspect),
+  slot?: Rect,
 ): FlowDiagramLayout {
   checkNodes(nodes);
+  const area = slot ?? contentArea(theme, aspect);
   const { spacing } = theme;
   const { padding, border } = cardInsets(theme);
   const inset = 2 * (padding + border);
   const count = nodes.length;
   const gap = spacing.xxl;
 
-  const captionHeight = caption === undefined ? 0 : estimateTextHeight(caption, area.width, theme.type.body[aspect]);
+  // The caption is free-standing text, so it keeps to the text column (clear of the 9:16 right rail).
+  const captionWidth = Math.min(area.width, textColumn(theme, aspect).width);
+  const captionHeight = caption === undefined ? 0 : estimateTextHeight(caption, captionWidth, theme.type.body[aspect]);
   const captionSpace = caption === undefined ? 0 : spacing.lg + captionHeight;
   const room = area.height - captionSpace;
 
-  // Cards share a row, but never stretch past a third of it.
-  const widthOf = (row: boolean) => (row ? Math.min((area.width - (count - 1) * gap) / count, (area.width - 2 * gap) / 3) : area.width);
+  // Cards share a row, but never stretch past a third of it; stacked, they are the primary width.
+  const stackWidth = Math.min(area.width, safeZones(aspect, theme.safe).primaryWidth);
+  const widthOf = (row: boolean) => (row ? Math.min((area.width - (count - 1) * gap) / count, (area.width - 2 * gap) / 3) : stackWidth);
   const cardHeightOf = (row: boolean, step: TypeRole) => {
     const spec = theme.type[step][aspect];
     const width = widthOf(row) - inset;
@@ -96,21 +103,28 @@ export function flowDiagramLayout(
   const longestWord = Math.max(...nodes.flatMap((label) => label.split(/\s+/).map((word) => word.length)));
   const fitting = (row: boolean) =>
     LABEL_STEPS.find((step) => charsPerLine(widthOf(row) - inset, fontSize(theme, step, aspect)) >= longestWord && heightOf(row, step) <= room);
+  // When nothing fits, a few px over is better than a word broken in two.
+  const smallest = LABEL_STEPS[LABEL_STEPS.length - 1]!;
+  const wholeWords = (row: boolean) => charsPerLine(widthOf(row) - inset, fontSize(theme, smallest, aspect)) >= longestWord;
+  const rank = (row: boolean) => {
+    const step = fitting(row);
+    return step !== undefined ? LABEL_STEPS.indexOf(step) : LABEL_STEPS.length + (wholeWords(row) ? 0 : 1);
+  };
   // A landscape area runs left to right, unless top to bottom fits larger labels.
-  const rank = (step: TypeRole | undefined) => (step === undefined ? LABEL_STEPS.length : LABEL_STEPS.indexOf(step));
-  const horizontal = area.width > area.height && rank(fitting(true)) <= rank(fitting(false));
-  const labelStep = fitting(horizontal) ?? LABEL_STEPS[LABEL_STEPS.length - 1]!;
+  const horizontal = area.width > area.height && rank(true) <= rank(false);
+  const labelStep = fitting(horizontal) ?? smallest;
   const nodeWidth = widthOf(horizontal);
-  const left = horizontal ? (area.width - count * nodeWidth - (count - 1) * gap) / 2 : 0;
+  const left = horizontal ? (area.width - count * nodeWidth - (count - 1) * gap) / 2 : (area.width - nodeWidth) / 2;
   const cardHeight = (step: TypeRole) => cardHeightOf(horizontal, step);
   const diagramHeight = (step: TypeRole) => heightOf(horizontal, step);
 
   const nodeHeight = cardHeight(labelStep);
-  const top = Math.max(0, (area.height - diagramHeight(labelStep) - captionSpace) / 2);
+  const blockHeight = diagramHeight(labelStep) + captionSpace;
+  const top = Math.max(0, placeBlock(area, { width: area.width, height: blockHeight }, blockCenterY(theme, aspect, slot)).y - area.y);
   const rects: Rect[] = nodes.map((_, i) =>
     horizontal
       ? { x: left + i * (nodeWidth + gap), y: top, width: nodeWidth, height: nodeHeight }
-      : { x: 0, y: top + i * (nodeHeight + gap), width: nodeWidth, height: nodeHeight },
+      : { x: left, y: top + i * (nodeHeight + gap), width: nodeWidth, height: nodeHeight },
   );
 
   // Arrows span each gap, leaving a little air at both ends.
@@ -127,7 +141,9 @@ export function flowDiagramLayout(
 
   const diagramBottom = top + diagramHeight(labelStep);
   const layout: FlowDiagramLayout = { labelStep, nodes: rects, arrows };
-  if (caption !== undefined) layout.caption = { x: 0, y: diagramBottom + spacing.lg, width: area.width, height: captionHeight };
+  if (caption !== undefined) {
+    layout.caption = { x: (area.width - captionWidth) / 2, y: diagramBottom + spacing.lg, width: captionWidth, height: captionHeight };
+  }
   return layout;
 }
 
@@ -141,7 +157,7 @@ const round = (n: number) => Math.round(n * 100) / 100;
 
 export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, caption }: FlowDiagramProps) {
   const area = slot ?? contentArea(theme, aspect);
-  const layout = flowDiagramLayout(theme, aspect, nodes, caption, area);
+  const layout = flowDiagramLayout(theme, aspect, nodes, caption, slot);
   const easing = themeEasing(theme);
   const { colors, fonts, spacing, radius } = theme;
   const card = cardColors(theme);
@@ -207,6 +223,7 @@ export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, captio
           <div
             key={i}
             data-flow-node={i}
+            data-block="FlowDiagram"
             style={{
               position: "absolute",
               left: rect.x,
