@@ -44,3 +44,4 @@ export type { CaptionLimits, CaptionProps, KitComponent, KitProps, TitleCardProp
 export { BigNumber, bigNumberStep, countedValue, formatBigNumber, type BigNumberProps } from "./kit/BigNumber";
 export { FlowDiagram, flowDiagramLayout, type FlowArrow, type FlowDiagramLayout, type FlowDiagramProps } from "./kit";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./kit";
+export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./icons";

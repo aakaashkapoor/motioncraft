@@ -34,4 +34,8 @@ license and author. Everything here must allow commercial use and modification
 
 ## Assets
 
-None yet: every frame is drawn in code with the system's fonts.
+| Asset | Version | License | Author / source |
+| ----- | ------- | ------- | --------------- |
+| Lucide icons (24, vendored in `src/icons/nodes.ts`) | 1.53.0 | ISC (some MIT, from Feather) | Lucide Icons and Contributors — https://github.com/lucide-icons/lucide; details in [icons.md](icons.md) |
+
+Otherwise every frame is drawn in code with the system's fonts.
