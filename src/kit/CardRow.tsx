@@ -1,10 +1,12 @@
-// 2-6 cards: in one row in 16:9; in 9:16 a vertical stack (up to 3) or a
-// 2-column grid (4-6). Cards spring in one after another; once they have all
+// 2-6 cards: in one row when the area is wide enough (the 16:9 content area);
+// otherwise a vertical stack (up to 3) or a 2-column grid (4-6), as in 9:16 or
+// a narrow Section slot. Cards spring in one after another; once they have all
 // landed, an optional `highlight` card lights up in the accent.
 
 import { interpolate } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
+import { fontSize } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { CARD_TITLE_STEPS, CardFace, cardEntrance, cardHeight, cardMetrics, type CardData, type CardMetrics, type CardOrientation } from "./Card";
@@ -29,6 +31,8 @@ const CARD_ENTER = 0.25;
 const CARDS_DONE = 0.6;
 /** The highlight's spring, starting once the cards have landed. */
 const HIGHLIGHT_ENTER = 0.15;
+/** A row needs each card at least this wide, in em of the largest title size. */
+const MIN_ROW_CARD_EM = 5;
 
 /** The [start, end] of each card's entrance, as fractions of the scene. */
 export function cardRowTiming(count: number): Array<[number, number]> {
@@ -39,23 +43,25 @@ export function cardRowTiming(count: number): Array<[number, number]> {
 export interface CardRowLayout {
   orientation: CardOrientation;
   metrics: CardMetrics;
-  /** Card boxes in px, relative to the content area's top-left corner. */
+  /** Card boxes in px, relative to the area's top-left corner. */
   cells: Rect[];
 }
 
 /**
- * Lays the cards out in the content area, all the same size, the block
- * centered. Uses the largest title size at which every card fits its cell; if
- * none fits, the smallest, and the layer-1 checks report the overflow.
+ * Lays the cards out in `area` (the content area by default), all the same
+ * size, the block centered. One row when the area is landscape and every card
+ * gets at least `MIN_ROW_CARD_EM` of width; otherwise a stack or a grid. Uses
+ * the largest title size at which every card fits its cell; if none fits, the
+ * smallest, and the layer-1 checks report the overflow.
  */
-export function cardRowLayout(theme: Theme, aspect: Aspect, cards: readonly CardData[]): CardRowLayout {
+export function cardRowLayout(theme: Theme, aspect: Aspect, cards: readonly CardData[], area: Rect = contentArea(theme, aspect)): CardRowLayout {
   if (!Array.isArray(cards) || cards.length < MIN_CARDS || cards.length > MAX_CARDS) {
     throw new Error(`CardRow: needs ${MIN_CARDS}-${MAX_CARDS} cards, got ${Array.isArray(cards) ? cards.length : typeof cards}`);
   }
-  const area = contentArea(theme, aspect);
   const gap = theme.spacing.md;
   const n = cards.length;
-  const wide = aspect === "16:9";
+  const rowCell = (area.width - (n - 1) * gap) / n;
+  const wide = area.width > area.height && rowCell >= MIN_ROW_CARD_EM * fontSize(theme, CARD_TITLE_STEPS[0]!, aspect);
   const cols = wide ? n : n <= 3 ? 1 : 2;
   const rows = Math.ceil(n / cols);
   const orientation: CardOrientation = cols === 1 ? "row" : "column";
@@ -83,9 +89,9 @@ export function cardRowLayout(theme: Theme, aspect: Aspect, cards: readonly Card
   return { orientation, metrics, cells };
 }
 
-export function CardRow({ progress, theme, aspect, cards, highlight }: CardRowProps) {
-  const area = contentArea(theme, aspect);
-  const layout = cardRowLayout(theme, aspect, cards);
+export function CardRow({ progress, theme, aspect, area: slot, cards, highlight }: CardRowProps) {
+  const area = slot ?? contentArea(theme, aspect);
+  const layout = cardRowLayout(theme, aspect, cards, area);
   const timing = cardRowTiming(cards.length);
   const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing: themeEasing(theme) });
   const landed = timing.at(-1)![1];

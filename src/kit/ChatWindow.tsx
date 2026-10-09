@@ -2,7 +2,8 @@
 // with the workspace name and channels, a header with the channel name, and
 // messages that arrive one by one, each preceded by a typing indicator and
 // rising into place. Optional floating message cards slide in beside the
-// window afterwards. In 9:16 the sidebar collapses into the header.
+// window afterwards. In 9:16 the sidebar collapses into the header; in a
+// narrow 16:9 area (a Section slot) the window stacks over its cards as in 9:16.
 
 import type { CSSProperties } from "react";
 import { interpolate, type Easing } from "../engine/easing";
@@ -87,6 +88,8 @@ const WINDOW_SHARE_WITH_CARDS = 0.62;
 const WINDOW_SHARE_TALL = 0.66;
 const SIDEBAR_SHARE = 0.26;
 const MAX_SIDEBAR_WIDTH = 380;
+/** In 16:9, the side-by-side layout (sidebar, cards beside) needs an area at least this many times wider than tall. */
+const WIDE_RATIO = 1.5;
 /** Text roles to try for message text, largest first. */
 const TEXT_ROLES: readonly TypeRole[] = ["body", "caption"];
 const AVATAR_EM = 1.7;
@@ -151,18 +154,23 @@ function messageHeight(theme: Theme, m: ChatMessage, width: number, textSize: nu
 }
 
 /**
- * Where the window and the cards go inside the content area, and the largest
- * message text size at which every message fits. The window is as tall as its
+ * Where the window and the cards go inside `area` (the content area by
+ * default), and the largest message text size at which every message fits.
+ * The window is as tall as its
  * content needs (never under `MIN_HEIGHT_SHARE` of the room) and centered. If
  * no size fits, the smallest: the window then overflows visibly and the
  * layer-1 checks report it.
  */
-export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sidebar, cards }: LayoutInput): ChatWindowLayout {
-  const area = contentArea(theme, aspect);
+export function chatWindowLayout(
+  theme: Theme,
+  aspect: Aspect,
+  { messages, sidebar, cards }: LayoutInput,
+  area: Rect = contentArea(theme, aspect),
+): ChatWindowLayout {
   const { spacing } = theme;
   const gap = spacing.md;
   const hasCards = (cards?.length ?? 0) > 0;
-  const wide = aspect === "16:9";
+  const wide = aspect === "16:9" && area.width >= area.height * WIDE_RATIO;
   const width = !wide ? area.width : hasCards ? Math.floor((area.width - gap) * WINDOW_SHARE_WITH_CARDS) : Math.min(area.width, MAX_WINDOW_WIDTH);
   const x = wide && !hasCards ? area.x + Math.floor((area.width - width) / 2) : area.x;
   const room = !wide && hasCards ? Math.floor((area.height - gap) * WINDOW_SHARE_TALL) : area.height;
@@ -441,9 +449,9 @@ function typingOpacity(progress: number, [start, end]: [number, number]): number
   return Math.min(interpolate(progress, [start, start + len * 0.25], [0, 1]), interpolate(progress, [end - len * 0.2, end], [1, 0]));
 }
 
-export function ChatWindow({ progress, theme, aspect, channel, messages, sidebar, cards, shareId }: ChatWindowProps) {
-  const area = contentArea(theme, aspect);
-  const layout = chatWindowLayout(theme, aspect, { messages, sidebar, cards });
+export function ChatWindow({ progress, theme, aspect, area: slot, channel, messages, sidebar, cards, shareId }: ChatWindowProps) {
+  const area = slot ?? contentArea(theme, aspect);
+  const layout = chatWindowLayout(theme, aspect, { messages, sidebar, cards }, area);
   const easing = themeEasing(theme);
   const { colors, spacing, radius, cardShadow } = theme;
   const enter = interpolate(progress, [0, WINDOW_ENTER], [0, 1], { easing });
@@ -520,7 +528,8 @@ export function ChatWindow({ progress, theme, aspect, channel, messages, sidebar
             ...at(layout.cards),
             display: "flex",
             flexDirection: "column",
-            justifyContent: aspect === "16:9" ? "center" : "flex-start",
+            // Beside the window the cards center on it; below it they follow it.
+            justifyContent: layout.cards.x > layout.window.x ? "center" : "flex-start",
             gap: spacing.md,
             paddingRight: slide,
             boxSizing: "border-box",

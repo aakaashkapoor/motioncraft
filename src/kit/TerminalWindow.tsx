@@ -5,6 +5,8 @@
 // throughout, so lines appear without anything moving.
 
 import { interpolate } from "../engine/easing";
+import { contentArea } from "../layout/caption";
+import type { Rect } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { syntaxColors } from "./syntaxColors";
@@ -70,8 +72,8 @@ function rows(chars: number, columns: number): number {
   return Math.max(1, Math.ceil(chars / Math.max(1, columns)));
 }
 
-function terminalLayout(theme: Theme, aspect: Aspect, lines: readonly TerminalLine[]) {
-  const { inner } = windowWidth(theme, aspect);
+function terminalLayout(theme: Theme, aspect: Aspect, lines: readonly TerminalLine[], area: Rect) {
+  const { inner } = windowWidth(theme, aspect, area);
   const { lineHeight } = theme.type.mono[aspect];
   const prefix = PROMPT_MARKER.length + 1;
   // Every line plus the fresh prompt at the end; prompt lines leave room for the caret.
@@ -80,12 +82,12 @@ function terminalLayout(theme: Theme, aspect: Aspect, lines: readonly TerminalLi
     const columns = Math.floor(inner / (size * MONO_ADVANCE));
     return widths.reduce((sum, chars) => sum + rows(chars, columns), 0) * size * lineHeight;
   };
-  const size = fitMonoSize(theme, aspect, (s) => heightAt(s) <= maxInnerHeight(theme, aspect));
-  return { size, box: windowBox(theme, aspect, heightAt(size)) };
+  const size = fitMonoSize(theme, aspect, (s) => heightAt(s) <= maxInnerHeight(theme, aspect, area));
+  return { size, box: windowBox(theme, aspect, heightAt(size), area) };
 }
 
-export function TerminalWindow({ progress, theme, aspect, lines, title = "Terminal", shareId }: TerminalWindowProps) {
-  const { size, box } = terminalLayout(theme, aspect, lines);
+export function TerminalWindow({ progress, theme, aspect, area, lines, title = "Terminal", shareId }: TerminalWindowProps) {
+  const { size, box } = terminalLayout(theme, aspect, lines, area ?? contentArea(theme, aspect));
   const timing = terminalTiming(lines);
   const colors = syntaxColors(theme);
   const mono = theme.type.mono[aspect];

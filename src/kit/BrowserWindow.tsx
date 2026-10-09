@@ -77,15 +77,16 @@ function Tabs({ theme, aspect, tabs, active, height }: { theme: Theme; aspect: A
   );
 }
 
-export function BrowserWindow({ progress, theme, aspect, url, tabs, activeTab = 0, chrome = "traffic", content, shareId }: BrowserWindowProps) {
+export function BrowserWindow({ progress, theme, aspect, area, url, tabs, activeTab = 0, chrome = "traffic", content, shareId }: BrowserWindowProps) {
   const { colors, radius, spacing } = theme;
-  const { titleBar, toolbar } = windowLayout(theme, aspect, true);
+  const { titleBar, toolbar } = windowLayout(theme, aspect, true, area);
   const iconSize = Math.round(theme.type.caption[aspect].size * 0.8);
   return (
     <WindowShell
       progress={progress}
       theme={theme}
       aspect={aspect}
+      area={area}
       kind="browser"
       shareId={shareId}
       content={content}

@@ -1,0 +1,317 @@
+{
+  "title": "Kit components nested in a Section",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "title-card",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A title inside a section",
+        "content": {
+          "component": "TitleCard",
+          "props": {
+            "kicker": "Launch",
+            "title": "Ship day",
+            "subtitle": "Everything at once"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "big-number",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Why it matters",
+        "headline": "Teams ship faster",
+        "content": {
+          "component": "BigNumber",
+          "props": {
+            "value": 12500,
+            "suffix": "+",
+            "label": "Videos rendered"
+          }
+        },
+        "note": "Counted across every team in 2026"
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "step-list",
+      "component": "Section",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Three steps, no timeline",
+        "content": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Write a storyboard",
+              "Render the stills",
+              "Run the checks"
+            ],
+            "highlight": 1
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "flow",
+      "component": "Section",
+      "props": {
+        "eyebrow": "The pipeline",
+        "headline": "From prompt to video",
+        "content": {
+          "component": "FlowDiagram",
+          "props": {
+            "nodes": [
+              "Write",
+              "Render",
+              "Check"
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "card",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Privacy",
+        "headline": "Nothing leaves your machine",
+        "content": {
+          "component": "Card",
+          "props": {
+            "icon": "shield",
+            "title": "Runs locally",
+            "subtitle": "No network calls",
+            "highlighted": true
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "card-row",
+      "component": "Section",
+      "props": {
+        "eyebrow": "The kit",
+        "headline": "Four building blocks",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              {
+                "icon": "terminal",
+                "title": "Write",
+                "subtitle": "Describe it"
+              },
+              {
+                "icon": "code",
+                "title": "Build",
+                "subtitle": "From the kit"
+              },
+              {
+                "icon": "check",
+                "title": "Check",
+                "subtitle": "Layout rules"
+              },
+              {
+                "icon": "play",
+                "title": "Ship",
+                "subtitle": "A finished MP4"
+              }
+            ],
+            "highlight": 3
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "feature-list",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Included",
+        "headline": "Batteries included",
+        "content": {
+          "component": "FeatureList",
+          "props": {
+            "items": [
+              {
+                "icon": "shield",
+                "text": "Runs locally"
+              },
+              {
+                "icon": "chat",
+                "text": "Burned-in captions"
+              },
+              {
+                "icon": "check",
+                "text": "Layout checks"
+              }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "chat",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Feedback",
+        "headline": "Teams love it",
+        "content": {
+          "component": "ChatWindow",
+          "props": {
+            "channel": "launch",
+            "messages": [
+              {
+                "author": "Ana Ruiz",
+                "time": "9:41",
+                "text": "The new video is up"
+              },
+              {
+                "author": "Kai Moreno",
+                "avatar": {
+                  "initials": "KM",
+                  "color": "#2f54d4"
+                },
+                "time": "9:42",
+                "text": "Looks great, ship it"
+              }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "app-window",
+      "component": "Section",
+      "props": {
+        "eyebrow": "The app",
+        "headline": "One window, any content",
+        "content": {
+          "component": "AppWindow",
+          "props": {
+            "title": "Dashboard",
+            "content": {
+              "component": "BigNumber",
+              "props": {
+                "value": 42,
+                "label": "Builds today"
+              }
+            }
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "browser-window",
+      "component": "Section",
+      "props": {
+        "eyebrow": "On the web",
+        "headline": "Share a link",
+        "content": {
+          "component": "BrowserWindow",
+          "props": {
+            "url": "https://example.com/videos",
+            "content": {
+              "component": "TitleCard",
+              "props": {
+                "title": "Your video"
+              }
+            }
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "terminal",
+      "component": "Section",
+      "props": {
+        "eyebrow": "One command",
+        "headline": "Render from the shell",
+        "content": {
+          "component": "TerminalWindow",
+          "props": {
+            "lines": [
+              {
+                "prompt": true,
+                "text": "npm run render"
+              },
+              {
+                "text": "wrote video.mp4"
+              }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "code",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Storyboards",
+        "headline": "Scenes are plain data",
+        "content": {
+          "component": "CodeWindow",
+          "props": {
+            "code": "const scene = {\n  component: \"Card\",\n  props: { title: \"Hi\" },\n};",
+            "highlightLines": [
+              2
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "arrow",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Connections",
+        "headline": "Point at what matters",
+        "content": {
+          "component": "Arrow",
+          "props": {
+            "anchors": {
+              "a": {
+                "x": 100,
+                "y": 780,
+                "width": 200,
+                "height": 100
+              },
+              "b": {
+                "x": 650,
+                "y": 1100,
+                "width": 200,
+                "height": 100
+              }
+            },
+            "from": {
+              "anchor": "a"
+            },
+            "to": {
+              "anchor": "b"
+            },
+            "curve": 0.2,
+            "label": "Then"
+          }
+        }
+      },
+      "durationMs": 9000
+    }
+  ]
+}
