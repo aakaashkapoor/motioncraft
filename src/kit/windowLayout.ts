@@ -3,7 +3,6 @@
 
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
-import { fontSize } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 
@@ -16,24 +15,23 @@ const MONO_STEP = 0.92;
 /** In 16:9 a window takes this share of the content area's width; in 9:16 all of it. Never more than its area. */
 const WIDE_WIDTH = 0.8;
 
+/** Title bar height, as a multiple of the caption type size. */
+const TITLE_BAR_EM = 2;
+
 export interface WindowMetrics {
   /** Height of the title bar, in px. */
   barHeight: number;
-  /** Title font size, in px. */
-  titleSize: number;
-  /** Diameter of a traffic light, in px. */
-  lightSize: number;
-  /** Padding around the window's content, in px. */
+  /** Padding around a window's own content (terminal, code), in px. */
   padding: number;
+  /** Border width on each side, in px. */
+  border: number;
 }
 
 export function windowMetrics(theme: Theme, aspect: Aspect): WindowMetrics {
-  const titleSize = Math.round(fontSize(theme, "caption", aspect) * 0.8);
   return {
-    barHeight: Math.round(titleSize * 2.2),
-    titleSize,
-    lightSize: Math.round(titleSize * 0.6),
+    barHeight: Math.round(theme.type.caption[aspect].size * TITLE_BAR_EM),
     padding: aspect === "9:16" ? theme.spacing.md : Math.round(theme.spacing.md * 1.25),
+    border: theme.hairline,
   };
 }
 
@@ -41,20 +39,21 @@ export function windowMetrics(theme: Theme, aspect: Aspect): WindowMetrics {
 export function windowWidth(theme: Theme, aspect: Aspect, area: Rect = contentArea(theme, aspect)): { width: number; inner: number } {
   const full = contentArea(theme, aspect);
   const width = Math.min(Math.round(area.width), Math.round(aspect === "9:16" ? full.width : full.width * WIDE_WIDTH));
-  return { width, inner: width - 2 * windowMetrics(theme, aspect).padding };
+  const { padding, border } = windowMetrics(theme, aspect);
+  return { width, inner: width - 2 * padding - 2 * border };
 }
 
 /** The tallest content that fits inside a window in `area`, in px. */
 export function maxInnerHeight(theme: Theme, aspect: Aspect, area: Rect = contentArea(theme, aspect)): number {
-  const { barHeight, padding } = windowMetrics(theme, aspect);
-  return area.height - barHeight - 2 * padding;
+  const { barHeight, padding, border } = windowMetrics(theme, aspect);
+  return area.height - barHeight - 2 * padding - 2 * border;
 }
 
 /** The window's box for content `innerHeight` tall, centered in `area`. */
 export function windowBox(theme: Theme, aspect: Aspect, innerHeight: number, area: Rect = contentArea(theme, aspect)): Rect {
-  const { barHeight, padding } = windowMetrics(theme, aspect);
+  const { barHeight, padding, border } = windowMetrics(theme, aspect);
   const { width } = windowWidth(theme, aspect, area);
-  const height = Math.min(area.height, Math.ceil(innerHeight + barHeight + 2 * padding));
+  const height = Math.min(area.height, Math.ceil(innerHeight + barHeight + 2 * padding + 2 * border));
   return {
     x: Math.round(area.x + (area.width - width) / 2),
     y: Math.round(area.y + (area.height - height) / 2),

@@ -84,7 +84,7 @@ describe("TerminalWindow", () => {
   it("draws window chrome with traffic lights and the title", () => {
     const html = terminal(0.5);
     expect(html).toContain("zsh");
-    expect(html.match(/data-traffic-light=/g)).toHaveLength(3);
+    expect(html.match(/data-light=/g)).toHaveLength(3);
   });
 
   it("schedules prompt lines in order, with outputs appearing the instant the command before them ends", () => {
@@ -260,7 +260,7 @@ describe("CodeWindow", () => {
   it("draws window chrome, every line and the title", () => {
     const html = code(0.5);
     expect(html).toContain("main.ts");
-    expect(html.match(/data-traffic-light=/g)).toHaveLength(3);
+    expect(html.match(/data-light=/g)).toHaveLength(3);
     const lines = codeLines(html);
     expect(lines.map((l) => l.text)).toEqual(CODE.split("\n"));
   });

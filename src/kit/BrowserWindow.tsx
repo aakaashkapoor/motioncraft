@@ -92,7 +92,7 @@ export function BrowserWindow({ progress, theme, aspect, area, url, tabs, active
       content={content}
       titleBar={
         <>
-          {chrome === "traffic" && <TrafficLights theme={theme} aspect={aspect} />}
+          {chrome !== "minimal" && <TrafficLights theme={theme} aspect={aspect} colored={chrome === "color"} />}
           <Tabs theme={theme} aspect={aspect} tabs={tabs ?? [hostOf(url)]} active={activeTab} height={Math.round(titleBar * TAB_HEIGHT)} />
         </>
       }
