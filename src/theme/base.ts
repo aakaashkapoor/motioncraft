@@ -82,7 +82,8 @@ const FX_CURVE: CubicBezier = [0.34, 0.8, 0.34, 1];
 
 /**
  * Design v3, table D. Springs land on their target at the token's duration;
- * `enter` overshoots about 5%, `enter.hero` barely, `pop` about 15%.
+ * `enter` overshoots about 5%, `enter.hero` barely, `pop` about 15%. `count`
+ * and `shine` carry the odometer and the shine sweep (life #7 and #9).
  */
 export const baseMotion: ThemeMotion = {
   easing: "expoOut",
@@ -97,9 +98,9 @@ export const baseMotion: ThemeMotion = {
   "text.out": { ms: 300, curve: EXIT_CURVE, staggerMs: 20 },
   enter: { ms: 650, curve: { stiffness: 170, damping: 18 }, staggerMs: 90 },
   "enter.hero": { ms: 900, curve: { stiffness: 120, damping: 20 } },
-  pop: { ms: 400, curve: { stiffness: 200, damping: 14 } },
+  pop: { ms: 400, curve: { stiffness: 200, damping: 14 }, scale: 1.04 },
   exit: { share: 0.65, minMs: 300, maxMs: 450, curve: EXIT_CURVE },
-  count: { ms: 1000, curve: "expoOut" },
+  count: { ms: 1000, curve: "expoOut", staggerMs: 40, blurMinPx: 2, blurMaxPx: 6, unitDelayMs: 150 },
   mark: { ms: 450, curve: [0.33, 1, 0.68, 1], delayMs: 500, tiltDeg: 1.5, opacity: 0.55, underlinePx: 8 },
   shot: { ms: 750, curve: [0.65, 0, 0.35, 1], fill: 0.75 },
   // The owner's reference keeps the camera calm: subtle breathing, and only when a storyboard asks for it.
@@ -110,4 +111,5 @@ export const baseMotion: ThemeMotion = {
   beat: { ms: 400 },
   flow: { ms: 1400, curve: "expoInOut", dotPx: 14, glowPx: 6, glowOpacity: 0.25 },
   typing: { ms: 120, curve: FX_CURVE, cps: 38, jitter: 0.3, pauseMinMs: 200, pauseMaxMs: 400, blinkMs: 1060 },
+  shine: { ms: 800, curve: [0.6, 0.6, 0, 1], widthShare: 0.3, skewDeg: 20, opacity: 0.35 },
 };

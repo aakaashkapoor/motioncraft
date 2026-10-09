@@ -269,20 +269,25 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     table D), each with an `ms` duration and a `curve`: `fx.fast`, `fx`,
     `text.in`, `text.char` (a headline's characters, with `staggerMs`),
     `text.out`, `enter` (cards, windows, chips; with `staggerMs`),
-    `enter.hero`, `pop`, `count`, `mark` (the marker sweep: `delayMs` after
-    the text lands, a bar at `opacity` tilted `tiltDeg`, or an underline
-    `underlinePx` thick), `shot` (with the default `fill`), `beat`; `breathe`
-    is the camera's drift (`on`, `scale`, `curve`, `driftPx`; off unless `on`
-    is true); `exit` takes a `share` of the entry within `minMs`-`maxMs`;
-    `flow` is the dot that runs along a drawn connector (one trip per `ms`, a
-    `dotPx` dot, and a `glowPx` ring of the accent at `glowOpacity` on the
-    node it reaches; `"ms": 0` turns it off); `typing` is text typed with a
-    caret (`cps` keystrokes a second on average, each gap varied by up to
-    `jitter` of itself, a `pauseMinMs`-`pauseMaxMs` pause after a comma or
-    full stop, a caret that blinks every `blinkMs`, and a printed line that
-    fades in over its `ms`); `drift` moves the mesh blobs (up
-    to `px` from home, each looping in `minMs`-`maxMs`), `grid.breathe` the
-    grid (`ms`, `scale`, `curve`) and `grainFps` the grain. A `curve` is a name (`"linear"`, `"expoOut"`,
+    `enter.hero`, `pop` (to `scale`, 1.04), `count` (each digit's roll, the
+    next digit `staggerMs` later, blurred `blurMinPx`-`blurMaxPx` while it
+    moves, the unit `unitDelayMs` after the landing), `mark` (the marker
+    sweep: `delayMs` after the text lands, a bar at `opacity` tilted
+    `tiltDeg`, or an underline `underlinePx` thick), `shot` (with the default
+    `fill`), `beat`; `breathe` is the camera's drift (`on`, `scale`, `curve`,
+    `driftPx`; off unless `on` is true); `exit` takes a `share` of the entry
+    within `minMs`-`maxMs`; `shine` is the band of light that crosses an
+    element once (`widthShare` of its width, leaning `skewDeg`, white at
+    `opacity`; `"ms": 0` turns it off); `flow` is the dot that runs along a
+    drawn connector (one trip per `ms`, a `dotPx` dot, and a `glowPx` ring of
+    the accent at `glowOpacity` on the node it reaches; `"ms": 0` turns it
+    off); `typing` is text typed with a caret (`cps` keystrokes a second on
+    average, each gap varied by up to `jitter` of itself, a
+    `pauseMinMs`-`pauseMaxMs` pause after a comma or full stop, a caret that
+    blinks every `blinkMs`, and a printed line that fades in over its `ms`);
+    `drift` moves the mesh blobs (up to `px` from home, each looping in
+    `minMs`-`maxMs`), `grid.breathe` the grid (`ms`, `scale`, `curve`) and
+    `grainFps` the grain. A `curve` is a name (`"linear"`, `"expoOut"`,
     `"expoIn"`, `"expoInOut"`, `"sineInOut"`, `"power4InOut"`), a
     cubic bezier `[x1, y1, x2, y2]`, or a spring `{ "stiffness": 170,
     "damping": 18 }`. Position and scale may overshoot; opacity and color
@@ -461,7 +466,10 @@ automatically; use `Caption` only for a text-only beat.
 
 #### `BigNumber`
 
-A number that counts up, with `prefix`, `suffix`, `decimals` and a `label`.
+A number that rolls into place like an odometer, with `prefix`, `suffix`,
+`decimals` and a `label`. Its digits roll in from the right, an accent bar
+fills under it, and as it lands it pops, a shine crosses it and the `suffix`
+(the unit) fades in.
 
 ```json
 {

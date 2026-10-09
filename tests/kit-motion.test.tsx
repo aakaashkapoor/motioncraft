@@ -16,6 +16,7 @@ import {
   fade,
   fitSequence,
   lightTheme,
+  pulse,
   tween,
   useSceneTime,
   type SceneClock,
@@ -100,6 +101,26 @@ describe("arrive", () => {
     expect(mid.move).toBeLessThan(1);
     expect(arrive(theme, 150 + m.enter.ms, 150)).toEqual({ move: 1, opacity: 1 });
     expect(arrive(theme, 150 + m["enter.hero"].ms - 1, 150, m["enter.hero"]).move).toBeLessThan(1.01);
+  });
+});
+
+describe("pulse", () => {
+  it("goes out over the first half of the token and back over the second, on its curve", () => {
+    const half = { ms: m.pop.ms / 2, curve: m.pop.curve };
+    expect(pulse(m.pop, -10)).toBe(0);
+    expect(pulse(m.pop, 0)).toBeCloseTo(0, 6);
+    expect(pulse(m.pop, m.pop.ms / 4)).toBeCloseTo(tween(half, m.pop.ms / 4), 9);
+    expect(pulse(m.pop, m.pop.ms / 2)).toBe(1);
+    expect(pulse(m.pop, (3 * m.pop.ms) / 4)).toBeCloseTo(1 - tween(half, m.pop.ms / 4), 9);
+    expect(pulse(m.pop, m.pop.ms)).toBe(0);
+    expect(pulse(m.pop, m.pop.ms + 5000)).toBe(0);
+  });
+
+  it("springs past the top on the pop spring, and a little past the rest on the way back", () => {
+    const values = samples(400).map((t) => pulse(m.pop, t * m.pop.ms));
+    expect(Math.max(...values)).toBeGreaterThan(1.05);
+    expect(Math.min(...values)).toBeLessThan(0);
+    expect(Math.min(...values)).toBeGreaterThan(-0.2);
   });
 });
 

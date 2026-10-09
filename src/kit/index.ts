@@ -37,6 +37,7 @@ export { asKitComponent } from "./types";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./StepList";
 export { Ground, groundStyle, type GroundProps } from "./Ground";
 export { grainSeed, gridBreath, meshBlobs, type MeshBlob } from "./groundMotion";
+export { Shine, shineBand, shineGradient, shineText, type ShineBand, type ShineProps } from "./shine";
 export { AppWindow, BrowserWindow, slotTransform, windowLayout, type AppWindowProps, type BrowserWindowProps, type SlotContent } from "./windows";
 
 export const kit: Record<string, KitComponent> = {

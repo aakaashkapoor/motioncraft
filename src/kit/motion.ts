@@ -71,6 +71,17 @@ export function fade(token: Timed, elapsedMs: number): number {
 }
 
 /**
+ * A there-and-back on `token`, `elapsedMs` after it starts: 0 -> 1 over the
+ * first half of its duration and back to 0 over the second, each on its curve
+ * (a spring overshoots both ways). 0 before and after. For emphasis that
+ * returns to rest, such as a number popping as it lands.
+ */
+export function pulse(token: Timed, elapsedMs: number): number {
+  const half = { ms: token.ms / 2, curve: token.curve };
+  return tween(half, elapsedMs) - tween(half, elapsedMs - half.ms);
+}
+
+/**
  * An element arriving at `startMs` (scene ms; `ms` is now): `move` follows
  * `token` (default `enter`) for position and scale and may overshoot;
  * `opacity` fades in with `fx`.

@@ -176,11 +176,16 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
     expect(m.enter).toMatchObject({ curve: { stiffness: 170, damping: 18 }, staggerMs: 90 });
     within(m["enter.hero"].ms, 800, 1000);
     expect(m["enter.hero"].curve).toEqual({ stiffness: 120, damping: 20 });
-    expect(m.pop).toEqual({ ms: 400, curve: { stiffness: 200, damping: 14 } });
+    // A pop goes to 1.04: a highlighted card stays there, a landing number comes back (life #7, #8).
+    expect(m.pop).toEqual({ ms: 400, curve: { stiffness: 200, damping: 14 }, scale: 1.04 });
     within(m.exit.share, 0.6, 0.75);
     expect(m.exit).toMatchObject({ minMs: 300, maxMs: 450, curve: [0.3, 0, 0.8, 0.15] });
     within(m.count.ms, 900, 1200);
     expect(m.count.curve).toBe("expoOut");
+    // Life #7: digits roll 40 ms apart, blurred 2-6 px while they move; the unit follows 150 ms after the landing.
+    expect(m.count).toMatchObject({ staggerMs: 40, blurMinPx: 2, blurMaxPx: 6, unitDelayMs: 150 });
+    // Life #9: a band 30% of the element's width, white at 35%, leaning 20 deg, crosses once in 800 ms.
+    expect(m.shine).toEqual({ ms: 800, curve: [0.6, 0.6, 0, 1], widthShare: 0.3, skewDeg: 20, opacity: 0.35 });
     expect(m.mark).toMatchObject({ ms: 450, curve: [0.33, 1, 0.68, 1] });
     within(m.mark.delayMs, 400, 600);
     within(m.shot.ms, 600, 900);
