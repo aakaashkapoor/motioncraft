@@ -1,0 +1,62 @@
+{
+  "title": "Theme fixture: full-accent",
+  "aspect": "9:16",
+  "fps": 30,
+  "accent": "#e8590c",
+  "accentIntensity": "full",
+  "themeOverrides": {
+    "ground": {
+      "style": "noise",
+      "seed": 7
+    }
+  },
+  "scenes": [
+    {
+      "id": "title",
+      "component": "TitleCard",
+      "props": {
+        "kicker": "Design v2",
+        "title": "Themes",
+        "subtitle": "Light, dark and neutral"
+      },
+      "narration": "Every video picks a theme.",
+      "durationMs": 4000
+    },
+    {
+      "id": "steps",
+      "component": "StepList",
+      "props": {
+        "title": "Tokens",
+        "items": [
+          "Color roles",
+          "Ground styles",
+          "Accent intensity"
+        ],
+        "highlight": 1
+      },
+      "durationMs": 4000
+    },
+    {
+      "id": "flow",
+      "component": "FlowDiagram",
+      "props": {
+        "nodes": [
+          "Theme",
+          "Overrides",
+          "Frame"
+        ],
+        "caption": "Deep-merged, then rendered"
+      },
+      "durationMs": 4000
+    },
+    {
+      "id": "stat",
+      "component": "BigNumber",
+      "props": {
+        "value": 3,
+        "label": "Built-in themes"
+      },
+      "durationMs": 3000
+    }
+  ]
+}

@@ -18,7 +18,7 @@ async function main(argv: string[]): Promise<void> {
     throw new Error(`${args.storyboard} is not a valid storyboard:\n${validation.errors.map((e) => `  - ${e}`).join("\n")}`);
   }
   const { storyboard } = validation;
-  const theme = resolveTheme(storyboard.theme);
+  const theme = resolveTheme(storyboard);
   const durations = estimateDurations(storyboard);
   const frames = args.frames === "per-scene" ? perSceneFrames(buildTimeline(storyboard, durations)) : args.frames;
 

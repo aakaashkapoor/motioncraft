@@ -19,7 +19,7 @@ async function main(argv: string[]): Promise<void> {
     throw new Error(`${file} is not a valid storyboard:\n${validation.errors.map((e) => `  - ${e}`).join("\n")}`);
   }
   const { storyboard } = validation;
-  const result = await runChecks({ storyboard, theme: resolveTheme(storyboard.theme), durations: estimateDurations(storyboard) });
+  const result = await runChecks({ storyboard, theme: resolveTheme(storyboard), durations: estimateDurations(storyboard) });
 
   if (result.passed) {
     console.log(`${file}: all layer-1 checks passed`);

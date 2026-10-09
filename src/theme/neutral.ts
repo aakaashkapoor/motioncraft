@@ -1,47 +1,35 @@
+import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseTypeScale, SYSTEM_MONO, SYSTEM_SANS } from "./base";
 import type { Theme } from "./types";
 
-// The default theme: clean and high-contrast. Near-black background, near-white
-// text, one sky-blue accent (plus an amber alternate for comparisons).
-// System font stacks only; no bundled fonts yet.
-
-const SANS =
-  'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
-const MONO = 'ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
+// The v1 look, kept for compatibility: a near-black solid ground, near-white
+// text, one sky-blue accent, system fonts and easeInOutCubic motion.
 
 export const neutralTheme: Theme = {
   name: "neutral",
   colors: {
-    background: "#0b0d10",
+    ground: "#0b0d10",
     surface: "#1a1d23",
+    surfaceAlt: "#22262d",
     text: "#f5f6f8",
-    muted: "#a3a9b3",
+    textMuted: "#a3a9b3",
+    textSubtle: "#7b818b",
     accent: "#4cc2ff",
-    accentAlt: "#ffb547",
+    accentText: "#0b0d10",
+    border: "#2a2e35",
+    shadow: "#030405",
   },
+  ground: { style: "solid", seed: 1 },
+  accentIntensity: "subtle",
   fonts: {
-    display: SANS,
-    body: SANS,
-    mono: MONO,
+    display: SYSTEM_SANS,
+    body: SYSTEM_SANS,
+    mono: SYSTEM_MONO,
   },
-  // Sized for a 1080px-wide vertical frame viewed on a phone.
-  typeScale: {
-    caption: 40,
-    body: 52,
-    subtitle: 64,
-    title: 88,
-    display: 128,
-  },
-  spacing: {
-    xs: 8,
-    sm: 16,
-    md: 32,
-    lg: 56,
-    xl: 96,
-  },
-  radius: 24,
-  motion: {
-    easing: "easeInOutCubic",
-    sceneEnterMs: 400,
-    sceneExitMs: 300,
-  },
+  type: baseTypeRamp,
+  typeScale: baseTypeScale,
+  spacing: baseSpacing,
+  radius: baseRadius,
+  cardShadow: { y: 16, blur: 48, opacity: 0.4 },
+  hairline: 2,
+  motion: { ...baseMotion, easing: "easeInOutCubic", enterMs: 400, exitMs: 300 },
 };

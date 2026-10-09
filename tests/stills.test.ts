@@ -124,7 +124,7 @@ describe("estimateDurations", () => {
 describe("resolveTheme", () => {
   it("knows the neutral theme and names the known themes otherwise", () => {
     expect(resolveTheme("neutral")).toBe(neutralTheme);
-    expect(() => resolveTheme("nope")).toThrow(/unknown theme "nope" \(known: neutral\)/);
+    expect(() => resolveTheme("nope")).toThrow(/unknown theme "nope" \(known: light, dark, neutral\)/);
   });
 });
 

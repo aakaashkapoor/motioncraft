@@ -8,6 +8,7 @@ import { AVG_CHAR_EM } from "../layout/textFit";
 import { fontSize } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeStep } from "../theme/types";
+import { headlineColor } from "../theme/roles";
 import { presence, themeEasing } from "./motion";
 import type { KitProps } from "./types";
 
@@ -106,7 +107,7 @@ export function BigNumber({ progress, theme, aspect, value, prefix = "", suffix 
             lineHeight: NUMBER_LINE_HEIGHT,
             fontVariantNumeric: "tabular-nums",
             whiteSpace: "nowrap",
-            color: colors.text,
+            color: headlineColor(theme),
           }}
         >
           {prefix}
@@ -131,7 +132,7 @@ export function BigNumber({ progress, theme, aspect, value, prefix = "", suffix 
               fontFamily: fonts.body,
               fontSize: fontSize(theme, "subtitle", aspect),
               lineHeight: LABEL_LINE_HEIGHT,
-              color: colors.muted,
+              color: colors.textMuted,
               overflowWrap: "break-word",
             }}
           >

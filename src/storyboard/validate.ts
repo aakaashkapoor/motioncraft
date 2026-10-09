@@ -3,11 +3,14 @@ import {
   DEFAULT_FPS,
   DEFAULT_THEME,
   type Aspect,
+  type Storyboard,
   type StoryboardScene,
   type StoryboardValidation,
 } from "./types";
+import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
+import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "scenes"]);
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "scenes"]);
 const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs"]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -95,7 +98,7 @@ function validateScenes(raw: unknown, errors: string[]): StoryboardScene[] {
 }
 
 /**
- * Validates a storyboard document and applies defaults (`fps` 30, `theme` "neutral").
+ * Validates a storyboard document and applies defaults (`fps` 30, `theme` "light").
  * Collects every problem rather than stopping at the first.
  */
 export function validateStoryboard(input: unknown): StoryboardValidation {
@@ -110,12 +113,19 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   }
   if (!isPositiveInteger(fps)) errors.push(`fps must be a positive integer (got ${describe(fps)})`);
   if (!isNonEmptyString(theme)) errors.push("theme must be a non-empty string");
+  const { themeOverrides, accent, accentIntensity } = input;
+  if (themeOverrides !== undefined) errors.push(...themeOverridesErrors(themeOverrides));
+  const accentProblem = accent === undefined ? undefined : colorError("accent", accent);
+  if (accentProblem !== undefined) errors.push(accentProblem);
+  const intensityProblem = accentIntensity === undefined ? undefined : accentIntensityError("accentIntensity", accentIntensity);
+  if (intensityProblem !== undefined) errors.push(intensityProblem);
 
   const scenes = validateScenes(input.scenes, errors);
 
   if (errors.length > 0) return { ok: false, errors };
-  return {
-    ok: true,
-    storyboard: { title: title as string, aspect: aspect as Aspect, fps: fps as number, theme: theme as string, scenes },
-  };
+  const storyboard: Storyboard = { title: title as string, aspect: aspect as Aspect, fps: fps as number, theme: theme as string, scenes };
+  if (themeOverrides !== undefined) storyboard.themeOverrides = themeOverrides as ThemeOverrides;
+  if (accent !== undefined) storyboard.accent = accent as string;
+  if (accentIntensity !== undefined) storyboard.accentIntensity = accentIntensity as AccentIntensity;
+  return { ok: true, storyboard };
 }

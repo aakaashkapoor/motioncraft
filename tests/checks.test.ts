@@ -146,8 +146,8 @@ describe("contrast", () => {
 
   it("passes the neutral theme's text colors", () => {
     const { colors } = neutralTheme;
-    const texts = [colors.text, colors.muted, colors.accent, colors.accentAlt].map((color) =>
-      text({ color, backgrounds: [colors.background] }),
+    const texts = [colors.text, colors.textMuted, colors.accent].map((color) =>
+      text({ color, backgrounds: [colors.ground] }),
     );
     expect(checkContrast(frame(...texts))).toEqual([]);
   });
@@ -331,7 +331,7 @@ describe("runChecks (integration)", { timeout: 60_000 }, () => {
 
   it("measures real colors and timing in the page", async (ctx) => {
     const sb = await loadStoryboard("..", "examples", "hello", "storyboard.json");
-    const dim: Theme = { ...neutralTheme, colors: { ...neutralTheme.colors, muted: "#2a2d33" } };
+    const dim: Theme = { ...neutralTheme, colors: { ...neutralTheme.colors, textMuted: "#2a2d33" } };
     const rushed = { ...sb, scenes: sb.scenes.map((scene) => ({ ...scene, durationMs: 1000 })) };
     const result = await check(ctx, rushed, dim);
     const contrast = result.problems.filter((p) => p.check === "contrast");

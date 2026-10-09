@@ -154,7 +154,7 @@ describe("FlowDiagram", () => {
     const html = render("9:16", 0.5);
     expect(html).toContain(`background-color:${neutralTheme.colors.surface}`);
     expect(html).toContain(neutralTheme.colors.accent);
-    expect(html).toContain(`border-radius:${neutralTheme.radius}px`);
+    expect(html).toContain(`border-radius:${neutralTheme.radius.md}px`);
     expect(html).not.toContain("<img");
   });
 
