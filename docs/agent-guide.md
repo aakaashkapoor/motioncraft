@@ -1,0 +1,808 @@
+# motioncraft agent guide
+
+How to turn a prompt and its sources into a storyboard that renders cleanly the
+first time. Read this before writing a storyboard. The design behind it is in
+`docs/design.md` (the pipeline) and `docs/design-v2.md` (theme, transitions,
+kit and media).
+
+Every `json` example below is tested: it validates, passes the storyboard
+checks in both 9:16 and 16:9, and renders (`tests/guide.test.ts`). Examples
+marked **Incorrect** show a mistake on purpose.
+
+## 1. Plan before you write
+
+### One idea per scene
+
+A scene says one thing: a claim, a number, a step list, a demo. If you need the
+word "and" to describe what a scene shows, it is two scenes. Short scenes are
+fine; the vertical format wants them. Open with a hook in the first two seconds
+(a `TitleCard` or a `BigNumber` usually does it).
+
+### Time windows against the narration
+
+Write the narration first, one or two sentences per scene, then size each scene
+to its line:
+
+- Narration is spoken at about 150 words per minute (2.5 words a second) plus
+  0.6 s of breathing room. A scene with narration and no `durationMs` takes its
+  length from the narration, so leave `durationMs` out unless you need the scene
+  to hold longer.
+- On-screen text needs reading time: at least 1.5 s plus 0.25 s per word of
+  scene text (captions are not counted). The readability check enforces it.
+- A scene without narration must set `durationMs`. A scene built around a
+  `VideoClip` can use `"durationMs": "clip"` to last as long as the clip.
+- Components play their entrance over roughly the first 10-40% of the scene and
+  settle for the rest, so the point lands while the line is still being spoken.
+- A transition overlaps the two scenes it joins. Total length is the sum of the
+  scenes minus the sum of the transitions, so a 600 ms transition takes 600 ms
+  out of the scenes on both sides of it.
+
+### A transition for every boundary
+
+Choose a `transition` on every scene except the last. Leaving it out falls back
+to the theme default (`slide`), and the storyboard check warns, because the
+choice should be deliberate:
+
+| `type` | Use it for |
+| --- | --- |
+| `slide` | The next step in a sequence. Both scenes travel the same way (`direction`: `left` by default, `right`, `up`, `down`); keep one direction for a whole film. |
+| `fade` | A change of subject, or anywhere a shared element is the star (the morph reads best over a fade). |
+| `zoomBlur` | An energetic reveal: the old scene scales up and blurs out, the new one sharpens in. Use sparingly. |
+| `wipe` | A before/after or a hard change of section. Takes a `direction`. |
+| `cut` | A deliberate hard cut, such as landing on a punchline. |
+
+`durationMs` sets the length (default 600 ms, the theme's `motion.transitionMs`);
+400-900 ms reads well.
+
+### Shared elements for continuity
+
+Give an element the same `shareId` in two neighboring scenes and the transition
+morphs it from its box in the first scene to its box in the second (position,
+size, radius, background, opacity) while everything else uses the
+presentation. Windows (`AppWindow`, `BrowserWindow`, `TerminalWindow`,
+`CodeWindow`, `ChatWindow`), `VideoClip` and `Image` take a `shareId`. The usual
+move: a window is the hero of one scene, then docks in a corner with `Pinned`
+while the next scene's content arrives beside it. Keep the window's props the
+same on both sides so its content does not jump.
+
+## 2. The storyboard
+
+A storyboard is one JSON document. Top-level fields: `title`, `aspect`
+(`"9:16"`, the primary format, or `"16:9"`), `fps` (default 30), `theme`
+(default `"light"`), the theme fields in section 3, and `scenes`. Each scene has
+an `id` (unique), a `component` (a kit name from section 5), `props`, and
+optionally `narration`, `durationMs` and `transition`.
+
+```json
+{
+  "title": "Why our renders got faster",
+  "aspect": "9:16",
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "BigNumber",
+      "props": { "value": 42, "suffix": "%", "label": "faster renders" },
+      "narration": "Our renders got forty-two percent faster this month.",
+      "transition": { "type": "slide" }
+    },
+    {
+      "id": "how",
+      "component": "Section",
+      "props": {
+        "eyebrow": "What changed",
+        "headline": "Three fixes",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              { "icon": "zap", "title": "Cached fonts" },
+              { "icon": "box", "title": "Smaller bundle" },
+              { "icon": "clock", "title": "Fewer waits" }
+            ],
+            "highlight": 0
+          }
+        }
+      },
+      "narration": "Three small fixes did it. Caching fonts mattered most.",
+      "transition": { "type": "fade", "durationMs": 700 }
+    },
+    {
+      "id": "end",
+      "component": "TitleCard",
+      "props": { "title": "Ship faster", "subtitle": "Try it today" },
+      "narration": "Try it today."
+    }
+  ]
+}
+```
+
+## 3. Theme and overrides
+
+Themes are defaults, not rules. Anything the user asks for must be possible;
+the checks enforce readability (contrast, safe areas, reading time), never
+taste.
+
+### Built-in themes
+
+- `light` (the default): warm light-grey ground, white cards, one blue accent.
+- `dark`: deep tinted ground, raised surfaces, a soft blue accent, faint dot grid.
+- `neutral`: the v1 look, kept for compatibility.
+
+### The vocabulary
+
+- `theme`: pick the base.
+- `accent`: a hex color for the one highlight color. A readable `accentText`
+  (text on accent fills) is picked for you.
+- `accentIntensity`: how much accent the video uses. `subtle` (one accent
+  element per scene, the default), `bold` (accent headlines and cards) or
+  `full` (the accent becomes the ground).
+- `themeOverrides`: any token of the theme, deep-merged over it:
+  - `colors`: the roles `ground`, `surface`, `surfaceAlt`, `text`, `textMuted`,
+    `textSubtle`, `accent`, `accentText`, `border`, `shadow` (hex only). Keep
+    neutrals tinted, never pure `#000000` or `#ffffff`.
+  - `ground.style`: `solid`, `vignette`, `grid` or `noise`.
+  - `fonts.display`, `fonts.body`, `fonts.mono`: CSS font stacks. Only the
+    bundled fonts are guaranteed to be present.
+  - `radius` (`sm`, `md`, `lg`, `pill`), `cardShadow` (`y`, `blur`, `opacity`),
+    `hairline`.
+  - `motion`: `transition` and `transitionMs` (the defaults for boundaries),
+    `enterMs`, `exitMs`, `staggerMs`, `easing`, `springs`.
+
+Colors come from these tokens. Components draw with theme roles, so do not put
+your own hex colors in props: the theme-color check warns on any color in props
+that is not one of the theme's (or the storyboard's own overrides). Where a prop
+takes a color, pass a role name such as `"accent"`, or leave it out.
+
+### Honoring requests
+
+| The user says | Write |
+| --- | --- |
+| "use a dark theme" | `"theme": "dark"` |
+| "light and clean" | `"theme": "light"`, `"themeOverrides": { "ground": { "style": "solid" } }` |
+| "make it orange" | `"accent": "#ff6a00"` |
+| "lots of orange" | `"accent": "#ff6a00"`, `"accentIntensity": "bold"` |
+| "an orange background" | `"accent": "#ff6a00"`, `"accentIntensity": "full"` |
+| "our brand colors are navy and gold" | `"themeOverrides": { "colors": { "ground": "#14213d", ... } }` and `"accent": "#fca311"`, then let the contrast check confirm the text reads |
+| "snappier" | `"themeOverrides": { "motion": { "transitionMs": 400, "enterMs": 350 } }` |
+| "rounder" / "sharper" | `"themeOverrides": { "radius": { "md": 40 } }` / `{ "radius": { "md": 8 } }` |
+
+"Use a dark theme, with lots of orange":
+
+```json
+{ "theme": "dark", "accent": "#ff6a00", "accentIntensity": "bold" }
+```
+
+Brand colors on a light base:
+
+```json
+{
+  "theme": "light",
+  "accent": "#fca311",
+  "themeOverrides": {
+    "colors": { "ground": "#f3f1ec", "text": "#14213d", "textMuted": "#3d4a63" },
+    "ground": { "style": "grid" }
+  }
+}
+```
+
+## 4. Checks
+
+Run `npx tsx scripts/check.ts <storyboard.json>` after writing the storyboard
+and after every fix. Storyboard checks run first, then the frame checks.
+
+- **Storyboard checks.**
+  - `transition` (warn): a boundary has no chosen transition.
+  - `theme-color` (warn): a color in props is not a theme token or a color the
+    storyboard set (`accent`, `themeOverrides.colors`).
+  - `media` (error): a `VideoClip` or `Image` file is missing or unreadable.
+    Paths resolve from the storyboard's folder. Frames are not checked until
+    these are fixed.
+- **Frame checks** on the start, middle and end of every scene: `overflow`
+  (text clipped or off frame), `safe-area` (inside the platform's UI-free zone),
+  `contrast` (WCAG) and `readability` (time on screen for the words shown).
+
+Warnings do not fail the run, but treat them as mistakes unless you meant it.
+
+## 5. Component catalog
+
+Every component takes the storyboard props listed here; `progress`, `theme`,
+`aspect` and `area` are supplied by the renderer. All of them lay out in both
+9:16 and 16:9. Icons are names from the bundled set: `chat`, `terminal`,
+`code`, `check`, `shield`, `cloud`, `laptop`, `box`, `play`, `search`, `file`,
+`user`, `users`, `lock`, `zap`, `chart`, `clock`, `globe`, `mail`,
+`git-branch`, `settings`, `star`, `arrow-right`, `sparkles` (and the rest of
+`ICON_NAMES`). Components that hold another component (`Section`, the windows,
+`Pinned`) take it as `{ "component": ..., "props": ... }`.
+
+### Text and data
+
+#### `TitleCard`
+
+A title with an optional `kicker` above and `subtitle` below. Openers, chapter
+cards and endings.
+
+```json
+{
+  "id": "open",
+  "component": "TitleCard",
+  "props": { "kicker": "Field notes", "title": "Ship on Fridays", "subtitle": "Without the fear" },
+  "narration": "Here is how we ship on Fridays without the fear."
+}
+```
+
+#### `Caption`
+
+One line of large text, paged when long. Narration is captioned
+automatically; use `Caption` only for a text-only beat.
+
+```json
+{
+  "id": "quote",
+  "component": "Caption",
+  "props": { "text": "Small steps, every day." },
+  "durationMs": 2500
+}
+```
+
+#### `BigNumber`
+
+A number that counts up, with `prefix`, `suffix`, `decimals` and a `label`.
+
+```json
+{
+  "id": "stat",
+  "component": "BigNumber",
+  "props": { "value": 3.5, "decimals": 1, "suffix": "x", "label": "more deploys a week" },
+  "narration": "We now deploy three and a half times as often."
+}
+```
+
+#### `StepList`
+
+2-6 short steps in order, with an optional `title`, a `highlight` index drawn
+in the accent, and `marker` `"number"` (default) or `"dot"`.
+
+```json
+{
+  "id": "steps",
+  "component": "StepList",
+  "props": { "title": "Release day", "items": ["Freeze", "Test", "Ship"], "highlight": 2 },
+  "narration": "Freeze, test, then ship."
+}
+```
+
+#### `FlowDiagram`
+
+2-4 labels joined by arrows, in flow order, with an optional `caption`.
+
+```json
+{
+  "id": "flow",
+  "component": "FlowDiagram",
+  "props": { "nodes": ["Commit", "Build", "Deploy"], "caption": "Every push, automatically" },
+  "narration": "Every push is built and deployed automatically."
+}
+```
+
+### Layout
+
+#### `Section`
+
+The standard frame for explanatory scenes: an optional `eyebrow`, a heavy
+`headline`, a `content` slot holding any component, and an optional `note`.
+Content sits beside the headline in 16:9 and below it in 9:16;
+`"contentWidth": "wide"` gives it more room in 16:9.
+
+```json
+{
+  "id": "section",
+  "component": "Section",
+  "props": {
+    "eyebrow": "Step 2",
+    "headline": "Test in parallel",
+    "content": { "component": "StepList", "props": { "items": ["Unit", "Integration", "Visual"], "marker": "dot" } },
+    "note": "About four minutes in total"
+  },
+  "narration": "Then every suite runs in parallel, in about four minutes."
+}
+```
+
+#### `Pinned`
+
+Docks one component (`pinned`) small in a `corner` (`topLeft`, `topRight`
+(default), `bottomLeft`, `bottomRight`) while `content` fills the rest. Built
+for shared elements: with the default `"arrive": "settled"` the pinned
+component is already in place, because it morphs in from the previous scene;
+use `"animate"` when nothing morphs into it.
+
+```json
+{
+  "id": "pinned",
+  "component": "Pinned",
+  "props": {
+    "arrive": "animate",
+    "pinned": { "component": "TerminalWindow", "props": { "lines": [{ "prompt": true, "text": "npm test" }, { "text": "42 passed" }] } },
+    "content": { "component": "FeatureList", "props": { "items": [{ "icon": "check", "text": "All green" }, { "icon": "clock", "text": "Under a minute" }] } }
+  },
+  "narration": "All forty-two tests pass in under a minute."
+}
+```
+
+### Windows
+
+Generic app chrome, never a real product's brand. Each takes a `shareId`.
+
+#### `AppWindow`
+
+A window with a `title` (and `chrome`: `"traffic"` or `"minimal"`) holding any
+component as `content`.
+
+```json
+{
+  "id": "app",
+  "component": "AppWindow",
+  "props": {
+    "title": "Weekly report",
+    "shareId": "report",
+    "content": { "component": "BigNumber", "props": { "value": 128, "label": "orders today" } }
+  },
+  "narration": "The dashboard shows a hundred and twenty-eight orders today."
+}
+```
+
+#### `BrowserWindow`
+
+An address bar with a `url`, optional `tabs` and `activeTab`, and any `content`
+in the page area.
+
+```json
+{
+  "id": "browser",
+  "component": "BrowserWindow",
+  "props": {
+    "url": "example.com/pricing",
+    "content": { "component": "TitleCard", "props": { "title": "Simple pricing", "subtitle": "One plan" } }
+  },
+  "narration": "Pricing is one simple plan."
+}
+```
+
+#### `TerminalWindow`
+
+Typed commands (`"prompt": true`) and program output, line by line.
+
+```json
+{
+  "id": "terminal",
+  "component": "TerminalWindow",
+  "props": {
+    "title": "deploy",
+    "lines": [
+      { "prompt": true, "text": "npm run deploy" },
+      { "text": "Building..." },
+      { "text": "Deployed in 38s" }
+    ]
+  },
+  "narration": "One command deploys in under forty seconds."
+}
+```
+
+#### `CodeWindow`
+
+Syntax-highlighted `code` in a Prism `language` (default `typescript`), with a
+`title`, `highlightLines` (1-based; the rest dim), `reveal` (lines arrive one
+by one) and `lineNumbers` (default true).
+
+```json
+{
+  "id": "code",
+  "component": "CodeWindow",
+  "props": {
+    "title": "retry.ts",
+    "language": "typescript",
+    "code": "export async function retry(task, times = 3) {\n  for (let i = 0; i < times; i++) {\n    try { return await task(); } catch {}\n  }\n}",
+    "highlightLines": [3]
+  },
+  "narration": "The fix is a small retry loop."
+}
+```
+
+#### `ChatWindow`
+
+A team chat: a `channel`, `messages` that arrive one by one (`author`, `time`,
+`text`, optional `badge`, `reactions`, `highlight`, `avatar`), an optional
+`sidebar` (shown in 16:9) and floating `cards` that slide in afterwards.
+Avatars get theme colors by author; leave `avatar.color` out.
+
+```json
+{
+  "id": "chat",
+  "component": "ChatWindow",
+  "props": {
+    "channel": "#releases",
+    "sidebar": { "workspace": "Acme", "channels": ["#general", "#releases"] },
+    "messages": [
+      { "author": "Dana", "time": "4:58 PM", "text": "Friday deploy?" },
+      { "author": "Deploy Bot", "badge": "APP", "time": "5:01 PM", "text": "v2.4 is live", "reactions": [{ "emoji": "🎉", "count": 3 }], "highlight": true }
+    ]
+  },
+  "narration": "Friday at five, the bot says version two point four is live."
+}
+```
+
+### Connectors and cards
+
+#### `Arrow`
+
+A line that draws itself from `from` to `to`: points in frame px
+(`{ "x": ..., "y": ... }`, keep them inside both frame shapes if the storyboard
+might be rendered in both) or `{ "anchor": "<shareId>" }` for an element in the
+same scene. `curve` bends it, `window` sets when it draws, `color` is a theme
+role (default `"accent"`), `label` sits at the middle.
+
+```json
+{
+  "id": "arrow",
+  "component": "Arrow",
+  "props": { "from": { "x": 240, "y": 300 }, "to": { "x": 820, "y": 760 }, "curve": 0.3, "label": "next", "color": "accent" },
+  "durationMs": 2500
+}
+```
+
+#### `Card`
+
+One card: `icon`, `title`, `subtitle`, an optional `step` number, and
+`highlighted` for the accent fill.
+
+```json
+{
+  "id": "card",
+  "component": "Card",
+  "props": { "icon": "shield", "title": "Signed builds", "subtitle": "Every artifact", "highlighted": true },
+  "narration": "Every build is signed."
+}
+```
+
+#### `CardRow`
+
+2-6 cards arriving staggered, with an optional `highlight` index lit in the
+accent after they land.
+
+```json
+{
+  "id": "cards",
+  "component": "CardRow",
+  "props": {
+    "cards": [
+      { "icon": "laptop", "title": "Write", "step": 1 },
+      { "icon": "check", "title": "Review", "step": 2 },
+      { "icon": "cloud", "title": "Ship", "step": 3 }
+    ],
+    "highlight": 1
+  },
+  "narration": "Write, review, ship. Review is where it matters."
+}
+```
+
+#### `FeatureList`
+
+2-6 rows of `icon` plus `text`, with an optional `title`.
+
+```json
+{
+  "id": "features",
+  "component": "FeatureList",
+  "props": {
+    "title": "What you get",
+    "items": [
+      { "icon": "zap", "text": "Fast builds" },
+      { "icon": "lock", "text": "Private by default" },
+      { "icon": "globe", "text": "Runs anywhere" }
+    ]
+  },
+  "narration": "Fast builds, private by default, and it runs anywhere."
+}
+```
+
+### Media
+
+Real footage and images, from local files. `src` is relative to the
+storyboard's folder. Both take `fit` (`"cover"`, the default, or `"contain"`)
+and a `shareId`, and can sit full frame or inside a window's `content`.
+
+#### `VideoClip`
+
+`trimStartMs` and `trimEndMs` pick the part of the file, `rate` sets the speed,
+`muted` leaves its audio out of the mix. Supported: `.mp4`, `.m4v`, `.mov`,
+`.webm`. With `"durationMs": "clip"` the scene lasts as long as the clip.
+
+```json
+{
+  "id": "demo",
+  "component": "AppWindow",
+  "props": {
+    "title": "Live demo",
+    "content": { "component": "VideoClip", "props": { "src": "media/demo.mp4", "trimStartMs": 1000, "trimEndMs": 5000, "fit": "contain" } }
+  },
+  "durationMs": "clip"
+}
+```
+
+#### `Image`
+
+An image with a `focus` point (`x`, `y` from 0 to 1), an optional slow Ken
+Burns move (`zoom`: a scale or `{ "from", "to" }`; `pan`: `{ "x", "y" }` as
+fractions of the box) and `alt`. Supported: `.png`, `.jpg`, `.jpeg`, `.webp`,
+`.gif`, `.avif`, `.svg`.
+
+```json
+{
+  "id": "photo",
+  "component": "Image",
+  "props": { "src": "media/team.jpg", "alt": "The team at launch", "focus": { "x": 0.6, "y": 0.4 }, "zoom": { "from": 1, "to": 1.12 } },
+  "narration": "The whole team was there for launch day."
+}
+```
+
+### A shared-element pair
+
+The hero window docks in the corner while the cards arrive. Same `shareId`,
+same props, a `fade` between them:
+
+```json
+{
+  "title": "Shared element: the report docks",
+  "aspect": "16:9",
+  "scenes": [
+    {
+      "id": "hero",
+      "component": "AppWindow",
+      "props": {
+        "title": "Weekly report",
+        "shareId": "report",
+        "content": { "component": "BigNumber", "props": { "value": 42, "suffix": "%", "label": "faster" } }
+      },
+      "narration": "Renders got forty-two percent faster.",
+      "transition": { "type": "fade", "durationMs": 900 }
+    },
+    {
+      "id": "why",
+      "component": "Pinned",
+      "props": {
+        "pinned": {
+          "component": "AppWindow",
+          "props": {
+            "title": "Weekly report",
+            "shareId": "report",
+            "content": { "component": "BigNumber", "props": { "value": 42, "suffix": "%", "label": "faster" } }
+          }
+        },
+        "content": {
+          "component": "CardRow",
+          "props": { "cards": [{ "icon": "zap", "title": "Cached fonts" }, { "icon": "box", "title": "Smaller bundle" }], "highlight": 0 }
+        }
+      },
+      "narration": "Two changes made the difference."
+    }
+  ]
+}
+```
+
+## 6. Common mistakes
+
+### Two ideas in one scene
+
+**Incorrect:** a list that mixes the problem, the fix and the result, with one
+line of narration racing through all of it.
+
+```json incorrect
+{
+  "id": "everything",
+  "component": "StepList",
+  "props": { "title": "Builds, fonts, results and next steps", "items": ["Builds were slow", "We cached fonts", "Now 42% faster", "Next: images", "Then: video", "Hiring!"] },
+  "durationMs": 3000
+}
+```
+
+**Correct:** one scene per idea, each with its own line.
+
+```json
+{
+  "title": "One idea per scene",
+  "aspect": "9:16",
+  "scenes": [
+    { "id": "problem", "component": "TitleCard", "props": { "title": "Builds were slow" }, "narration": "Our builds were slow.", "transition": { "type": "slide" } },
+    { "id": "fix", "component": "Card", "props": { "icon": "zap", "title": "Cache the fonts" }, "narration": "So we cached the fonts.", "transition": { "type": "slide" } },
+    { "id": "result", "component": "BigNumber", "props": { "value": 42, "suffix": "%", "label": "faster" }, "narration": "Now they are forty-two percent faster." }
+  ]
+}
+```
+
+### Leaving the boundaries to chance
+
+**Incorrect:** no `transition`, so every boundary silently takes the default
+and the check warns.
+
+```json incorrect
+{
+  "title": "No transitions",
+  "aspect": "9:16",
+  "scenes": [
+    { "id": "a", "component": "TitleCard", "props": { "title": "Part one" }, "durationMs": 2000 },
+    { "id": "b", "component": "TitleCard", "props": { "title": "Part two" }, "durationMs": 2000 }
+  ]
+}
+```
+
+**Correct:** a chosen transition on every boundary but the last.
+
+```json
+{
+  "title": "Chosen transitions",
+  "aspect": "9:16",
+  "scenes": [
+    { "id": "a", "component": "TitleCard", "props": { "title": "Part one" }, "durationMs": 2000, "transition": { "type": "wipe", "direction": "up" } },
+    { "id": "b", "component": "TitleCard", "props": { "title": "Part two" }, "durationMs": 2000 }
+  ]
+}
+```
+
+### Inventing colors in props
+
+**Incorrect:** hex colors made up on the spot. They ignore the theme, may not
+read on it, and the theme-color check warns.
+
+```json incorrect
+{
+  "id": "chat",
+  "component": "ChatWindow",
+  "props": { "channel": "#team", "messages": [{ "author": "Ana", "time": "9:00", "text": "Done!", "avatar": { "initials": "A", "color": "#e91e63" } }] },
+  "durationMs": 3000
+}
+```
+
+**Correct:** leave the color to the theme. To change the palette, change the
+theme (section 3), not the props.
+
+```json
+{
+  "id": "chat",
+  "component": "ChatWindow",
+  "props": { "channel": "#team", "messages": [{ "author": "Ana", "time": "9:00", "text": "Done!", "highlight": true }] },
+  "durationMs": 3000
+}
+```
+
+### "Lots of orange" as orange props
+
+**Incorrect:** painting individual elements orange instead of telling the
+theme.
+
+```json incorrect
+{
+  "title": "Orange by hand",
+  "aspect": "9:16",
+  "scenes": [
+    { "id": "a", "component": "Arrow", "props": { "from": { "x": 200, "y": 300 }, "to": { "x": 800, "y": 900 }, "color": "#ff6a00" }, "durationMs": 2000 }
+  ]
+}
+```
+
+**Correct:** set the accent and how much of it to use; every component follows.
+
+```json
+{
+  "title": "Orange by theme",
+  "aspect": "9:16",
+  "accent": "#ff6a00",
+  "accentIntensity": "bold",
+  "scenes": [
+    { "id": "a", "component": "Arrow", "props": { "from": { "x": 200, "y": 300 }, "to": { "x": 800, "y": 900 }, "color": "accent" }, "durationMs": 2000 }
+  ]
+}
+```
+
+### "Dark theme" as pure black
+
+**Incorrect:** overriding the light theme with pure black and white. Neutrals
+should be tinted, the surfaces and muted text no longer match, and contrast
+breaks in places.
+
+```json incorrect
+{ "theme": "light", "themeOverrides": { "colors": { "ground": "#000000", "text": "#ffffff" } } }
+```
+
+**Correct:** use the built-in dark theme, which sets every role together.
+
+```json
+{ "theme": "dark" }
+```
+
+### Narration longer than the scene
+
+**Incorrect:** a fixed `durationMs` far shorter than its line (24 words need
+about ten seconds).
+
+```json incorrect
+{
+  "id": "rushed",
+  "component": "TitleCard",
+  "props": { "title": "Faster builds" },
+  "narration": "We spent the last three months rewriting the build pipeline from scratch so that every single change ships to production in under five minutes flat.",
+  "durationMs": 2000
+}
+```
+
+**Correct:** let the narration set the length (leave out `durationMs`), and
+trim the line to what the scene shows.
+
+```json
+{
+  "id": "paced",
+  "component": "TitleCard",
+  "props": { "title": "Faster builds" },
+  "narration": "Every change now ships in under five minutes."
+}
+```
+
+### A shared element that does not match
+
+**Incorrect:** the two windows carry different `shareId`s (and different
+titles), so nothing morphs; the window just disappears and reappears.
+
+```json incorrect
+{
+  "title": "Broken pair",
+  "aspect": "9:16",
+  "scenes": [
+    { "id": "a", "component": "AppWindow", "props": { "title": "Report", "shareId": "report" }, "durationMs": 3000, "transition": { "type": "fade" } },
+    { "id": "b", "component": "Pinned", "props": { "pinned": { "component": "AppWindow", "props": { "title": "Report v2", "shareId": "report-small" } } }, "durationMs": 3000 }
+  ]
+}
+```
+
+**Correct:** the same `shareId` and the same props on both sides (see the
+shared-element pair in section 5).
+
+```json
+{
+  "title": "Matching pair",
+  "aspect": "9:16",
+  "scenes": [
+    { "id": "a", "component": "AppWindow", "props": { "title": "Report", "shareId": "report" }, "durationMs": 3000, "transition": { "type": "fade" } },
+    { "id": "b", "component": "Pinned", "props": { "pinned": { "component": "AppWindow", "props": { "title": "Report", "shareId": "report" } } }, "durationMs": 3000 }
+  ]
+}
+```
+
+### Media paths that are not there
+
+**Incorrect:** an absolute path from another machine, or a file nobody copied
+in. The media check fails before any frame is drawn.
+
+```json incorrect
+{ "id": "clip", "component": "VideoClip", "props": { "src": "C:/Users/someone/Desktop/final_v3.mp4" }, "durationMs": "clip" }
+```
+
+**Correct:** copy the file next to the storyboard (a `media/` folder) and refer
+to it relatively.
+
+```json
+{ "id": "clip", "component": "VideoClip", "props": { "src": "media/final.mp4", "trimEndMs": 4000 }, "durationMs": "clip" }
+```
+
+### Icons that do not exist
+
+**Incorrect:** an icon name guessed from another icon set. Rendering fails with
+the list of known names.
+
+```json incorrect
+{ "id": "card", "component": "Card", "props": { "icon": "rocket-launch", "title": "Launch" }, "durationMs": 2000 }
+```
+
+**Correct:** a name from the bundled set (section 5).
+
+```json
+{ "id": "card", "component": "Card", "props": { "icon": "sparkles", "title": "Launch" }, "durationMs": 2000 }
+```
