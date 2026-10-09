@@ -80,8 +80,10 @@ export function kenBurns(progress: number, { zoom, pan, focus = CENTER }: KenBur
 
 const percent = (fraction: number) => `${Math.round(fraction * 1e6) / 1e4}%`;
 
-export function Image({ progress, aspect, src, fit = "cover", focus = CENTER, zoom, pan, alt = "", shareId }: ImageProps) {
-  const rect = useVisibleRect(aspect);
+export function Image({ progress, aspect, area, src, fit = "cover", focus = CENTER, zoom, pan, alt = "", shareId }: ImageProps) {
+  // Nested in a Section, fill its slot; otherwise the frame or the window it sits in.
+  const visible = useVisibleRect(aspect);
+  const rect = area ?? visible;
   const { scale, x, y } = kenBurns(progress, { zoom, pan, focus });
   const position = `${percent(focus.x)} ${percent(focus.y)}`;
 

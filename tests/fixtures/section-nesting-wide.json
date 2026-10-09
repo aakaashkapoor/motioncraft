@@ -312,6 +312,40 @@
         }
       },
       "durationMs": 9000
+    },
+    {
+      "id": "video-clip",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A clip inside a section",
+        "content": {
+          "component": "VideoClip",
+          "props": {
+            "src": "media/clip.mp4",
+            "muted": true
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "image",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "An image inside a section",
+        "content": {
+          "component": "Image",
+          "props": {
+            "src": "media/landscape.png",
+            "alt": "A still"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }
