@@ -54,3 +54,4 @@ export { BigNumber, bigNumberStep, countedValue, formatBigNumber, type BigNumber
 export { FlowDiagram, flowDiagramLayout, type FlowArrow, type FlowDiagramLayout, type FlowDiagramProps } from "./kit";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./kit";
 export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./icons";
+export { cancelRender, continueRender, delayRender, RenderNotReadyError, READY_TIMEOUT_MS } from "./render/ready";

@@ -13,6 +13,7 @@ import { frameSize } from "../layout/frame";
 import type { Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { createPageEncoder, type PageEncoder } from "./encode";
+import { domImages, pageGate, waitUntilReady } from "./ready";
 
 /** Everything the page needs, serialized into the HTML as JSON. */
 export interface PageInput {
@@ -67,6 +68,11 @@ export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
 export interface PageApi {
   totalFrames: number;
   renderFrame(frame: number): void;
+  /** Resolves once the frame on screen is ready to capture (see `waitUntilReady`). */
+  waitUntilReady(timeoutMs: number): Promise<void>;
+  /** The page's `delayRender`/`continueRender`, for the driver and tests. */
+  delayRender(label: string): number;
+  continueRender(handle: number): void;
   /** Measures the frame on screen for the layer-1 checks. */
   measureFrame(): FrameMeasurement;
   /** Encodes captured frames to H.264 (see `renderVideo`). */
@@ -95,6 +101,14 @@ export function mountPage(): void {
     },
   });
 
+  // Load every bundled face up front: a face no frame has used yet must not be
+  // missing (or silently replaced) when one first does.
+  const fontsHandle = pageGate.delayRender("bundled fonts");
+  Promise.all([...document.fonts].map((face) => face.load())).then(
+    () => pageGate.continueRender(fontsHandle),
+    (error: unknown) => pageGate.cancelRender(new Error(`a bundled font failed to load: ${String(error)}`)),
+  );
+
   window.motioncraft = {
     totalFrames: timeline.totalFrames,
     renderFrame(frame) {
@@ -105,6 +119,12 @@ export function mountPage(): void {
       });
       if (renderError !== undefined) throw renderError;
     },
+    waitUntilReady(timeoutMs) {
+      const sources = { fonts: () => document.fonts.ready, images: () => domImages(container) };
+      return waitUntilReady(pageGate, sources, timeoutMs);
+    },
+    delayRender: (label) => pageGate.delayRender(label),
+    continueRender: (handle) => pageGate.continueRender(handle),
     measureFrame() {
       const frame = container.firstElementChild;
       if (!frame) throw new Error("motioncraft page: no frame rendered yet");

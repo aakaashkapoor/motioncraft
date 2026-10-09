@@ -4,6 +4,7 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { fontFaceCss } from "./fonts";
 import { INPUT_ELEMENT_ID, ROOT_ELEMENT_ID, type PageInput } from "./page";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -43,12 +44,12 @@ function embedJson(value: unknown): string {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
-/** Assembles the HTML document from a bundled script and the page input. */
-export function pageHtml(js: string, input: PageInput): string {
+/** Assembles the HTML document from a bundled script, the page input and extra CSS (the fonts). */
+export function pageHtml(js: string, input: PageInput, css = ""): string {
   return [
     "<!doctype html>",
     '<html><head><meta charset="utf-8">',
-    "<style>html,body{margin:0;padding:0;overflow:hidden}</style>",
+    `<style>html,body{margin:0;padding:0;overflow:hidden}${css}</style>`,
     "</head><body>",
     `<div id="${ROOT_ELEMENT_ID}"></div>`,
     `<script id="${INPUT_ELEMENT_ID}" type="application/json">${embedJson(input)}</script>`,
@@ -59,5 +60,6 @@ export function pageHtml(js: string, input: PageInput): string {
 
 /** The complete render page for `input`, as a single HTML string. */
 export async function bundlePage(input: PageInput): Promise<string> {
-  return pageHtml(await pageScript(), input);
+  const [js, css] = await Promise.all([pageScript(), fontFaceCss()]);
+  return pageHtml(js, input, css);
 }
