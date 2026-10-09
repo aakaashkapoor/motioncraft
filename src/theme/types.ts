@@ -4,7 +4,7 @@ import type { SpringPreset } from "../engine/spring";
 // depth and motion. Kit components read from it and never hard-code values.
 // A storyboard can override any token (see `resolveTheme`).
 
-import type { Aspect } from "../storyboard/types";
+import type { Aspect, TransitionType } from "../storyboard/types";
 
 /**
  * Colors by role, as hex strings (`#rgb` or `#rrggbb`). Neutrals are tinted,
@@ -129,6 +129,8 @@ export interface ThemeMotion {
   enterMs: number;
   /** How long an element takes to exit, in ms. */
   exitMs: number;
+  /** Default transition between scenes, where the storyboard sets none. */
+  transition: TransitionType;
   /** Default length of a transition between scenes, in ms. */
   transitionMs: number;
   /** Delay between items of a staggered group, in ms. */

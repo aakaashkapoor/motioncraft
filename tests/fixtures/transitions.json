@@ -1,0 +1,88 @@
+{
+  "title": "Transitions fixture: 9:16",
+  "aspect": "9:16",
+  "fps": 30,
+  "scenes": [
+    {
+      "id": "title",
+      "component": "TitleCard",
+      "props": {
+        "kicker": "Design v2",
+        "title": "Transitions",
+        "subtitle": "Scenes hand over, not cut"
+      },
+      "narration": "Scenes overlap as one hands over to the next.",
+      "durationMs": 4000,
+      "transition": {
+        "type": "slide"
+      }
+    },
+    {
+      "id": "steps",
+      "component": "StepList",
+      "props": {
+        "title": "Presentations",
+        "items": [
+          "Slide",
+          "Zoom blur",
+          "Wipe"
+        ],
+        "highlight": 0
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "zoomBlur",
+        "durationMs": 700
+      }
+    },
+    {
+      "id": "flow",
+      "component": "FlowDiagram",
+      "props": {
+        "nodes": [
+          "Scene A",
+          "Overlap",
+          "Scene B"
+        ],
+        "caption": "Both scenes render together"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "wipe",
+        "direction": "up"
+      }
+    },
+    {
+      "id": "stat",
+      "component": "BigNumber",
+      "props": {
+        "value": 5,
+        "label": "Transition types"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade",
+        "durationMs": 500
+      }
+    },
+    {
+      "id": "end",
+      "component": "TitleCard",
+      "props": {
+        "title": "Hard cut"
+      },
+      "durationMs": 2000,
+      "transition": {
+        "type": "cut"
+      }
+    },
+    {
+      "id": "outro",
+      "component": "TitleCard",
+      "props": {
+        "title": "Default slide"
+      },
+      "durationMs": 2000
+    }
+  ]
+}

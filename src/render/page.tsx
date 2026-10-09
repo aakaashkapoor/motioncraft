@@ -7,12 +7,13 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
 import type { FrameMeasurement } from "../checks/types";
-import { buildTimeline, frameAt, type SceneDurations, type Timeline } from "../engine/timeline";
+import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type SceneDurations, type Timeline } from "../engine/timeline";
 import { Caption, kit } from "../kit";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
 import type { Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
+import { transitionStyle } from "../transitions";
 import { createPageEncoder, type PageEncoder } from "./encode";
 import { domImages, pageGate, waitUntilReady } from "./ready";
 
@@ -20,7 +21,7 @@ import { domImages, pageGate, waitUntilReady } from "./ready";
 export interface PageInput {
   storyboard: Storyboard;
   theme: Theme;
-  /** Scene durations in ms that override `durationMs` (see `buildTimeline`). */
+  /** Scene durations in ms that override `durationMs` (see `buildTimeline`). The theme sets the default transition. */
   durations: Record<string, number>;
 }
 
@@ -34,17 +35,38 @@ export interface FrameProps {
   frame: number;
 }
 
-/** Exactly what is on screen at `frame`: the ground, the scene's component and its caption. */
-export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
-  const info = frameAt(timeline, frame);
-  const scene = storyboard.scenes[info.sceneIndex]!;
+/** One scene's component and caption. During a transition, wrapped in its presentation's style. */
+function SceneLayer({ storyboard, theme, scene: active }: { storyboard: Storyboard; theme: Theme; scene: ActiveScene }) {
+  const scene = storyboard.scenes[active.sceneIndex]!;
   const Component = Object.hasOwn(kit, scene.component) ? kit[scene.component] : undefined;
   if (Component === undefined) {
     throw new Error(`scene "${scene.id}": unknown component "${scene.component}"`);
   }
   const { aspect } = storyboard;
-  const { width, height } = frameSize(aspect);
-  const common = { progress: info.progress, theme, aspect };
+  const common = { progress: active.progress, theme, aspect };
+  const content = (
+    <>
+      <Component {...scene.props} {...common} />
+      {scene.narration !== undefined && (
+        <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
+          <Caption {...common} text={scene.narration} />
+        </div>
+      )}
+    </>
+  );
+  if (active.transition === undefined) return content;
+  const style = transitionStyle(active.transition, frameSize(aspect));
+  return <div style={{ position: "absolute", inset: 0, ...style }}>{content}</div>;
+}
+
+/**
+ * Exactly what is on screen at `frame`: the ground, then each scene's
+ * component and caption. During a transition both scenes are stacked, the
+ * incoming one on top, over one shared ground.
+ */
+export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
+  const info = frameAt(timeline, frame);
+  const { width, height } = frameSize(storyboard.aspect);
 
   return (
     <div
@@ -56,13 +78,10 @@ export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
         backgroundColor: theme.colors.ground,
       }}
     >
-      <Ground theme={theme} aspect={aspect} />
-      <Component {...scene.props} {...common} />
-      {scene.narration !== undefined && (
-        <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
-          <Caption {...common} text={scene.narration} />
-        </div>
-      )}
+      <Ground theme={theme} aspect={storyboard.aspect} />
+      {scenesOnScreen(info).map((scene) => (
+        <SceneLayer key={scene.sceneId} storyboard={storyboard} theme={theme} scene={scene} />
+      ))}
     </div>
   );
 }
@@ -94,7 +113,7 @@ export function mountPage(): void {
   if (!json || !container) throw new Error("motioncraft page: missing input or root element");
 
   const { storyboard, theme, durations } = JSON.parse(json) as PageInput;
-  const timeline = buildTimeline(storyboard, durations as SceneDurations);
+  const timeline = buildTimeline(storyboard, durations as SceneDurations, theme);
   // React reports render errors here instead of throwing from flushSync.
   let renderError: unknown;
   const root = createRoot(container, {

@@ -20,7 +20,7 @@ async function main(argv: string[]): Promise<void> {
   const { storyboard } = validation;
   const theme = resolveTheme(storyboard);
   const durations = estimateDurations(storyboard);
-  const frames = args.frames === "per-scene" ? perSceneFrames(buildTimeline(storyboard, durations)) : args.frames;
+  const frames = args.frames === "per-scene" ? perSceneFrames(buildTimeline(storyboard, durations, theme)) : args.frames;
 
   const paths = await renderStills({ storyboard, theme, durations, frames, outDir: args.out });
   for (const path of paths) console.log(path);
