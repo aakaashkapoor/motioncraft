@@ -11,6 +11,7 @@ import { CardRow } from "./CardRow";
 import { FeatureList } from "./FeatureList";
 import { Caption, captionLimits } from "./Caption";
 import { FlowDiagram } from "./FlowDiagram";
+import { Section } from "./Section";
 import { StepList } from "./StepList";
 import { CodeWindow, TerminalWindow } from "./windows";
 import { TitleCard } from "./TitleCard";
@@ -37,6 +38,7 @@ export const kit: Record<string, KitComponent> = {
   BigNumber: asKitComponent(BigNumber),
   FlowDiagram: asKitComponent(FlowDiagram),
   StepList: asKitComponent(StepList),
+  Section: asKitComponent(Section),
   AppWindow: asKitComponent(AppWindow),
   BrowserWindow: asKitComponent(BrowserWindow),
   TerminalWindow: asKitComponent(TerminalWindow),

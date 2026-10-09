@@ -73,6 +73,7 @@ export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./
 export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./icons";
 export { cancelRender, continueRender, delayRender, RenderNotReadyError, READY_TIMEOUT_MS } from "./render/ready";
 export { Ground, groundStyle, type GroundProps } from "./kit";
+export { Section, sectionLayout, sectionTiming, type SectionContent, type SectionLayout, type SectionProps } from "./kit/Section";
 export * from "./kit/windows";
 export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMessage, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";
 export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps } from "./kit/Arrow";

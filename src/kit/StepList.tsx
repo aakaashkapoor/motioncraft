@@ -73,12 +73,11 @@ function estimateListHeight(theme: Theme, aspect: Aspect, width: number, title: 
 }
 
 /**
- * The largest item size at which the title and items fit above the caption
- * band. If none fits, the smallest: the list then overflows visibly and the
- * layer-1 checks report it.
+ * The largest item size at which the title and items fit in `area` (by
+ * default the content area, above the caption band). If none fits, the
+ * smallest: the list then overflows visibly and the layer-1 checks report it.
  */
-export function stepListLayout(theme: Theme, aspect: Aspect, title: string | undefined, items: string[]): StepLayout {
-  const area = contentArea(theme, aspect);
+export function stepListLayout(theme: Theme, aspect: Aspect, title: string | undefined, items: string[], area = contentArea(theme, aspect)): StepLayout {
   const layouts = ITEM_STEPS.map((step) => layoutFor(theme, aspect, step));
   return layouts.find((layout) => estimateListHeight(theme, aspect, area.width, title, items, layout) <= area.height) ?? layouts.at(-1)!;
 }
@@ -130,9 +129,9 @@ function itemMotion(progress: number, [start, end]: [number, number], slide: num
   };
 }
 
-export function StepList({ progress, theme, aspect, items, title, highlight, marker = "number" }: StepListProps) {
-  const area = contentArea(theme, aspect);
-  const layout = stepListLayout(theme, aspect, title, items);
+export function StepList({ progress, theme, aspect, area: slot, items, title, highlight, marker = "number" }: StepListProps) {
+  const area = slot ?? contentArea(theme, aspect);
+  const layout = stepListLayout(theme, aspect, title, items, area);
   const easing = themeEasing(theme);
   const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
   const titleOpacity = interpolate(progress, [0, TITLE_ENTER], [0, 1], { easing });
