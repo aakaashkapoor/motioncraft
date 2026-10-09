@@ -276,7 +276,11 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     is true); `exit` takes a `share` of the entry within `minMs`-`maxMs`;
     `flow` is the dot that runs along a drawn connector (one trip per `ms`, a
     `dotPx` dot, and a `glowPx` ring of the accent at `glowOpacity` on the
-    node it reaches; `"ms": 0` turns it off); `drift` moves the mesh blobs (up
+    node it reaches; `"ms": 0` turns it off); `typing` is text typed with a
+    caret (`cps` keystrokes a second on average, each gap varied by up to
+    `jitter` of itself, a `pauseMinMs`-`pauseMaxMs` pause after a comma or
+    full stop, a caret that blinks every `blinkMs`, and a printed line that
+    fades in over its `ms`); `drift` moves the mesh blobs (up
     to `px` from home, each looping in `minMs`-`maxMs`), `grid.breathe` the
     grid (`ms`, `scale`, `curve`) and `grainFps` the grain. A `curve` is a name (`"linear"`, `"expoOut"`,
     `"expoIn"`, `"expoInOut"`, `"sineInOut"`, `"power4InOut"`), a
@@ -603,7 +607,9 @@ component as `content`.
 #### `BrowserWindow`
 
 An address bar with a `url`, optional `tabs` and `activeTab`, and any `content`
-in the page area.
+in the page area. With `"typeUrl": true` the address bar types the url once the
+window has arrived, and the page loads when it is entered (`seed` changes the
+typing rhythm).
 
 ```json
 {
@@ -611,6 +617,7 @@ in the page area.
   "component": "BrowserWindow",
   "props": {
     "url": "example.com/pricing",
+    "typeUrl": true,
     "content": { "component": "TitleCard", "props": { "title": "Simple pricing", "subtitle": "One plan" } }
   },
   "narration": "Pricing is one simple plan."
@@ -619,7 +626,12 @@ in the page area.
 
 #### `TerminalWindow`
 
-Typed commands (`"prompt": true`) and program output, line by line.
+Typed commands (`"prompt": true`) and program output, line by line. Each
+command types behind a live caret at a human pace (a little uneven, pausing
+after punctuation), and its output fades in once it has been typed. Text stays
+at the mono size: a long session scrolls the window rather than shrinking it.
+`seed` (a number or string) changes the typing rhythm; the same seed types the
+same way on every render.
 
 ```json
 {
@@ -660,9 +672,12 @@ by one) and `lineNumbers` (default true).
 #### `ChatWindow`
 
 A team chat: a `channel`, `messages` that arrive one by one (`author`, `time`,
-`text`, optional `badge`, `reactions`, `highlight`, `avatar`), an optional
-`sidebar` (shown in 16:9) and floating `cards` that slide in afterwards.
-Avatars get theme colors by author; leave `avatar.color` out.
+`text`, optional `badge`, `reactions`, `highlight`, `avatar`, `typed`), an
+optional `sidebar` (shown in 16:9) and floating `cards` that slide in
+afterwards. Avatars get theme colors by author; leave `avatar.color` out. A
+message normally arrives after a typing indicator; a `"typed": true` one (the
+viewer's own) types into the composer first, then is sent. `seed` changes the
+typing rhythm.
 
 ```json
 {
@@ -672,7 +687,7 @@ Avatars get theme colors by author; leave `avatar.color` out.
     "channel": "#releases",
     "sidebar": { "workspace": "Acme", "channels": ["#general", "#releases"] },
     "messages": [
-      { "author": "Dana", "time": "4:58 PM", "text": "Friday deploy?" },
+      { "author": "Dana", "time": "4:58 PM", "text": "Friday deploy?", "typed": true },
       { "author": "Deploy Bot", "badge": "APP", "time": "5:01 PM", "text": "v2.4 is live", "reactions": [{ "emoji": "🎉", "count": 3 }], "highlight": true }
     ]
   },

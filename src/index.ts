@@ -37,6 +37,7 @@ export type {
   TypeRamp,
   TypeRole,
   TypeSpec,
+  TypingToken,
 } from "./theme/types";
 export { ACCENT_INTENSITIES, CURVE_NAMES, GROUND_STYLES, TYPE_ROLES } from "./theme/types";
 export { neutralTheme } from "./theme/neutral";
@@ -106,5 +107,6 @@ export { Handoff, handoffLayout, type HandoffLayout, type HandoffProps } from ".
 export { HEADLINE_MOTIONS, HEADLINE_ROLES, Headline, HeadlineText, MARK_STYLES, headlineBox, headlineMarks, headlineTiming, headlineWords, markSweep, wordLeaving, type HeadlineMarks, type HeadlineMotion, type HeadlineProps, type HeadlineRole, type HeadlineTextProps, type HeadlineTiming, type MarkStyle } from "./kit/Headline";
 export { SceneFrame, frameLineSpec, sceneFrameLayout, sceneFrameTiming, type SceneFrameLayout, type SceneFrameProps, type SceneFrameText, type SceneFrameTiming } from "./kit/SceneFrame";
 export { MotionDelay, NOMINAL_SCENE_MS, SceneClockContext, useSceneMs, useSceneTime, type SceneClock, type SceneTime } from "./kit/frameContext";
+export { caretBlink, typedCount, typedText, typingPauseMs, typingSpan, typingTimes, type TypingSpan } from "./kit/typing";
 export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, tween, type Timed } from "./kit/motion";
 export * from "./camera";

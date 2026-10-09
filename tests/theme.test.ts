@@ -192,6 +192,10 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
     // Life #11: a 10-14 px dot travels each drawn connector every 1.4 s, expo in-out; the node it reaches glows.
     expect(m.flow).toMatchObject({ ms: 1400, curve: "expoInOut", glowPx: 6, glowOpacity: 0.25 });
     within(m.flow.dotPx, 10, 14);
+    // Life #10: typing at 30-45 characters per second, jittered +-30%, pausing 200-400 ms at punctuation;
+    // the caret blinks every 1.06 s and a printed line fades in over 120 ms on fx's curve.
+    expect(m.typing).toMatchObject({ ms: 120, curve: m.fx.curve, jitter: 0.3, pauseMinMs: 200, pauseMaxMs: 400, blinkMs: 1060 });
+    within(m.typing.cps, 30, 45);
     // First motion of a scene at 100-200 ms; cascades done in about the first 1.2 s.
     within(m.leadMs, 100, 200);
     within(m.cascadeMs, 1000, 1400);

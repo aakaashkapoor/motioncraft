@@ -1,25 +1,30 @@
 // A generic team-chat window (no real product's branding): an optional sidebar
 // with the workspace name and channels, a header with the channel name, and
 // messages that arrive one by one, each preceded by a typing indicator (a
-// `beat`) and rising into place. Optional floating message cards slide in
+// `beat`) and rising into place. A `typed` message (the viewer's own) types
+// into the composer instead, with a live caret (design v3, life #10), and lands
+// when it is sent. Optional floating message cards slide in
 // beside the window afterwards. The window arrives on the scene's lead; the
 // conversation plays at the same pace in any scene, speeding up only when a
 // scene is too short to fit it. In 9:16 the sidebar collapses into the header;
 // in a narrow 16:9 area (a Section slot) the window stacks over its cards as in 9:16.
 
 import type { CSSProperties } from "react";
+import type { Seed } from "../engine/random";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
-import { estimateTextHeight } from "../layout/textFit";
+import { estimateLines, estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { mixColors, withAlpha } from "../theme/color";
 import { contrastRatio } from "../theme/contrast";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { useSceneTime, type SceneTime } from "./frameContext";
+import { Caret } from "./Caret";
 import { arrive, exitOpacity, fade, fitSequence, tween, type Timed } from "./motion";
 import type { KitProps } from "./types";
+import { caretBlink, typedText, typingSpan, type TypingSpan } from "./typing";
 import { windowWidth } from "./windowLayout";
 
 export interface ChatAvatar {
@@ -45,6 +50,8 @@ export interface ChatMessage {
   reactions?: ChatReaction[];
   /** Tint the message with the accent. */
   highlight?: boolean;
+  /** Type it into the composer, then send it (the viewer's own message), instead of showing a typing indicator. */
+  typed?: boolean;
 }
 
 export interface ChatSidebar {
@@ -62,13 +69,17 @@ export interface ChatWindowProps extends KitProps {
   cards?: ChatMessage[];
   /** Morphs the window across a shared-element transition. */
   shareId?: string;
+  /** Varies the composer's typing rhythm; the same seed types the same way every time. Default 0. */
+  seed?: Seed;
 }
 
 export interface ChatTiming {
-  /** [start, end] of the typing indicator, in ms from the scene's start. */
+  /** [start, end] of the typing indicator, or of the composer for a typed message (sent at the end), in ms from the scene's start. */
   typing: [number, number];
   /** [start, end] of the message's rise. */
   appear: [number, number];
+  /** For a typed message: when each character lands in the composer. */
+  chars?: number[];
 }
 
 /** Widest the window grows in 16:9 when it stands alone. */
@@ -90,8 +101,16 @@ const CONTENT_SLACK = 1.1;
 /** Shortest the window gets, as a share of the room it has. */
 const MIN_HEIGHT_SHARE = 0.55;
 
+/** Stands in for the caret when counting a typed message's characters. */
+const CARET_ROOM = "_";
+
+/** What the conversation's timing needs to know of a message. */
+type Typed = Pick<ChatMessage, "text" | "typed">;
+
 interface ChatSequence {
   messages: ChatTiming[];
+  /** Each typed message's composer typing; undefined for the others. */
+  composer: Array<TypingSpan | undefined>;
   /** [start, end] of each card's slide-in. */
   cards: Array<[number, number]>;
   /** How much the sequence is sped up to fit the scene: 1 when it fits as it is. */
@@ -100,33 +119,54 @@ interface ChatSequence {
 
 /**
  * The conversation, in ms: once the window has faded in, each message types
- * for a `beat`, then rises in with `enter`; the next starts typing as soon as
- * it shows. The cards follow the last message, `enter`'s stagger apart. Given
- * the scene's time, a conversation that would run into the exit plays faster.
+ * for a `beat` behind the indicator (or, typed, for its keystrokes in the
+ * composer and a `beat` more before it is sent), then rises in with `enter`;
+ * the next starts typing as soon as it shows. The cards follow the last
+ * message, `enter`'s stagger apart. Given the scene's time, a conversation
+ * that would run into the exit plays faster.
  */
-function chatSequence(theme: Theme, count: number, cardCount: number, time?: SceneTime): ChatSequence {
+function chatSequence(theme: Theme, input: number | readonly Typed[], cardCount: number, time?: SceneTime, seed: Seed = 0): ChatSequence {
   const { leadMs, fx, beat, enter } = theme.motion;
+  const list: readonly Typed[] = typeof input === "number" ? Array.from({ length: input }, () => ({ text: "" })) : input;
   const start = leadMs + fx.ms;
-  const slot = beat.ms + fx.ms;
-  const lastShown = start + (count - 1) * slot + beat.ms + fx.ms;
-  const cardsStart = count > 0 ? lastShown : start;
-  const naturalEnd = cardCount > 0 ? cardsStart + (cardCount - 1) * enter.staggerMs + enter.ms : lastShown - fx.ms + enter.ms;
+  // At natural pace; a typed message's keystrokes count from its own start.
+  const typed = list.map((m, i) => (m.typed ? typingSpan(theme, m.text, 0, `${seed}:${i}`) : undefined));
+  let at = start;
+  const natural = typed.map((span): [number, number] => {
+    const window: [number, number] = [at, at + (span === undefined ? 0 : span.end) + beat.ms];
+    at = window[1] + fx.ms;
+    return window;
+  });
+  const lastSent = natural.at(-1)?.[1];
+  const cardsStart = lastSent === undefined ? start : lastSent + fx.ms;
+  const naturalEnd = cardCount > 0 ? cardsStart + (cardCount - 1) * enter.staggerMs + enter.ms : (lastSent ?? start) + enter.ms;
   const pace = time === undefined ? 1 : fitSequence(theme, time, start, naturalEnd, enter.ms);
-  const at = (ms: number) => start + (ms - start) * pace;
-  const messages = Array.from({ length: count }, (_, i): ChatTiming => {
-    const typed = start + i * slot + beat.ms;
-    return { typing: [at(typed - beat.ms), at(typed)], appear: [at(typed), at(typed + enter.ms)] };
+  const paced = (ms: number) => start + (ms - start) * pace;
+  const messages = natural.map(([from, sent], i): ChatTiming => {
+    const timing: ChatTiming = { typing: [paced(from), paced(sent)], appear: [paced(sent), paced(sent + enter.ms)] };
+    const span = typed[i];
+    return span === undefined ? timing : { ...timing, chars: span.chars.map((t) => paced(from + t)) };
+  });
+  const composer = typed.map((span, i): TypingSpan | undefined => {
+    if (span === undefined) return undefined;
+    const { typing, chars } = messages[i]!;
+    return { start: typing[0], typeStart: paced(natural[i]![0] + span.typeStart), chars: chars!, end: typing[1] };
   });
   const cards = Array.from({ length: cardCount }, (_, i): [number, number] => {
     const cardStart = cardsStart + i * enter.staggerMs;
-    return [at(cardStart), at(cardStart + enter.ms)];
+    return [paced(cardStart), paced(cardStart + enter.ms)];
   });
-  return { messages, cards, pace };
+  return { messages, composer, cards, pace };
 }
 
-/** Typing and appear windows of each message, in order, in ms. Given the scene's time, sped up to fit before the exit if needed. */
-export function chatTiming(theme: Theme, count: number, cardCount = 0, time?: SceneTime): ChatTiming[] {
-  return chatSequence(theme, count, cardCount, time).messages;
+/**
+ * Typing and appear windows of each message, in order, in ms: of `count`
+ * messages behind typing indicators, or of `messages`, whose `typed` ones type
+ * into the composer with `seed`'s rhythm. Given the scene's time, sped up to
+ * fit before the exit if needed.
+ */
+export function chatTiming(theme: Theme, messages: number | readonly Typed[], cardCount = 0, time?: SceneTime, seed: Seed = 0): ChatTiming[] {
+  return chatSequence(theme, messages, cardCount, time, seed).messages;
 }
 
 export interface ChatWindowLayout {
@@ -150,13 +190,19 @@ type LayoutInput = Pick<ChatWindowProps, "messages" | "sidebar" | "cards">;
 /** Height of one line of text in a ramp step, in px. */
 const lineOf = (spec: TypeSpec) => spec.size * spec.lineHeight;
 
-function sizesFor(theme: Theme, aspect: Aspect, textRole: TypeRole) {
+/**
+ * Sizes for message text in `textRole`. The composer holds a line of its
+ * placeholder, or as many lines of message text as the longest message typed
+ * into it takes in `composerWidth`.
+ */
+function sizesFor(theme: Theme, aspect: Aspect, textRole: TypeRole, typedTexts: readonly string[], composerWidth: number) {
   const { type, spacing } = theme;
   const text = type[textRole][aspect];
   const meta = type.label[aspect];
   const avatarSize = Math.round(text.size * AVATAR_EM);
   const headerHeight = Math.ceil(lineOf(type.body[aspect]) + 2 * spacing.xs + (aspect === "9:16" ? lineOf(meta) : 0));
-  const composerHeight = Math.ceil(lineOf(meta) + 4 * spacing.xs);
+  const typedLines = Math.max(0, ...typedTexts.map((t) => estimateLines(t + CARET_ROOM, composerWidth, text.size)));
+  const composerHeight = Math.ceil(Math.max(lineOf(meta), typedLines * lineOf(text)) + 4 * spacing.xs);
   return { textRole, text, meta, avatarSize, headerHeight, composerHeight };
 }
 
@@ -189,8 +235,11 @@ export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sideb
   const room = !wide && hasCards ? Math.floor((area.height - gap) * WINDOW_SHARE_TALL) : area.height;
   const sidebarWidth = wide && sidebar ? Math.min(MAX_SIDEBAR_WIDTH, Math.floor(width * SIDEBAR_SHARE)) : 0;
   const listWidth = width - sidebarWidth - 2 * spacing.md;
+  // The composer's text: inside its padding, its border and the text box's own padding.
+  const composerWidth = width - sidebarWidth - 4 * spacing.xs - 2 * theme.hairline;
+  const typedTexts = messages.filter((m) => m.typed).map((m) => m.text);
 
-  const candidates = TEXT_ROLES.map((role) => sizesFor(theme, aspect, role));
+  const candidates = TEXT_ROLES.map((role) => sizesFor(theme, aspect, role, typedTexts, composerWidth));
   const needed = (s: (typeof candidates)[number]) => {
     const list = messages.reduce((sum, m) => sum + messageHeight(theme, m, listWidth, s.text, s.meta, s.avatarSize), 0);
     const chat = list + spacing.xs * (Math.max(0, messages.length - 1) + 2) + s.headerHeight + s.composerHeight;
@@ -424,25 +473,62 @@ function Header({ channel, workspace, layout, theme, aspect }: { channel: string
   );
 }
 
-function Composer({ channel, layout, theme }: { channel: string; layout: ChatWindowLayout; theme: Theme }) {
+/** What the composer shows while a message types into it. */
+interface ComposerTyping {
+  /** The text typed so far; the placeholder shows while it is empty. */
+  text: string;
+  /** Caret opacity, or undefined once the message has been sent. */
+  caret?: number;
+  /** 0..1: how far the accent focus ring is on. */
+  focus: number;
+}
+
+/**
+ * The composer at `ms`: the message typing into it, with a caret that blinks
+ * on the empty field and once the text is in, and is solid while keys land.
+ * The focus ring comes and goes with `fx.fast`.
+ */
+function composerAt(theme: Theme, messages: readonly ChatMessage[], composer: ReadonlyArray<TypingSpan | undefined>, ms: number): ComposerTyping | undefined {
+  const fast = theme.motion["fx.fast"];
+  const i = composer.findIndex((span) => span !== undefined && ms >= span.start && ms < span.end + fast.ms);
+  const span = composer[i];
+  if (span === undefined) return undefined;
+  const focus = Math.min(fade(fast, ms - span.start), 1 - fade(fast, ms - span.end));
+  if (ms >= span.end) return { text: "", focus };
+  const typed = span.chars.at(-1) ?? span.typeStart;
+  const caret = ms < span.typeStart ? caretBlink(theme, ms - span.start) : ms < typed ? 1 : caretBlink(theme, ms - typed);
+  return { text: typedText(messages[i]!.text, span, ms), caret, focus };
+}
+
+function Composer({ channel, layout, theme, typing }: { channel: string; layout: ChatWindowLayout; theme: Theme; typing?: ComposerTyping }) {
   const { colors, fonts, spacing, radius } = theme;
+  const caret = typing?.caret === undefined ? null : <Caret theme={theme} shape="bar" opacity={typing.caret} />;
   return (
-    <div style={{ flex: "none", height: layout.composerHeight, padding: spacing.xs, boxSizing: "border-box" }}>
+    <div data-chat-composer="" style={{ flex: "none", height: layout.composerHeight, padding: spacing.xs, boxSizing: "border-box" }}>
       <div
         style={{
           height: "100%",
-          padding: `0 ${spacing.xs}px`,
+          // Text sits a padding below the top, so one line is centered and more fill the box downwards.
+          padding: `${spacing.xs}px ${spacing.xs}px 0`,
           borderRadius: radius.sm,
-          border: `${theme.hairline}px solid ${colors.border}`,
+          border: `${theme.hairline}px solid ${typing === undefined ? colors.border : mixColors(colors.border, colors.accent, typing.focus)}`,
           display: "flex",
-          alignItems: "center",
-          color: colors.textMuted,
+          alignItems: "flex-start",
           fontFamily: fonts.body,
-          ...typeCss(layout.meta),
           boxSizing: "border-box",
         }}
       >
-        {`Message # ${channel}`}
+        {typing === undefined || typing.text === "" ? (
+          <div data-chat-composer-placeholder="" style={{ color: colors.textMuted, ...typeCss(layout.meta) }}>
+            {caret}
+            {`Message # ${channel}`}
+          </div>
+        ) : (
+          <div data-chat-composer-text="" style={{ minWidth: 0, color: colors.text, ...typeCss(layout.text), overflowWrap: "break-word" }}>
+            {typing.text}
+            {caret}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -462,7 +548,7 @@ function typingOpacity(theme: Theme, ms: number, [start, end]: [number, number],
   return Math.min(fade(fast, ms - start), 1 - fade(fast, ms - (end - fast.ms)));
 }
 
-export function ChatWindow({ progress, theme, aspect, area: slot, channel, messages, sidebar, cards, shareId }: ChatWindowProps) {
+export function ChatWindow({ progress, theme, aspect, area: slot, channel, messages, sidebar, cards, shareId, seed = 0 }: ChatWindowProps) {
   const area = slot ?? contentArea(theme, aspect);
   const layout = chatWindowLayout(theme, aspect, { messages, sidebar, cards }, slot);
   const { colors, spacing, radius, cardShadow } = theme;
@@ -470,7 +556,7 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
   const { ms } = time;
   const enter = arrive(theme, ms, theme.motion.leadMs);
   const exit = exitOpacity(theme, time, theme.motion.enter.ms);
-  const { messages: timing, cards: cardTimes, pace } = chatSequence(theme, messages.length, cards?.length ?? 0, time);
+  const { messages: timing, composer, cards: cardTimes, pace } = chatSequence(theme, messages, cards?.length ?? 0, time, seed);
   const shadow = `0 ${cardShadow.y}px ${cardShadow.blur}px ${withAlpha(colors.shadow, cardShadow.opacity)}`;
   const at = (rect: Rect): CSSProperties => ({ position: "absolute", left: rect.x - area.x, top: rect.y - area.y, width: rect.width, height: rect.height });
   const slide = spacing.md;
@@ -527,14 +613,17 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
                   >
                     <MessageBody message={message} layout={layout} theme={theme} aspect={aspect} />
                   </div>
-                  <div data-chat-typing={i} style={{ position: "absolute", left: spacing.xxs * 1.5, top: spacing.xxs, opacity: typingOpacity(theme, ms, typing, pace) }}>
+                  <div
+                    data-chat-typing={i}
+                    style={{ position: "absolute", left: spacing.xxs * 1.5, top: spacing.xxs, opacity: message.typed ? 0 : typingOpacity(theme, ms, typing, pace) }}
+                  >
                     <TypingIndicator message={message} local={local} layout={layout} theme={theme} />
                   </div>
                 </div>
               );
             })}
           </div>
-          <Composer channel={channel} layout={layout} theme={theme} />
+          <Composer channel={channel} layout={layout} theme={theme} typing={composerAt(theme, messages, composer, ms)} />
         </div>
       </div>
       {cards && layout.cards && (

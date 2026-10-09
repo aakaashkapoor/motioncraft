@@ -1,0 +1,170 @@
+{
+  "title": "Typing with a live caret, 9:16 (must pass layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "terminal",
+      "component": "TerminalWindow",
+      "props": {
+        "title": "zsh",
+        "lines": [
+          {
+            "prompt": true,
+            "text": "npm run build"
+          },
+          {
+            "text": "compiled 412 modules"
+          },
+          {
+            "text": "dist/index.js  184 kB"
+          },
+          {
+            "text": "built in 2.4s"
+          },
+          {
+            "prompt": true,
+            "text": "npm test"
+          },
+          {
+            "text": "typing.test.ts    28 ok"
+          },
+          {
+            "text": "terminal.test.ts  31 ok"
+          },
+          {
+            "text": "chat.test.ts      19 ok"
+          },
+          {
+            "text": "1073 tests passed"
+          },
+          {
+            "prompt": true,
+            "text": "npx motioncraft render launch.json"
+          },
+          {
+            "text": "checks passed"
+          },
+          {
+            "text": "rendered 240 frames"
+          },
+          {
+            "text": "wrote out/launch.mp4"
+          },
+          {
+            "prompt": true,
+            "text": "npm run deploy"
+          },
+          {
+            "text": "uploading 3 files"
+          },
+          {
+            "text": "live at example.com/launch"
+          }
+        ]
+      },
+      "narration": "Build, test, render and deploy, all from one terminal.",
+      "durationMs": 11000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "chat",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "launches",
+        "sidebar": {
+          "workspace": "Acme Studio",
+          "channels": [
+            "general",
+            "launches",
+            "design"
+          ]
+        },
+        "messages": [
+          {
+            "author": "Maya Chen",
+            "time": "9:41 AM",
+            "text": "Can you render the launch video tonight?",
+            "typed": true
+          },
+          {
+            "author": "Render Bot",
+            "time": "9:42 AM",
+            "text": "On it. Rendering 240 frames now.",
+            "badge": "APP"
+          },
+          {
+            "author": "Render Bot",
+            "time": "9:44 AM",
+            "text": "Done: launch.mp4 is ready.",
+            "badge": "APP",
+            "reactions": [
+              {
+                "emoji": "🎉",
+                "count": 3
+              }
+            ],
+            "highlight": true
+          }
+        ]
+      },
+      "narration": "Ask in chat, and the bot renders the video.",
+      "durationMs": 14500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "browser",
+      "component": "BrowserWindow",
+      "props": {
+        "url": "https://example.com/launch",
+        "typeUrl": true,
+        "content": {
+          "component": "TitleCard",
+          "props": {
+            "kicker": "Launch day",
+            "title": "Videos from a prompt",
+            "subtitle": "Every frame drawn in code"
+          }
+        }
+      },
+      "narration": "The launch page goes live.",
+      "durationMs": 5000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "section",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Under the hood",
+        "headline": "One command renders it",
+        "content": {
+          "component": "TerminalWindow",
+          "props": {
+            "seed": 4,
+            "lines": [
+              {
+                "prompt": true,
+                "text": "npx motioncraft render"
+              },
+              {
+                "text": "rendered 240 frames"
+              },
+              {
+                "text": "wrote out/video.mp4"
+              }
+            ]
+          }
+        },
+        "note": "Runs on your machine"
+      },
+      "durationMs": 7500
+    }
+  ]
+}

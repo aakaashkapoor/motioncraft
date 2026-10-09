@@ -257,6 +257,24 @@ export interface FlowToken extends MotionToken {
 }
 
 /**
+ * Typing with a live caret (design v3, life #10): keystrokes land `cps` per
+ * second on average, each gap varied by up to `jitter` of itself either way
+ * (seeded, so every render types the same), with a pause of `pauseMinMs`-
+ * `pauseMaxMs` after punctuation that ends a clause. `ms` and `curve` are a
+ * printed line fading in.
+ */
+export interface TypingToken extends MotionToken {
+  /** Characters per second, on average (30-45). */
+  cps: number;
+  /** Largest share of a keystroke's gap it may vary by, either way (0.3 = +-30%). */
+  jitter: number;
+  pauseMinMs: number;
+  pauseMaxMs: number;
+  /** The caret's blink period, in ms: on for half of it. */
+  blinkMs: number;
+}
+
+/**
  * Motion by use (design v3, table D). Every kit timing is milliseconds from
  * the scene clock; a scene's length decides only how long the hold lasts.
  * Position and scale may overshoot (springs, `enter`'s bezier); opacity and
@@ -310,6 +328,8 @@ export interface ThemeMotion {
   beat: BeatToken;
   /** A dot flowing along a drawn connector, lighting the node it reaches. */
   flow: FlowToken;
+  /** Text typed with a caret: terminal commands, a chat composer, an address bar. */
+  typing: TypingToken;
 }
 
 export interface Theme {

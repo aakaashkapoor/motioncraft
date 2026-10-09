@@ -104,13 +104,15 @@ describe("TerminalWindow", () => {
     expect(timing[2]!.end - timing[2]!.start).toBeGreaterThan(timing[0]!.end - timing[0]!.start);
   });
 
-  it("starts once the window has faded in and types at text.in's per-character step", () => {
+  it("starts once the window has faded in and types at the typing token's 30-45 characters per second", () => {
     const { leadMs, fx } = lightTheme.motion;
     const timing = terminalTiming(lightTheme, LINES);
     expect(timing[0]!.start).toBe(leadMs + fx.ms);
-    const perChar = lightTheme.motion["text.in"].charStaggerMs;
-    expect(timing[0]!.end - timing[0]!.typeStart).toBeCloseTo(LINES[0]!.text.length * perChar, 6);
-    expect(timing[2]!.end - timing[2]!.typeStart).toBeCloseTo(LINES[2]!.text.length * perChar, 6);
+    for (const i of [0, 2]) {
+      const cps = LINES[i]!.text.length / ((timing[i]!.end - timing[i]!.typeStart) / 1000);
+      expect(cps).toBeGreaterThanOrEqual(30 * (1 - lightTheme.motion.typing.jitter));
+      expect(cps).toBeLessThanOrEqual(45 * (1 + lightTheme.motion.typing.jitter));
+    }
   });
 
   it("types at the same speed in any scene that fits it, and speeds up only to finish before a short scene's exit", () => {

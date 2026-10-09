@@ -77,6 +77,8 @@ export const baseMesh: MeshSpec = {
 
 /** Material 3's emphasized accelerate: the curve of everything leaving. */
 const EXIT_CURVE: CubicBezier = [0.3, 0, 0.8, 0.15];
+/** Material 3's effects default: fades and blur clearing. */
+const FX_CURVE: CubicBezier = [0.34, 0.8, 0.34, 1];
 
 /**
  * Design v3, table D. Springs land on their target at the token's duration;
@@ -89,7 +91,7 @@ export const baseMotion: ThemeMotion = {
   leadMs: 150,
   cascadeMs: 1200,
   "fx.fast": { ms: 150, curve: [0.31, 0.94, 0.34, 1] },
-  fx: { ms: 250, curve: [0.34, 0.8, 0.34, 1] },
+  fx: { ms: 250, curve: FX_CURVE },
   "text.in": { ms: 550, curve: "expoOut", staggerMs: 55, charStaggerMs: 30, lineStaggerMs: 70 },
   "text.char": { ms: 550, curve: "expoOut", staggerMs: 24 },
   "text.out": { ms: 300, curve: EXIT_CURVE, staggerMs: 20 },
@@ -107,4 +109,5 @@ export const baseMotion: ThemeMotion = {
   grainFps: 12,
   beat: { ms: 400 },
   flow: { ms: 1400, curve: "expoInOut", dotPx: 14, glowPx: 6, glowOpacity: 0.25 },
+  typing: { ms: 120, curve: FX_CURVE, cps: 38, jitter: 0.3, pauseMinMs: 200, pauseMaxMs: 400, blinkMs: 1060 },
 };

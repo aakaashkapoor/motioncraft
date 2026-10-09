@@ -434,7 +434,7 @@ describe("runChecks (integration)", { timeout: 60_000 }, () => {
     expect(result.passed).toBe(true);
   });
 
-  it("allows terminal text that shrank to fit its window", async (ctx) => {
+  it("allows a long terminal: its text stays on the ramp and it scrolls without cutting a line off", async (ctx) => {
     const lines = Array.from({ length: 24 }, (_, i) => ({ prompt: i % 4 === 0, text: `step ${i + 1}: building the storyboard frames` }));
     const sb = storyboard({
       title: "Fit",
@@ -443,6 +443,7 @@ describe("runChecks (integration)", { timeout: 60_000 }, () => {
     });
     const result = await check(ctx, sb, lightTheme);
     expect(result.warnings.map(formatProblem)).toEqual([]);
+    expect(result.problems.filter((p) => p.check === "overflow" || p.check === "type-scale").map(formatProblem)).toEqual([]);
   });
 
   it("fails a too-long title in 9:16 on overflow or safe area", async (ctx) => {
