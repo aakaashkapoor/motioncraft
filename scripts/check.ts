@@ -3,6 +3,7 @@
 //   npx tsx scripts/check.ts <storyboard.json>
 
 import { readFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { formatProblem, runChecks } from "../src/checks";
 import { estimateDurations } from "../src/render/durations";
 import { resolveTheme } from "../src/render/themes";
@@ -19,7 +20,7 @@ async function main(argv: string[]): Promise<void> {
     throw new Error(`${file} is not a valid storyboard:\n${validation.errors.map((e) => `  - ${e}`).join("\n")}`);
   }
   const { storyboard } = validation;
-  const result = await runChecks({ storyboard, theme: resolveTheme(storyboard), durations: estimateDurations(storyboard) });
+  const result = await runChecks({ storyboard, theme: resolveTheme(storyboard), durations: estimateDurations(storyboard), mediaDir: dirname(file) });
 
   if (result.passed) {
     console.log(`${file}: all layer-1 checks passed`);

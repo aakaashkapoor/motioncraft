@@ -9,6 +9,7 @@ import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 // The registry imports this module's users; it is only read at render time.
 import { kit } from "./index";
+import { VisibleRectContext } from "./frameContext";
 
 /** A nested kit component, written in a storyboard the same way as a scene. */
 export interface SlotContent {
@@ -79,7 +80,10 @@ export function Slot({ progress, theme, aspect, box, content, backgroundColor, a
             transformOrigin: "0 0",
           }}
         >
-          <Component {...content!.props} progress={progress} theme={theme} aspect={aspect} />
+          {/* The box, in the nested frame's coordinates: what media fills. */}
+          <VisibleRectContext.Provider value={{ x: -x / scale, y: -y / scale, width: box.width / scale, height: box.height / scale }}>
+            <Component {...content!.props} progress={progress} theme={theme} aspect={aspect} />
+          </VisibleRectContext.Provider>
         </div>
       )}
     </div>

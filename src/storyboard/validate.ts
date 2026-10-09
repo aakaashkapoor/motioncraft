@@ -7,6 +7,7 @@ import {
   type StoryboardScene,
   type StoryboardValidation,
 } from "./types";
+import { sceneComponents } from "./components";
 import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
@@ -47,6 +48,10 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   }
   if (durationMs === undefined) {
     if (narration === undefined) sceneErrors.push("durationMs is required when there is no narration");
+  } else if (durationMs === "clip") {
+    if (isObject(props) && !sceneComponents({ component, props }).some((use) => use.component === "VideoClip")) {
+      sceneErrors.push('durationMs "clip" takes the length from a VideoClip, and this scene has none');
+    }
   } else if (!isPositiveInteger(durationMs)) {
     sceneErrors.push(`durationMs must be a positive integer (got ${describe(durationMs)})`);
   }
@@ -56,7 +61,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
 
   const scene: StoryboardScene = { id: raw.id as string, component: component as string, props: props as Record<string, unknown> };
   if (narration !== undefined) scene.narration = narration as string;
-  if (durationMs !== undefined) scene.durationMs = durationMs as number;
+  if (durationMs !== undefined) scene.durationMs = durationMs as number | "clip";
   return scene;
 }
 

@@ -1,0 +1,35 @@
+{
+  "title": "Media fixture, 16:9 (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "clip",
+      "component": "VideoClip",
+      "props": { "src": "media/numbers.mp4", "trimStartMs": 200, "trimEndMs": 1800, "fit": "cover" },
+      "narration": "Real footage plays frame by frame.",
+      "durationMs": "clip"
+    },
+    {
+      "id": "photo",
+      "component": "Image",
+      "props": { "src": "media/landscape.png", "focus": { "x": 0.7, "y": 0.3 }, "zoom": { "from": 1, "to": 1.15 }, "pan": { "x": -0.06 } },
+      "narration": "Photos drift slowly.",
+      "durationMs": 3000
+    },
+    {
+      "id": "window-photo",
+      "component": "AppWindow",
+      "props": { "title": "Preview", "content": { "component": "Image", "props": { "src": "media/landscape.png", "fit": "cover" } } },
+      "durationMs": 3000
+    },
+    {
+      "id": "window-clip",
+      "component": "BrowserWindow",
+      "props": { "url": "example.com/demo", "content": { "component": "VideoClip", "props": { "src": "media/numbers.mp4", "fit": "contain", "rate": 0.5 } } },
+      "narration": "Or sit inside a window.",
+      "durationMs": 3000
+    }
+  ]
+}

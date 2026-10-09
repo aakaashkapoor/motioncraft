@@ -9,6 +9,7 @@ import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
 import type { FrameMeasurement } from "../checks/types";
 import { buildTimeline, frameAt, type SceneDurations, type Timeline } from "../engine/timeline";
 import { Caption, kit } from "../kit";
+import { SceneClockContext } from "../kit/frameContext";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
 import type { Storyboard } from "../storyboard/types";
@@ -22,6 +23,8 @@ export interface PageInput {
   theme: Theme;
   /** Scene durations in ms that override `durationMs` (see `buildTimeline`). */
   durations: Record<string, number>;
+  /** Where relative media paths (`src`) resolve; the working directory by default. Used by Node, not the page. */
+  mediaDir?: string;
 }
 
 export const INPUT_ELEMENT_ID = "motioncraft-input";
@@ -57,7 +60,9 @@ export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
       }}
     >
       <Ground theme={theme} aspect={aspect} />
-      <Component {...scene.props} {...common} />
+      <SceneClockContext.Provider value={{ fps: timeline.fps, frame: info.localFrame }}>
+        <Component {...scene.props} {...common} />
+      </SceneClockContext.Provider>
       {scene.narration !== undefined && (
         <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
           <Caption {...common} text={scene.narration} />

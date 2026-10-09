@@ -12,6 +12,7 @@ import { browserLabel } from "./browser";
 import { planFrame, type EncodedChunk } from "./encode";
 import { Mp4Writer, type Mp4Track } from "./mp4";
 import type { PageInput } from "./page";
+import { clipAudioPlan, prepareMedia, type ClipAudio } from "./media";
 import { checkComponents, showFrame, withRenderPage } from "./session";
 
 export interface VideoProgress {
@@ -36,6 +37,8 @@ export interface VideoResult {
   bytes: number;
   /** The codec string the browser encoded with, e.g. "avc1.64002A". */
   codec: string;
+  /** Where each VideoClip's audio plays, for the future audio mix (the MP4 is silent for now). */
+  audio: ClipAudio[];
 }
 
 export class UnsupportedCodecError extends Error {
@@ -56,13 +59,16 @@ async function capture(cdp: CDPSession): Promise<string> {
 
 /** Renders the storyboard to `out` as an MP4 and returns what was written. */
 export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
-  const { storyboard, theme, durations, out, onProgress } = options;
+  const { out, onProgress } = options;
   checkComponents(options);
-  const { fps, totalFrames } = buildTimeline(storyboard, durations);
+  const { input, sourceDurationsMs } = await prepareMedia(options);
+  const { storyboard, durations } = input;
+  const timeline = buildTimeline(storyboard, durations);
+  const { fps, totalFrames } = timeline;
   const { width, height } = frameSize(storyboard.aspect);
   await mkdir(dirname(out), { recursive: true });
 
-  return withRenderPage({ storyboard, theme, durations }, async (page) => {
+  return withRenderPage(input, async (page) => {
     const start = await page.evaluate((setup) => window.motioncraft!.encoder.start(setup), {
       width,
       height,
@@ -123,6 +129,7 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
       durationMs: (totalFrames * 1000) / fps,
       bytes: (await stat(out)).size,
       codec,
+      audio: clipAudioPlan(storyboard, timeline, input.mediaDir, sourceDurationsMs),
     };
   });
 }
