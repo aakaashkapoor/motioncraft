@@ -1,12 +1,7 @@
 // WCAG 2.x relative luminance and contrast ratio.
 // https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
 
-function parseHex(color: string): [number, number, number] {
-  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
-  if (!m?.[1]) throw new Error(`Expected a hex color like #rrggbb, got "${color}"`);
-  const hex = m[1].length === 3 ? [...m[1]].map((c) => c + c).join("") : m[1];
-  return [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
-}
+import { parseHex } from "./color";
 
 function channel(value: number): number {
   const c = value / 255;

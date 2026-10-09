@@ -24,7 +24,7 @@ describe("validateStoryboard: valid input", () => {
         title: "Demo",
         aspect: "9:16",
         fps: 30,
-        theme: "neutral",
+        theme: "light",
         scenes: [{ id: "intro", component: "Title", props: { text: "Hi" }, durationMs: 2000 }],
       },
     });
@@ -182,6 +182,60 @@ describe("validateStoryboard: scene rules", () => {
   it("rejects unknown scene fields", () => {
     expect(errorsOf(board({ scenes: [scene({ duration: 2000 })] }))).toEqual([
       'scenes[0] ("intro"): unknown field "duration"',
+    ]);
+  });
+});
+
+describe("validateStoryboard: theme overrides", () => {
+  it("keeps themeOverrides, accent and accentIntensity", () => {
+    const themeOverrides = { colors: { ground: "#fafafa" }, ground: { style: "grid" }, motion: { enterMs: 300 } };
+    const result = validateStoryboard(board({ themeOverrides, accent: "#FF6A00", accentIntensity: "bold" }));
+    expect(result.ok && result.storyboard).toMatchObject({ themeOverrides, accent: "#FF6A00", accentIntensity: "bold" });
+  });
+
+  it("leaves the optional fields out when absent", () => {
+    const result = validateStoryboard(board());
+    expect(result.ok && Object.keys(result.storyboard).sort()).toEqual(["aspect", "fps", "scenes", "theme", "title"]);
+  });
+
+  it("rejects a bad accent or accentIntensity", () => {
+    expect(errorsOf(board({ accent: "orange" }))).toEqual(['accent must be a hex color like "#ff6a00" (got "orange")']);
+    expect(errorsOf(board({ accentIntensity: "loud" }))).toEqual([
+      'accentIntensity must be "subtle", "bold" or "full" (got "loud")',
+    ]);
+  });
+
+  it("requires themeOverrides to be an object", () => {
+    expect(errorsOf(board({ themeOverrides: "dark" }))).toEqual(["themeOverrides must be an object"]);
+  });
+
+  it("checks themeOverrides against the theme's shape", () => {
+    expect(
+      errorsOf(
+        board({
+          themeOverrides: {
+            colors: { ground: "#fff", text: "black", glow: "#ffffff" },
+            ground: { style: "plasma", seed: 1.5 },
+            radius: { md: "12px" },
+            type: { headline: { "9:16": { size: -4 } } },
+            accentIntensity: "max",
+            name: "mine",
+            motion: { springs: { enter: "wobbly" } },
+            fonts: 3,
+          },
+        }),
+      ),
+    ).toEqual([
+      'themeOverrides.colors.text must be a hex color like "#ff6a00" (got "black")',
+      'themeOverrides.colors: unknown field "glow"',
+      'themeOverrides.ground.style must be "solid", "vignette", "grid" or "noise" (got "plasma")',
+      "themeOverrides.ground.seed must be an integer (got 1.5)",
+      'themeOverrides.radius.md must be a number (got "12px")',
+      "themeOverrides.type.headline.9:16.size must be a positive number (got -4)",
+      'themeOverrides.accentIntensity must be "subtle", "bold" or "full" (got "max")',
+      'themeOverrides: unknown field "name"',
+      'themeOverrides.motion.springs.enter must be "smooth", "snappy", "gentle" or "bouncy" (got "wobbly")',
+      "themeOverrides.fonts must be an object (got 3)",
     ]);
   });
 });

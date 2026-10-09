@@ -1,16 +1,4 @@
-// Themes a storyboard can name in its `theme` field.
+// Themes a storyboard can name in its `theme` field. They live with the theme
+// tokens; this module keeps the renderer's import path.
 
-import { neutralTheme } from "../theme/neutral";
-import type { Theme } from "../theme/types";
-
-export const themes: Record<string, Theme> = {
-  neutral: neutralTheme,
-};
-
-export function resolveTheme(name: string): Theme {
-  const theme = Object.hasOwn(themes, name) ? themes[name] : undefined;
-  if (theme === undefined) {
-    throw new Error(`unknown theme "${name}" (known: ${Object.keys(themes).join(", ")})`);
-  }
-  return theme;
-}
+export { resolveTheme, themes } from "../theme/resolve";

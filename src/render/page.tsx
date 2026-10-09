@@ -9,6 +9,7 @@ import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
 import type { FrameMeasurement } from "../checks/types";
 import { buildTimeline, frameAt, type SceneDurations, type Timeline } from "../engine/timeline";
 import { Caption, kit } from "../kit";
+import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
 import type { Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
@@ -33,7 +34,7 @@ export interface FrameProps {
   frame: number;
 }
 
-/** Exactly what is on screen at `frame`: the scene's component plus its caption. */
+/** Exactly what is on screen at `frame`: the ground, the scene's component and its caption. */
 export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
   const info = frameAt(timeline, frame);
   const scene = storyboard.scenes[info.sceneIndex]!;
@@ -52,9 +53,10 @@ export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
         width,
         height,
         overflow: "hidden",
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.ground,
       }}
     >
+      <Ground theme={theme} aspect={aspect} />
       <Component {...scene.props} {...common} />
       {scene.narration !== undefined && (
         <div {...{ [CAPTION_ATTRIBUTE]: "" }}>

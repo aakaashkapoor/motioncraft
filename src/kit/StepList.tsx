@@ -104,7 +104,7 @@ function Marker({ index, kind, layout, theme }: { index: number; kind: "number" 
             height: markerSize,
             borderRadius: "50%",
             backgroundColor: theme.colors.accent,
-            color: theme.colors.background,
+            color: theme.colors.accentText,
             fontFamily: theme.fonts.body,
             fontSize: Math.round(layout.itemSize * 0.7),
             fontWeight: 700,

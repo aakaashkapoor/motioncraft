@@ -1,11 +1,13 @@
 // The storyboard: the JSON document an agent writes before any scene is built.
 // See docs/design.md, "The workflow", step 1.
 
+import type { AccentIntensity, ThemeOverrides } from "../theme/types";
+
 export const ASPECTS = ["9:16", "16:9"] as const;
 export type Aspect = (typeof ASPECTS)[number];
 
 export const DEFAULT_FPS = 30;
-export const DEFAULT_THEME = "neutral";
+export const DEFAULT_THEME = "light";
 
 export interface StoryboardScene {
   /** Unique within the storyboard. */
@@ -24,6 +26,12 @@ export interface Storyboard {
   aspect: Aspect;
   fps: number;
   theme: string;
+  /** Any theme tokens, deep-merged over the named theme (see `resolveTheme`). */
+  themeOverrides?: ThemeOverrides;
+  /** Shortcut for `themeOverrides.colors.accent`; a readable `accentText` is picked unless overridden. */
+  accent?: string;
+  /** Shortcut for `themeOverrides.accentIntensity`. */
+  accentIntensity?: AccentIntensity;
   scenes: StoryboardScene[];
 }
 

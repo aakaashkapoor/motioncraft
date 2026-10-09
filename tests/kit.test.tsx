@@ -237,7 +237,7 @@ describe("Caption", () => {
     const html = render("9:16", 0.5);
     expect(html).not.toContain("line-clamp");
     expect(html).not.toContain("ellipsis");
-    expect(html).toContain(`background-color:${neutralTheme.colors.background}`);
+    expect(html).toContain(`background-color:${neutralTheme.colors.ground}`);
     expect(html).toContain(`color:${neutralTheme.colors.text}`);
   });
 

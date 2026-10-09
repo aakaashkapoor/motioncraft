@@ -42,7 +42,7 @@ async function main(argv: string[]): Promise<void> {
 
   const result = await renderVideo({
     storyboard,
-    theme: resolveTheme(storyboard.theme),
+    theme: resolveTheme(storyboard),
     durations: estimateDurations(storyboard),
     out: args.out,
     onProgress: progressPrinter(),

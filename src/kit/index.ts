@@ -20,6 +20,7 @@ export type { KitComponent, KitProps } from "./types";
 export { presence, themeEasing } from "./motion";
 export { asKitComponent } from "./types";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./StepList";
+export { Ground, groundStyle, type GroundProps } from "./Ground";
 
 export const kit: Record<string, KitComponent> = {
   TitleCard: asKitComponent(TitleCard),

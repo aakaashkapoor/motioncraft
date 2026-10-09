@@ -8,6 +8,7 @@ import { estimateTextHeight } from "../layout/textFit";
 import { fontSize } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeStep } from "../theme/types";
+import { headlineColor } from "../theme/roles";
 import { presence, themeEasing } from "./motion";
 import type { KitProps } from "./types";
 
@@ -107,7 +108,7 @@ export function TitleCard({ progress, theme, aspect, title, subtitle, kicker }: 
             fontSize: fontSize(theme, step, aspect),
             fontWeight: 700,
             lineHeight: TITLE_LINE_HEIGHT,
-            color: colors.text,
+            color: headlineColor(theme),
             overflowWrap: "break-word",
           }}
         >
@@ -121,7 +122,7 @@ export function TitleCard({ progress, theme, aspect, title, subtitle, kicker }: 
               fontFamily: fonts.body,
               fontSize: fontSize(theme, "subtitle", aspect),
               lineHeight: SUBTITLE_LINE_HEIGHT,
-              color: colors.muted,
+              color: colors.textMuted,
               overflowWrap: "break-word",
             }}
           >

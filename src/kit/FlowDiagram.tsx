@@ -10,6 +10,7 @@ import { charsPerLine, estimateTextHeight } from "../layout/textFit";
 import { fontSize } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeStep } from "../theme/types";
+import { cardColors } from "../theme/roles";
 import { themeEasing } from "./motion";
 import type { KitProps } from "./types";
 
@@ -133,6 +134,7 @@ export function FlowDiagram({ progress, theme, aspect, nodes, caption }: FlowDia
   const layout = flowDiagramLayout(theme, aspect, nodes, caption);
   const easing = themeEasing(theme);
   const { colors, fonts, spacing, radius } = theme;
+  const card = cardColors(theme);
   const { padding, border } = cardInsets(theme);
   const opacity = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
 
@@ -209,9 +211,9 @@ export function FlowDiagram({ progress, theme, aspect, nodes, caption }: FlowDia
               alignItems: "center",
               justifyContent: "center",
               textAlign: "center",
-              backgroundColor: colors.surface,
-              border: `${border}px solid ${colors.accent}`,
-              borderRadius: radius,
+              backgroundColor: card.fill,
+              border: `${border}px solid ${card.border}`,
+              borderRadius: radius.md,
             }}
           >
             <span
@@ -220,7 +222,7 @@ export function FlowDiagram({ progress, theme, aspect, nodes, caption }: FlowDia
                 fontSize: fontSize(theme, layout.labelStep, aspect),
                 fontWeight: 700,
                 lineHeight: LABEL_LINE_HEIGHT,
-                color: colors.text,
+                color: card.text,
                 overflowWrap: "break-word",
                 maxWidth: "100%",
               }}
@@ -242,7 +244,7 @@ export function FlowDiagram({ progress, theme, aspect, nodes, caption }: FlowDia
             fontFamily: fonts.body,
             fontSize: fontSize(theme, "body", aspect),
             lineHeight: CAPTION_LINE_HEIGHT,
-            color: colors.muted,
+            color: colors.textMuted,
             textAlign: "center",
             overflowWrap: "break-word",
           }}

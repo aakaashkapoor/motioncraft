@@ -3,7 +3,10 @@
 import { easeInOutCubic, easeOutBack, easeSpring, interpolate, linear, type Easing } from "../engine/easing";
 import type { Theme } from "../theme/types";
 
-const EASINGS: Record<string, Easing> = { linear, easeInOutCubic, easeOutBack, easeSpring };
+/** Exponential ease-out: fast start, long soft landing. The v2 house curve. */
+const expoOut: Easing = (t) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t));
+
+const EASINGS: Record<string, Easing> = { linear, easeInOutCubic, easeOutBack, easeSpring, expoOut };
 
 /** The theme's named easing curve. Unknown names fall back to easeInOutCubic. */
 export function themeEasing(theme: Theme): Easing {
