@@ -138,11 +138,13 @@ describe("Frame", () => {
   const timeline = buildTimeline(sb, {});
   const render = (frame: number, board = sb) =>
     renderToStaticMarkup(createElement(Frame, { storyboard: board, theme: neutralTheme, timeline, frame }));
+  /** The frame's text, without markup: caption words are each in their own element. */
+  const textOf = (html: string) => html.replace(/<[^>]*>/g, "");
 
   it("renders the scene on screen at the frame, with its narration as a caption", () => {
     const html = render(15);
     expect(html).toContain("First");
-    expect(html).toContain("Spoken words");
+    expect(textOf(html)).toContain("Spoken words");
     expect(html).not.toContain("Second");
     expect(html).toMatch(/^<div style="position:relative;width:1080px;height:1920px/);
   });
@@ -150,7 +152,7 @@ describe("Frame", () => {
   it("has no caption when the scene has no narration", () => {
     const html = render(45);
     expect(html).toContain("Second");
-    expect(html).not.toContain("Spoken words");
+    expect(textOf(html)).not.toContain("Spoken");
   });
 
   it("is deterministic", () => {

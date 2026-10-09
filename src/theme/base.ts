@@ -1,7 +1,7 @@
 // Tokens the built-in themes share: the type ramp, named weights, spacing,
-// radii and motion. Each theme spreads these and sets its own colors and ground.
+// radii, motion and the caption look. Each theme spreads these and sets its own colors and ground.
 
-import type { CubicBezier, MeshSpec, ThemeMotion, ThemeRadius, ThemeSpacing, ThemeWeights, TypeRamp, TypeSpec } from "./types";
+import type { CubicBezier, MeshSpec, ThemeCaption, ThemeMotion, ThemeRadius, ThemeSpacing, ThemeWeights, TypeRamp, TypeSpec } from "./types";
 
 export const SYSTEM_SANS =
   'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
@@ -107,4 +107,14 @@ export const baseMotion: ThemeMotion = {
   grainFps: 12,
   beat: { ms: 400 },
   flow: { ms: 1400, curve: "expoInOut", dotPx: 14, glowPx: 6, glowOpacity: 0.25 },
+  // Life #4: a page settles in over 5 frames without overshoot; the spoken word pops over 4.
+  caption: { ms: 170, curve: [0.34, 0.8, 0.34, 1], fromScale: 0.9, risePx: 24, wordMs: 133, wordScale: 1.04 },
+};
+
+/** Design v3, life #4: the spoken word in the accent colour; a 16 px outline on punch captions. */
+export const baseCaption: ThemeCaption = {
+  highlight: "color",
+  platePadY: 6,
+  platePadX: 12,
+  strokePx: 16,
 };

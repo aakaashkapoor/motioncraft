@@ -1,5 +1,5 @@
 import { MONO_FAMILY, SANS_FAMILY } from "../render/fontFaces";
-import { baseMesh, baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { baseCaption, baseMesh, baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
 import { DEFAULT_SAFE_PROFILE } from "../storyboard/types";
 import type { Theme } from "./types";
 
@@ -38,5 +38,6 @@ export const lightTheme: Theme = {
   hairline: 2,
   // The reference keeps the camera calm: no breathing unless a storyboard switches it on (1.00 -> 1.02 then).
   motion: baseMotion,
+  caption: baseCaption,
   safe: DEFAULT_SAFE_PROFILE,
 };

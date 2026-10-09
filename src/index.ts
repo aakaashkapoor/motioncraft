@@ -15,6 +15,8 @@ export type {
   ThemeMotion,
   BeatToken,
   BreatheToken,
+  CaptionHighlight,
+  CaptionMotionToken,
   DriftToken,
   GridBreatheToken,
   MeshSpec,
@@ -29,6 +31,7 @@ export type {
   SpringCurve,
   StaggeredToken,
   TextInToken,
+  ThemeCaption,
   ThemeOverrides,
   ThemeRadius,
   ThemeShadow,
@@ -38,7 +41,7 @@ export type {
   TypeRole,
   TypeSpec,
 } from "./theme/types";
-export { ACCENT_INTENSITIES, CURVE_NAMES, GROUND_STYLES, TYPE_ROLES } from "./theme/types";
+export { ACCENT_INTENSITIES, CAPTION_HIGHLIGHTS, CURVE_NAMES, GROUND_STYLES, TYPE_ROLES } from "./theme/types";
 export { neutralTheme } from "./theme/neutral";
 export { lightTheme } from "./theme/light";
 export { darkTheme } from "./theme/dark";
@@ -53,7 +56,7 @@ export { clearOfKeepOuts, safeArea, safeZones, type SafeZones } from "./layout/s
 export { blockCenterY, placeBlock } from "./layout/block";
 export type { Rect, Size } from "./layout/frame";
 export { fontSize, rampSizes, rampSteps, TYPE_FIT_ATTRIBUTE, typeCss, typeSpec, type TypeCss } from "./layout/type";
-export { CAPTION_MAX_LINES, captionBand, captionBandHeight, contentArea, textColumn } from "./layout/caption";
+export { CAPTION_MAX_LINES, CAPTION_PAGE_WORDS, captionBand, captionBandHeight, captionType, contentArea, textColumn, type ShownCaptionStyle } from "./layout/caption";
 export { AVG_CHAR_EM, charsPerLine, estimateLines, estimateTextHeight } from "./layout/textFit";
 export type { TextStyle } from "./layout/textFit";
 
@@ -80,11 +83,14 @@ export {
   kit,
   pageAt,
   pageCaption,
+  pageRanges,
   presence,
   themeEasing,
   titleCardStep,
 } from "./kit";
-export type { CaptionLimits, CaptionProps, KitComponent, KitProps, TitleCardProps } from "./kit";
+export type { CaptionLimits, CaptionProps, KitComponent, KitProps, PageRange, TitleCardProps } from "./kit";
+export { captionColors, captionTrack, type CaptionColors } from "./kit/Caption";
+export { activeWordAt, evenWordTimes, pageIndexAt, timedPages, wordLight, type TimedPage, type TimedWord } from "./kit/captionWords";
 export { BigNumber, bigNumberStep, countedValue, formatBigNumber, type BigNumberProps } from "./kit/BigNumber";
 export { FlowDiagram, flowDiagramLayout, flowDiagramTiming, type FlowArrow, type FlowDiagramLayout, type FlowDiagramProps, type FlowDiagramTiming } from "./kit";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./kit";

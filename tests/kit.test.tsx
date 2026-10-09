@@ -209,8 +209,8 @@ describe("Caption", () => {
   const text = "Captions come from the narration text and are burned in.";
   const render = (aspect: Aspect, progress: number, caption = text) =>
     renderToStaticMarkup(<Caption progress={progress} theme={neutralTheme} aspect={aspect} text={caption} />);
-  /** The visible caption text, read back out of server-rendered HTML. */
-  const shown = (html: string) => /<p[^>]*>([^<]*)<\/p>/.exec(html)?.[1] ?? "";
+  /** The visible caption text, read back out of server-rendered HTML (each word is its own span). */
+  const shown = (html: string) => (/<p[^>]*>(.*)<\/p>/.exec(html)?.[1] ?? "").replace(/<[^>]*>/g, "");
 
   it.each(cases)("renders caption text inside the safe area (%s, progress %s)", (aspect, progress) => {
     const html = render(aspect, progress);

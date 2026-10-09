@@ -1,0 +1,65 @@
+{
+  "title": "Word-highlight captions, punch, 9:16 (must pass layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "captionStyle": "punch",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "TitleCard",
+      "props": {
+        "kicker": "motioncraft",
+        "title": "Videos from a prompt"
+      },
+      "narration": "You write one prompt. The agent plans, draws and checks every single frame.",
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "steps",
+      "component": "Section",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Three steps to a video",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              {
+                "icon": "chat",
+                "title": "Prompt",
+                "subtitle": "Describe it"
+              },
+              {
+                "icon": "code",
+                "title": "Plan",
+                "subtitle": "Scenes"
+              },
+              {
+                "icon": "play",
+                "title": "Render",
+                "subtitle": "MP4"
+              }
+            ]
+          }
+        }
+      },
+      "narration": "First you describe the video. Then the storyboard turns into scenes, and every scene renders to an MP4 on your machine.",
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "stat",
+      "component": "BigNumber",
+      "props": {
+        "value": 1280,
+        "suffix": "+",
+        "label": "videos rendered"
+      },
+      "narration": "Over twelve hundred videos rendered, internationalization included, all locally."
+    }
+  ]
+}

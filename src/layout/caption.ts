@@ -1,17 +1,39 @@
 // The caption band: the strip the burned-in caption owns, low in the safe area
 // but above the platform UI (design v3, section C). Other components lay out
-// above it so the two never collide.
+// above it so the two never collide. Also the type and page size of each
+// caption style (life #4).
 
-import type { Theme } from "../theme/types";
+import type { CaptionStyle } from "../storyboard/types";
+import type { Theme, TypeSpec } from "../theme/types";
 import type { Aspect, Rect } from "./frame";
 import { clearOfKeepOuts, safeZones } from "./safe";
 
 export const CAPTION_MAX_LINES = 2;
 
-/** Height of the caption band in px: two lines of caption text (the ramp's `subtitle`) plus the plate's padding. */
+/** A caption style that draws something. */
+export type ShownCaptionStyle = Exclude<CaptionStyle, "off">;
+
+/** Words per caption page: 3-6 for explainers, 1-3 very large words for punch. */
+export const CAPTION_PAGE_WORDS: Record<ShownCaptionStyle, { min: number; max: number }> = {
+  standard: { min: 3, max: 6 },
+  punch: { min: 1, max: 3 },
+};
+
+/** A caption style's type: `standard` is the ramp's `subtitle` at bold, `punch` its `headline` at heavy. */
+export function captionType(theme: Theme, aspect: Aspect, style: ShownCaptionStyle): TypeSpec {
+  return style === "punch"
+    ? { ...theme.type.headline[aspect], weight: theme.weights.heavy }
+    : { ...theme.type.subtitle[aspect], weight: theme.weights.bold };
+}
+
+/**
+ * Height of the caption band in px: two lines of caption text (the ramp's
+ * `subtitle`) plus the plate's padding, over room for a page to rise in from
+ * (`motion.caption.risePx`), so an entering page never dips out of the band.
+ */
 export function captionBandHeight(theme: Theme, aspect: Aspect): number {
   const { size, lineHeight } = theme.type.subtitle[aspect];
-  return Math.ceil(CAPTION_MAX_LINES * size * lineHeight + 2 * theme.spacing.xs);
+  return Math.ceil(CAPTION_MAX_LINES * size * lineHeight + 2 * theme.spacing.xs + theme.motion.caption.risePx);
 }
 
 /**
