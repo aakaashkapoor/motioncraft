@@ -148,3 +148,4 @@ export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./i
 export { cancelRender, continueRender, delayRender, RenderNotReadyError, READY_TIMEOUT_MS } from "./render/ready";
 export { Ground, groundStyle, type GroundProps } from "./kit";
 export * from "./kit/windows";
+export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMessage, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";

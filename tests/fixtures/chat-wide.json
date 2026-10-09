@@ -1,0 +1,121 @@
+{
+  "title": "ChatWindow fixture, 16:9 (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "scenes": [
+    {
+      "id": "chat",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "launches",
+        "messages": [
+          {
+            "author": "Maya Chen",
+            "time": "9:41 AM",
+            "text": "The new onboarding flow is ready for review."
+          },
+          {
+            "author": "Release Bot",
+            "avatar": {
+              "initials": "RB",
+              "color": "#2f54d4"
+            },
+            "time": "9:42 AM",
+            "text": "Build 2.4 passed every check and is live.",
+            "badge": "APP"
+          },
+          {
+            "author": "Sam Ortiz",
+            "time": "9:43 AM",
+            "text": "Looks great, shipping it to everyone today.",
+            "reactions": [
+              {
+                "emoji": "🎉",
+                "count": 4
+              },
+              {
+                "emoji": "👍",
+                "count": 2
+              }
+            ],
+            "highlight": true
+          },
+          {
+            "author": "Priya Nair",
+            "time": "9:45 AM",
+            "text": "I will write up the release notes."
+          }
+        ],
+        "sidebar": {
+          "workspace": "Acme Studio",
+          "channels": [
+            "general",
+            "launches",
+            "design",
+            "support"
+          ]
+        },
+        "shareId": "chat"
+      },
+      "narration": "The team ships a release, and the whole channel sees it land.",
+      "durationMs": 20000
+    },
+    {
+      "id": "cards",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "general",
+        "messages": [
+          {
+            "author": "Maya Chen",
+            "time": "9:41 AM",
+            "text": "The new onboarding flow is ready for review."
+          },
+          {
+            "author": "Release Bot",
+            "avatar": {
+              "initials": "RB",
+              "color": "#2f54d4"
+            },
+            "time": "9:42 AM",
+            "text": "Build 2.4 passed every check and is live.",
+            "badge": "APP"
+          }
+        ],
+        "cards": [
+          {
+            "author": "Maya Chen",
+            "time": "9:50 AM",
+            "text": "Customers love it."
+          },
+          {
+            "author": "Release Bot",
+            "avatar": {
+              "initials": "RB"
+            },
+            "time": "9:51 AM",
+            "text": "Zero errors since launch.",
+            "badge": "APP"
+          }
+        ]
+      },
+      "durationMs": 15000
+    },
+    {
+      "id": "plain",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "support",
+        "messages": [
+          {
+            "author": "Priya Nair",
+            "time": "9:45 AM",
+            "text": "I will write up the release notes."
+          }
+        ]
+      },
+      "durationMs": 6500
+    }
+  ]
+}
