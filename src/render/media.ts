@@ -118,7 +118,7 @@ function useErrors(use: MediaUse): string[] {
 }
 
 /** Whether `path` is a readable file; otherwise the reason it is not. */
-async function fileProblem(path: string): Promise<string | undefined> {
+export async function fileProblem(path: string): Promise<string | undefined> {
   try {
     if (!(await stat(path)).isFile()) return "is not a file";
     await access(path, constants.R_OK);
