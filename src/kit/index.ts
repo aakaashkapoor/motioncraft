@@ -2,6 +2,7 @@
 // scene uses in its `component` field.
 
 import { BigNumber } from "./BigNumber";
+import { ChatWindow } from "./ChatWindow";
 import { Caption, captionLimits } from "./Caption";
 import { FlowDiagram } from "./FlowDiagram";
 import { StepList } from "./StepList";
@@ -28,4 +29,5 @@ export const kit: Record<string, KitComponent> = {
   BigNumber: asKitComponent(BigNumber),
   FlowDiagram: asKitComponent(FlowDiagram),
   StepList: asKitComponent(StepList),
+  ChatWindow: asKitComponent(ChatWindow),
 };
