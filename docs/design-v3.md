@@ -20,6 +20,59 @@ without changes, it fails.
 
 Research behind this (2026-10-09), condensed from the owner's research notes.
 
+## The owner's reference (takes priority)
+
+The owner made this video at work with a similar tool, and it is the look v3
+is aiming for. Where it disagrees with the research below, **the reference
+wins**. Frames measured on its 1920x1080 render:
+
+- **Font:** a humanist sans that looks like Source Sans 3 (OFL, Adobe) at bold
+  700 for headlines and card titles, semibold for eyebrows, regular for
+  secondary lines. Mono for terminals. One family; no serif accents.
+- **Colour:** warm grey ground `#e6e7df` (flat, no pattern), pure white cards,
+  chips `#f1f2ea`, near-black text, eyebrow and secondary text `#8d8c85`, one
+  accent `#fb5a1f` used sparingly (the final step's number, one icon, one line of
+  the end card). Product UI keeps its own colours (a dark purple chat sidebar,
+  a blue active channel).
+- **Fixed scene frame:** every content scene has the same header at the same
+  place: a grey eyebrow (~34 px, not uppercase) and a bold headline (~84 px,
+  tight tracking), centered at the top. A takeaway line (~30 px, bold or muted)
+  sits centered at the bottom and appears after the content has built.
+- **Generous, centered blocks:** the content block is centered on the frame,
+  wide (cards 300 px each in a row of five; list rows 1120 px wide, 116 px
+  tall), radius ~28 px, soft wide shadow. Card text is large (title ~40 px bold,
+  subtitle ~30 px muted); list rows are ~40 px bold with a 68 px round icon
+  chip.
+- **Life is choreography, not decoration:** the header lands first; then
+  content builds one item at a time (cards stagger in, list rows one by one, a
+  prompt types into its card, an arrow draws to a window that fills in);
+  interface moments play out (chat messages arrive, a cursor moves to
+  "Approve", clicks, the button resolves to "Approved by ..."); one element
+  lifts out of a screen into a floating card and carries into the next scene;
+  the terminal types its command, then output; a state moves along a sequence
+  (the accent lands on step 5). Then the footer line lands, then a short hold.
+  Scenes cross-fade. The ground and camera stay calm.
+- **End card:** logo mark + product name, one line, the accent line under it,
+  and the prompt card carried in again.
+
+What this changes in the research spec below:
+- **Fonts (A):** default sans is **Source Sans 3** (variable, OFL) and mono is
+  **Source Code Pro** (OFL); keep Geist as an alternative theme font. Drop the
+  Instrument Serif accent; emphasis is weight or the accent colour.
+- **Ground (life #5):** the default ground is flat warm grey. `mesh` and the
+  breathing grid become opt-in styles, not defaults.
+- **Camera (life #1):** breathing is subtle (1.00 -> 1.02) and off by default
+  in the light theme; shots (push in to a window) stay, used deliberately.
+- **Kinetic headline (life #3):** the headline lands as a whole with a short
+  rise and fade; per-word rises are an option for hook and end scenes.
+- **New life items from the reference:** a cursor that moves and clicks to
+  change UI state (a button resolving, a toggle, a selection); "lift out": an
+  element leaves its window as a floating card (a shared element within the
+  scene); a header + footer scene frame component; sequential state progression
+  (the accent moves along steps).
+- **16:9 matters as much as 9:16:** the reference is 16:9. 9:16 uses the same
+  system, stacked.
+
 ## Why v2 looks dead
 
 I rendered per-scene stills of `examples/showcase/storyboard.json` (9:16, light
