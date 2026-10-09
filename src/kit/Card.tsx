@@ -217,10 +217,12 @@ export interface CardProps extends KitProps, CardData {
 const ENTER = 0.25;
 const EXIT = 0.1;
 
-/** A single card, centered in the content area, springing in. */
-export function Card({ progress, theme, aspect, highlighted = false, ...card }: CardProps) {
-  const area = contentArea(theme, aspect);
-  const width = Math.min(area.width, aspect === "9:16" ? area.width : Math.round(area.width * 0.4));
+/** A single card, centered in its area (the content area by default), springing in. */
+export function Card({ progress, theme, aspect, area: slot, highlighted = false, ...card }: CardProps) {
+  const area = slot ?? contentArea(theme, aspect);
+  // As wide as it would be in the full content area, but never wider than its area.
+  const full = contentArea(theme, aspect);
+  const width = Math.min(area.width, aspect === "9:16" ? full.width : Math.round(full.width * 0.4));
   const metrics =
     CARD_TITLE_STEPS.map((step) => cardMetrics(theme, aspect, step, "column")).find(
       (m) => cardHeight(theme, card, width, m) <= area.height,

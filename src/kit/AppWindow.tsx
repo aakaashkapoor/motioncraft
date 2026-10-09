@@ -1,7 +1,7 @@
 // Generic window chrome holding any kit component: a title bar (traffic lights
 // and a centered title, or a minimal bar with just the title) over a content
 // box on the theme surface, with the theme radius, hairline border and card
-// shadow. The window fills the content area, enters with a scale-and-rise
+// shadow. The window fills its area (the content area by default), enters with a scale-and-rise
 // spring and fades out at the end. `shareId` lets it morph between scenes.
 // `WindowShell` is the chrome itself, shared with `BrowserWindow`.
 
@@ -54,9 +54,9 @@ export interface WindowLayout {
   content: Rect;
 }
 
-/** Where the window and its parts go: it fills the content area. Pure. */
-export function windowLayout(theme: Theme, aspect: Aspect, toolbar: boolean): WindowLayout {
-  const box = contentArea(theme, aspect);
+/** Where the window and its parts go: it fills `area` (the content area by default). Pure. */
+export function windowLayout(theme: Theme, aspect: Aspect, toolbar: boolean, area: Rect = contentArea(theme, aspect)): WindowLayout {
+  const box = area;
   const em = theme.type.caption[aspect].size;
   const titleBar = Math.round(em * TITLE_BAR_EM);
   const toolbarHeight = toolbar ? Math.round(em * TOOLBAR_EM) : 0;
@@ -117,8 +117,8 @@ export interface WindowShellProps extends KitProps {
 }
 
 /** The window chrome: frame, motion, title bar, optional toolbar and the content slot. */
-export function WindowShell({ progress, theme, aspect, kind, shareId, content, titleBar, toolbar }: WindowShellProps) {
-  const layout = windowLayout(theme, aspect, toolbar !== undefined);
+export function WindowShell({ progress, theme, aspect, area, kind, shareId, content, titleBar, toolbar }: WindowShellProps) {
+  const layout = windowLayout(theme, aspect, toolbar !== undefined, area);
   const { opacity, rise, scale } = windowMotion(theme, progress);
   const { colors, spacing, hairline, cardShadow } = theme;
   const divider = `${hairline}px solid ${colors.border}`;
@@ -181,13 +181,14 @@ export function chromeText(theme: Theme, aspect: Aspect, color: string) {
   } as const;
 }
 
-export function AppWindow({ progress, theme, aspect, title, chrome = "traffic", content, shareId }: AppWindowProps) {
+export function AppWindow({ progress, theme, aspect, area, title, chrome = "traffic", content, shareId }: AppWindowProps) {
   const lights = chrome === "traffic";
   return (
     <WindowShell
       progress={progress}
       theme={theme}
       aspect={aspect}
+      area={area}
       kind="app"
       shareId={shareId}
       content={content}

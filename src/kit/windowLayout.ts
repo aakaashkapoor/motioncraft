@@ -1,5 +1,5 @@
 // Shared sizing for the window components: the chrome's metrics, the window's
-// box in the content area, and the largest mono size at which content fits.
+// box in its area (the content area by default), and the largest mono size at which content fits.
 
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
@@ -13,7 +13,7 @@ export const MONO_ADVANCE = 0.62;
 const MIN_MONO_SCALE = 0.55;
 /** Each smaller mono size tried is this fraction of the one before. */
 const MONO_STEP = 0.92;
-/** In 16:9 a window takes this share of the content width; in 9:16 all of it. */
+/** In 16:9 a window takes this share of the content area's width; in 9:16 all of it. Never more than its area. */
 const WIDE_WIDTH = 0.8;
 
 export interface WindowMetrics {
@@ -37,24 +37,23 @@ export function windowMetrics(theme: Theme, aspect: Aspect): WindowMetrics {
   };
 }
 
-/** Width of a window and of the content inside its padding, in px. */
-export function windowWidth(theme: Theme, aspect: Aspect): { width: number; inner: number } {
-  const area = contentArea(theme, aspect);
-  const width = Math.round(aspect === "9:16" ? area.width : area.width * WIDE_WIDTH);
+/** Width of a window in `area` and of the content inside its padding, in px. */
+export function windowWidth(theme: Theme, aspect: Aspect, area: Rect = contentArea(theme, aspect)): { width: number; inner: number } {
+  const full = contentArea(theme, aspect);
+  const width = Math.min(Math.round(area.width), Math.round(aspect === "9:16" ? full.width : full.width * WIDE_WIDTH));
   return { width, inner: width - 2 * windowMetrics(theme, aspect).padding };
 }
 
-/** The tallest content that fits inside a window in the content area, in px. */
-export function maxInnerHeight(theme: Theme, aspect: Aspect): number {
+/** The tallest content that fits inside a window in `area`, in px. */
+export function maxInnerHeight(theme: Theme, aspect: Aspect, area: Rect = contentArea(theme, aspect)): number {
   const { barHeight, padding } = windowMetrics(theme, aspect);
-  return contentArea(theme, aspect).height - barHeight - 2 * padding;
+  return area.height - barHeight - 2 * padding;
 }
 
-/** The window's box for content `innerHeight` tall, centered in the content area. */
-export function windowBox(theme: Theme, aspect: Aspect, innerHeight: number): Rect {
-  const area = contentArea(theme, aspect);
+/** The window's box for content `innerHeight` tall, centered in `area`. */
+export function windowBox(theme: Theme, aspect: Aspect, innerHeight: number, area: Rect = contentArea(theme, aspect)): Rect {
   const { barHeight, padding } = windowMetrics(theme, aspect);
-  const { width } = windowWidth(theme, aspect);
+  const { width } = windowWidth(theme, aspect, area);
   const height = Math.min(area.height, Math.ceil(innerHeight + barHeight + 2 * padding));
   return {
     x: Math.round(area.x + (area.width - width) / 2),

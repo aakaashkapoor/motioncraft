@@ -98,11 +98,13 @@ function useVideoFrame(ref: RefObject<HTMLVideoElement | null>, src: string, sec
   }, [ref, src, seconds]);
 }
 
-export function VideoClip({ aspect, src, trimStartMs, trimEndMs, fit = "cover", rate, shareId }: VideoClipProps) {
+export function VideoClip({ aspect, area, src, trimStartMs, trimEndMs, fit = "cover", rate, shareId }: VideoClipProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const seconds = clipMediaTime(useSceneMs(), { trimStartMs, trimEndMs, rate });
   useVideoFrame(ref, src, seconds);
-  const rect = useVisibleRect(aspect);
+  // Nested in a Section, fill its slot; otherwise the frame or the window it sits in.
+  const visible = useVisibleRect(aspect);
+  const rect = area ?? visible;
 
   return (
     <div

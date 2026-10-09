@@ -4,6 +4,8 @@
 // in one by one. The type shrinks until the longest line and every row fit.
 
 import { interpolate } from "../engine/easing";
+import { contentArea } from "../layout/caption";
+import type { Rect } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
 import { mixColors } from "../theme/color";
 import type { Theme } from "../theme/types";
@@ -44,24 +46,25 @@ const DIM_OPACITY = 0.35;
 const GUTTER_GAP = 2;
 const TAB = "  ";
 
-function codeLayout(theme: Theme, aspect: Aspect, lines: readonly CodeToken[][], gutter: number) {
-  const { inner } = windowWidth(theme, aspect);
+function codeLayout(theme: Theme, aspect: Aspect, lines: readonly CodeToken[][], gutter: number, area: Rect) {
+  const { inner } = windowWidth(theme, aspect, area);
   const { lineHeight } = theme.type.mono[aspect];
   const columns = gutter + Math.max(1, ...lines.map((line) => line.reduce((n, t) => n + t.text.length, 0)));
-  const maxHeight = maxInnerHeight(theme, aspect);
+  const maxHeight = maxInnerHeight(theme, aspect, area);
   const size = fitMonoSize(
     theme,
     aspect,
     (s) => columns * s * MONO_ADVANCE <= inner && lines.length * s * lineHeight <= maxHeight,
   );
   const rowHeight = Math.round(size * lineHeight);
-  return { size, rowHeight, box: windowBox(theme, aspect, lines.length * rowHeight) };
+  return { size, rowHeight, box: windowBox(theme, aspect, lines.length * rowHeight, area) };
 }
 
 export function CodeWindow({
   progress,
   theme,
   aspect,
+  area,
   code,
   language = "typescript",
   title,
@@ -73,7 +76,7 @@ export function CodeWindow({
   const lines = highlightCode(code.replace(/\t/g, TAB), language);
   const digits = String(lines.length).length;
   const gutter = lineNumbers ? digits + GUTTER_GAP : 0;
-  const { size, rowHeight, box } = codeLayout(theme, aspect, lines, gutter);
+  const { size, rowHeight, box } = codeLayout(theme, aspect, lines, gutter, area ?? contentArea(theme, aspect));
   const colors = syntaxColors(theme);
   const easing = themeEasing(theme);
   const mono = theme.type.mono[aspect];
