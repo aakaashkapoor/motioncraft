@@ -1,0 +1,28 @@
+{
+  "title": "StepList sample",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "neutral",
+  "scenes": [
+    {
+      "id": "steps",
+      "component": "StepList",
+      "props": {
+        "title": "How it works",
+        "items": ["Write a storyboard", "Render the stills", "Run the layout checks", "Narrate and export the video"],
+        "highlight": 2
+      },
+      "narration": "Write a storyboard, render the stills, run the checks, then narrate and export.",
+      "durationMs": 7000
+    },
+    {
+      "id": "dots",
+      "component": "StepList",
+      "props": {
+        "items": ["Plan", "Draw", "Check", "Ship", "Measure", "Repeat until the video reads well on a phone"],
+        "marker": "dot"
+      },
+      "durationMs": 6000
+    }
+  ]
+}
