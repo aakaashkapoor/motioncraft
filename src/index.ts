@@ -15,6 +15,9 @@ export type {
   ThemeMotion,
   BeatToken,
   BreatheToken,
+  DriftToken,
+  GridBreatheToken,
+  MeshSpec,
   CubicBezier,
   CurveName,
   ExitToken,
@@ -22,6 +25,7 @@ export type {
   MarkToken,
   MotionCurve,
   MotionToken,
+  ShotToken,
   SpringCurve,
   StaggeredToken,
   TextInToken,
@@ -42,6 +46,7 @@ export { deepMerge, resolveTheme, themes } from "./theme/resolve";
 export { accentInk, cardColors, headlineColor, type CardColors } from "./theme/roles";
 export { mixColors, withAlpha } from "./theme/color";
 export { contrastRatio, relativeLuminance } from "./theme/contrast";
+export { groundTint, MESH_STOPS, meshFalloff, meshLayout, type MeshRest } from "./theme/mesh";
 
 export { frameSize } from "./layout/frame";
 export { clearOfKeepOuts, safeArea, safeZones, type SafeZones } from "./layout/safe";
@@ -86,6 +91,7 @@ export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./
 export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./icons";
 export { cancelRender, continueRender, delayRender, RenderNotReadyError, READY_TIMEOUT_MS } from "./render/ready";
 export { Ground, groundStyle, type GroundProps } from "./kit";
+export { grainSeed, gridBreath, meshBlobs, type MeshBlob } from "./kit";
 export { Section, sectionLayout, sectionTiming, type SectionContent, type SectionLayout, type SectionProps } from "./kit/Section";
 export * from "./kit/windows";
 export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMessage, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";
@@ -97,5 +103,8 @@ export { FeatureList, featureListTiming, type FeatureItem, type FeatureListProps
 export * from "./kit/media";
 export { Pinned, pinnedLayout, type PinnedCorner, type PinnedLayout, type PinnedProps } from "./kit/Pinned";
 export { Handoff, handoffLayout, type HandoffLayout, type HandoffProps } from "./kit/Handoff";
+export { HEADLINE_MOTIONS, HEADLINE_ROLES, Headline, HeadlineText, MARK_STYLES, headlineBox, headlineMarks, headlineTiming, headlineWords, markSweep, wordLeaving, type HeadlineMarks, type HeadlineMotion, type HeadlineProps, type HeadlineRole, type HeadlineTextProps, type HeadlineTiming, type MarkStyle } from "./kit/Headline";
+export { SceneFrame, frameLineSpec, sceneFrameLayout, sceneFrameTiming, type SceneFrameLayout, type SceneFrameProps, type SceneFrameText, type SceneFrameTiming } from "./kit/SceneFrame";
 export { MotionDelay, NOMINAL_SCENE_MS, SceneClockContext, useSceneMs, useSceneTime, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, tween, type Timed } from "./kit/motion";
+export * from "./camera";

@@ -72,13 +72,75 @@ move: a window is the hero of one scene, then docks in a corner with `Pinned`
 while the next scene's content arrives beside it. Keep the window's props the
 same on both sides so its content does not jump.
 
+### The camera: shots and breathing
+
+Each scene's content sits under a camera; the caption stays fixed. Two things
+move it:
+
+- **Shots** (a scene's `shots`) push in to one element and back. A shot starts
+  at `atMs` and frames its `target`: a `shareId` in the scene, a rect
+  `{ "x", "y", "width", "height" }` in frame px, or `"wide"` to pull back to
+  the whole frame. The camera moves on the theme's `shot` token (750 ms, ease
+  in-out; the shot's own `durationMs` overrides it) until the target fills
+  `fill` of the frame (0.6-0.85, default 0.75), centered where a scene's main
+  block goes and never past the content area, and holds until the next shot.
+  The target is framed as it is laid out when the shot lands.
+  List shots in time order. Use them deliberately, at most a push and a pull
+  per scene: the usual one makes a docked `Pinned` window full size, so its
+  text can be read. Land the shot before the narration talks about what it
+  shows.
+- **Breathing** is a slow drift over the whole scene: scale 1.00 -> 1.02,
+  sine in-out, drifting 16 px on screen, in on one scene and out on the next.
+  It is off in the built-in themes; switch it on with
+  `"themeOverrides": { "motion": { "breathe": { "on": true } } }`.
+
+`Pinned` and `Handoff` draw on parallax layers, so a camera move shows depth:
+a docked window sits back (it follows 0.5x of the camera's motion), content
+moves with the camera, and chips and a `Handoff`'s source float nearer
+(1.15x). Shared elements morph through the camera, so a window carried into a
+scene lands where the camera shows it. The checks judge every frame with the
+breathing held still. While the camera is on a shot (pushing in, holding,
+pulling back), what lies outside the shot is not judged there; the wide
+frames around the shot judge it.
+
+```json
+{
+  "id": "read",
+  "component": "Pinned",
+  "props": {
+    "pinned": { "component": "ChatWindow", "props": { "channel": "launches", "shareId": "chat", "messages": [{ "author": "Maya Chen", "time": "9:41 AM", "text": "Ready for review." }] } },
+    "content": { "component": "Card", "props": { "icon": "check", "title": "Reviewed" } }
+  },
+  "shots": [
+    { "atMs": 1500, "target": "chat" },
+    { "atMs": 4500, "target": "wide" }
+  ],
+  "narration": "Up close, the thread is easy to read.",
+  "durationMs": 6000
+}
+```
+
+**Incorrect:** a shot onto an element the scene does not draw, filling more
+of the frame than a shot may.
+
+```json incorrect
+{
+  "id": "read",
+  "component": "ChatWindow",
+  "props": { "channel": "launches", "messages": [{ "author": "Maya Chen", "time": "9:41 AM", "text": "Ready for review." }] },
+  "shots": [{ "atMs": 1500, "target": "chat", "fill": 0.95 }],
+  "durationMs": 6000
+}
+```
+
 ## 2. The storyboard
 
 A storyboard is one JSON document. Top-level fields: `title`, `aspect`
 (`"9:16"`, the primary format, or `"16:9"`), `fps` (default 30), `theme`
 (default `"light"`), the theme fields in section 3, `safe` (below), and
 `scenes`. Each scene has an `id` (unique), a `component` (a kit name from
-section 5), `props`, and optionally `narration`, `durationMs` and `transition`.
+section 5), `props`, and optionally `narration`, `durationMs`, `transition`
+and camera `shots` (section 1).
 
 ```json
 {
@@ -157,7 +219,8 @@ taste.
 - `light` (the default): a flat warm-grey ground (`#e6e7df`), pure white cards
   with a soft wide shadow and 28 px corners, pale chips (`#f1f2ea`), near-black
   text and one orange accent (`#fb5a1f`), set in Source Sans 3.
-- `dark`: deep tinted ground, raised surfaces, a soft blue accent, faint dot grid.
+- `dark`: deep tinted ground, raised surfaces, a soft blue accent, over the
+  living `mesh` ground.
 - `neutral`: the v1 look (system fonts), kept for compatibility.
 
 Text set in the accent (a kicker, a highlighted step, `bold` headlines) is the
@@ -176,7 +239,15 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
   - `colors`: the roles `ground`, `surface`, `surfaceAlt`, `text`, `textMuted`,
     `textSubtle`, `accent`, `accentText`, `border`, `shadow` (hex only). Keep
     neutrals tinted, never pure `#000000` or `#ffffff`.
-  - `ground.style`: `solid`, `vignette`, `grid` or `noise`.
+  - `ground.style`: `solid` (flat, the light theme's), `vignette`, `grid` (a
+    faint dot grid that breathes, 1.00 -> 1.04 over 8 s), `noise` (still
+    grain) or `mesh` (three soft blobs of the accent and a tint of it drifting
+    over the ground; the dark theme's). The mesh keeps text readable on its
+    own: on a light ground it becomes a gentle warm light, because the muted
+    text has little contrast to spare. `ground.grain`: film grain over any
+    style, `0` (off, the default) or an opacity of 0.15-0.22; it changes 12
+    times a second. `ground.mesh` (`blobs`, `minPx`/`maxPx`,
+    `minAlpha`/`maxAlpha`) shapes the blobs.
   - `fonts.display`, `fonts.body`, `fonts.mono`: CSS font stacks. Only the
     bundled fonts are guaranteed to be present: `mc-sans` (Source Sans 3, the
     default sans), `mc-mono` (Source Code Pro, the default mono), and `mc-geist`
@@ -196,12 +267,18 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     `leadMs` (when a scene's first motion starts, 150), `cascadeMs` (when a
     cascade has landed, 1200), and one token per kind of motion (design v3,
     table D), each with an `ms` duration and a `curve`: `fx.fast`, `fx`,
-    `text.in`, `text.out`, `enter` (cards, windows, chips; with `staggerMs`),
-    `enter.hero`, `pop`, `count`, `mark`, `shot`, `beat`; `exit` takes a
-    `share` of the entry within `minMs`-`maxMs`; `flow` is the dot that runs
-    along a drawn connector (one trip per `ms`, a `dotPx` dot, and a
-    `glowPx` ring of the accent at `glowOpacity` on the node it reaches;
-    `"ms": 0` turns it off). A `curve` is a name (`"linear"`, `"expoOut"`,
+    `text.in`, `text.char` (a headline's characters, with `staggerMs`),
+    `text.out`, `enter` (cards, windows, chips; with `staggerMs`),
+    `enter.hero`, `pop`, `count`, `mark` (the marker sweep: `delayMs` after
+    the text lands, a bar at `opacity` tilted `tiltDeg`, or an underline
+    `underlinePx` thick), `shot` (with the default `fill`), `beat`; `breathe`
+    is the camera's drift (`on`, `scale`, `curve`, `driftPx`; off unless `on`
+    is true); `exit` takes a `share` of the entry within `minMs`-`maxMs`;
+    `flow` is the dot that runs along a drawn connector (one trip per `ms`, a
+    `dotPx` dot, and a `glowPx` ring of the accent at `glowOpacity` on the
+    node it reaches; `"ms": 0` turns it off); `drift` moves the mesh blobs (up
+    to `px` from home, each looping in `minMs`-`maxMs`), `grid.breathe` the
+    grid (`ms`, `scale`, `curve`) and `grainFps` the grain. A `curve` is a name (`"linear"`, `"expoOut"`,
     `"expoIn"`, `"expoInOut"`, `"sineInOut"`, `"power4InOut"`), a
     cubic bezier `[x1, y1, x2, y2]`, or a spring `{ "stiffness": 170,
     "damping": 18 }`. Position and scale may overshoot; opacity and color
@@ -245,6 +322,7 @@ takes a color, pass a role name such as `"accent"`, or leave it out.
 | --- | --- |
 | "use a dark theme" | `"theme": "dark"` |
 | "light and clean" | `"theme": "light"`, `"themeOverrides": { "ground": { "style": "solid" } }` |
+| "a moving background" / "more alive" | `"themeOverrides": { "ground": { "style": "mesh" } }` (add `"grain": 0.18` for film grain) |
 | "make it orange" | `"accent": "#ff6a00"` |
 | "lots of orange" | `"accent": "#ff6a00"`, `"accentIntensity": "bold"` |
 | "an orange background" | `"accent": "#ff6a00"`, `"accentIntensity": "full"` |
@@ -324,7 +402,9 @@ Every component takes the storyboard props listed here; `progress`, `theme`,
 #### `TitleCard`
 
 A title with an optional `kicker` above and `subtitle` below. Openers, chapter
-cards and endings.
+cards and endings. The lines land one after another; the title lands as a
+whole unless `titleMotion` says `"words"` or `"chars"` (see `Headline`), and
+takes `emphasis`, `mark` and `markStyle` like a `Headline`.
 
 ```json
 {
@@ -332,6 +412,32 @@ cards and endings.
   "component": "TitleCard",
   "props": { "kicker": "Field notes", "title": "Ship on Fridays", "subtitle": "Without the fear" },
   "narration": "Here is how we ship on Fridays without the fear."
+}
+```
+
+#### `Headline`
+
+One line of big text on its own: a hook, an end line, or a statement in
+another component's slot. Set at `hero` and stepped down the ramp until it
+fits (`role` starts it lower: `display`, `headline` or `title`).
+
+- `motion`: how it lands. `"whole"` (default) rises and fades in as one line;
+  `"words"` rises word by word through a clipped line, each word clearing a
+  blur, for hooks and end cards; `"chars"` rises character by character.
+  Words leave upward at the end of the scene.
+- `emphasis`: one or two words set in the accent, as a phrase (`"a prompt"`)
+  or a list (`["Ship", "Friday"]`).
+- `mark`: one key word that an accent bar sweeps under once the text has
+  landed; `markStyle` `"bar"` (default) or `"underline"`. One mark per scene,
+  never on an emphasized word. `Section`, `SceneFrame` and `TitleCard` take
+  the same three props for their headline.
+
+```json
+{
+  "id": "hook",
+  "component": "Headline",
+  "props": { "text": "Videos from a prompt", "motion": "words", "emphasis": "prompt" },
+  "narration": "Videos, from a single prompt."
 }
 ```
 
@@ -398,7 +504,10 @@ lights up, one node at a time, for as long as the scene holds.
 The standard frame for explanatory scenes: an optional `eyebrow`, a heavy
 `headline`, a `content` slot holding any component, and an optional `note`.
 Content sits beside the headline in 16:9 and below it in 9:16;
-`"contentWidth": "wide"` gives it more room in 16:9.
+`"contentWidth": "wide"` gives it more room in 16:9. The headline rises word
+by word; `headlineMotion` (`"whole"`, `"words"`, `"chars"`), `emphasis`,
+`mark` and `markStyle` work as in `Headline`. For the reference look, with
+the header centered on top in both aspects, use `SceneFrame`.
 
 ```json
 {
@@ -414,6 +523,34 @@ Content sits beside the headline in 16:9 and below it in 9:16;
 }
 ```
 
+#### `SceneFrame`
+
+The scene frame of the reference look: a grey `eyebrow` (sentence case) and a
+bold `headline` centered at the top, in the same place on every scene; the
+`content` component centered in the room below; and a takeaway `footer`
+centered at the bottom. The same in 9:16 and 16:9. The header lands first (the
+headline as a whole by default), the content builds as the headline lands,
+then the footer lands. `headlineMotion`, `emphasis`, `mark` and `markStyle`
+work as in `Headline`. Give every content scene of a video the same frame.
+
+```json
+{
+  "id": "how",
+  "component": "SceneFrame",
+  "props": {
+    "eyebrow": "How it works",
+    "headline": "Three steps to a video",
+    "content": {
+      "component": "CardRow",
+      "props": { "cards": [{ "icon": "chat", "title": "Prompt" }, { "icon": "code", "title": "Plan" }, { "icon": "play", "title": "Render" }] }
+    },
+    "footer": "All on your machine",
+    "mark": "video"
+  },
+  "narration": "Three steps: a prompt, a plan and a render, all on your machine."
+}
+```
+
 #### `Pinned`
 
 Docks one component (`pinned`) at 40% of the frame width while `content`
@@ -424,7 +561,9 @@ would crowd out the content (a short area, the `crosspost` profile), the
 pinned component becomes an icon chip with its title instead of a tiny window.
 Built for shared elements: with the default `"arrive": "settled"` the pinned
 component is already in place, because it morphs in from the previous scene;
-use `"animate"` when nothing morphs into it.
+use `"animate"` when nothing morphs into it. Under a moving camera the docked
+window sits back and the content in front; a shot onto the docked window's
+`shareId` brings it up to full size (section 1).
 
 ```json
 {
@@ -569,6 +708,7 @@ and a receiver `to` (a window), joined by an `Arrow` that draws from one into
 the other, with an optional `label`. The source arrives, the arrow draws, then
 the receiver arrives. Side by side in 16:9, stacked in 9:16, so no points to
 work out. Give the receiver a `shareId` to carry it into the next scene.
+Under a moving camera the source floats a little nearer than the receiver.
 
 ```json
 {

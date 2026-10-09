@@ -68,6 +68,14 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
     to: { component: "AppWindow", props: { title: "Plan", content: { component: "StepList", props: { items: ["Hook", "Steps"] } } } },
     label: "plan",
   },
+  Headline: { text: "Videos from a prompt", motion: "words", emphasis: "prompt", mark: "Videos" },
+  SceneFrame: {
+    eyebrow: "How it works",
+    headline: "Three steps to a video",
+    content: { component: "CardRow", props: { cards: CARDS.slice(0, 3) } },
+    footer: "All on your machine",
+    mark: "video",
+  },
 };
 
 /** Media fill the frame from the first frame: no entrance, no exit. */

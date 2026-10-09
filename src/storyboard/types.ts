@@ -36,6 +36,33 @@ export interface SceneTransition {
   direction?: SlideDirection;
 }
 
+/** The target of a shot that pulls the camera back to the whole frame. */
+export const WIDE_SHOT = "wide";
+
+/** A box in frame px, as the scene lays out with the camera wide. */
+export interface ShotRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * A camera move (design v3, life #1): from `atMs` the camera pushes in on
+ * the `shot` token until `target` fills `fill` of the frame, and holds there
+ * until the next shot. A "wide" shot pulls back to the whole frame.
+ */
+export interface SceneShot {
+  /** When the move starts, in ms from the scene's start. */
+  atMs: number;
+  /** A `shareId` in the scene, a rect in frame px, or "wide". */
+  target: string | ShotRect;
+  /** Share of the frame the target fills, 0.6-0.85. Defaults to the theme's `motion.shot.fill`. */
+  fill?: number;
+  /** How long the move takes, in ms. Defaults to the theme's `motion.shot.ms`. */
+  durationMs?: number;
+}
+
 export interface StoryboardScene {
   /** Unique within the storyboard. */
   id: string;
@@ -50,6 +77,8 @@ export interface StoryboardScene {
   durationMs?: number | "clip";
   /** Into the next scene. Defaults to the theme's transition; ignored on the last scene. */
   transition?: SceneTransition;
+  /** Camera moves within the scene, in time order. Without any the camera stays wide. */
+  shots?: SceneShot[];
 }
 
 /** A validated storyboard with defaults applied. */

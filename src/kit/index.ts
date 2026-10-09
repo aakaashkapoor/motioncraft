@@ -20,6 +20,8 @@ import { asKitComponent, type KitComponent } from "./types";
 import { Image } from "./Image";
 import { VideoClip } from "./VideoClip";
 import { Handoff } from "./Handoff";
+import { Headline } from "./Headline";
+import { SceneFrame } from "./SceneFrame";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -34,6 +36,7 @@ export { presence, themeEasing } from "./motion";
 export { asKitComponent } from "./types";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./StepList";
 export { Ground, groundStyle, type GroundProps } from "./Ground";
+export { grainSeed, gridBreath, meshBlobs, type MeshBlob } from "./groundMotion";
 export { AppWindow, BrowserWindow, slotTransform, windowLayout, type AppWindowProps, type BrowserWindowProps, type SlotContent } from "./windows";
 
 export const kit: Record<string, KitComponent> = {
@@ -56,4 +59,6 @@ export const kit: Record<string, KitComponent> = {
   Image: asKitComponent(Image),
   Pinned: asKitComponent(Pinned),
   Handoff: asKitComponent(Handoff),
+  Headline: asKitComponent(Headline),
+  SceneFrame: asKitComponent(SceneFrame),
 };

@@ -1,0 +1,77 @@
+{
+  "title": "Kinetic headlines, scene frame and marker",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "Headline",
+      "props": { "text": "Videos from a prompt", "motion": "words", "emphasis": "prompt" },
+      "durationMs": 3000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "how",
+      "component": "SceneFrame",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Three steps to a video",
+        "content": {
+          "component": "CardRow",
+          "props": { "cards": [{ "icon": "chat", "title": "Prompt" }, { "icon": "code", "title": "Plan" }, { "icon": "play", "title": "Render" }] }
+        },
+        "footer": "All on your machine",
+        "mark": "video"
+      },
+      "narration": "A prompt, a plan, a render.",
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "why",
+      "component": "SceneFrame",
+      "props": {
+        "eyebrow": "Why it matters",
+        "headline": "Ship without an editor",
+        "headlineMotion": "words",
+        "emphasis": "Ship",
+        "mark": "editor",
+        "markStyle": "underline",
+        "content": { "component": "BigNumber", "props": { "value": 12500, "suffix": "+", "label": "videos rendered" } },
+        "footer": "Counted across every team"
+      },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "steps",
+      "component": "Section",
+      "props": {
+        "eyebrow": "The loop",
+        "headline": "Every frame is checked",
+        "mark": "checked",
+        "content": { "component": "StepList", "props": { "items": ["Write", "Render", "Check"], "highlight": 2 } }
+      },
+      "durationMs": 5000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "slot",
+      "component": "Section",
+      "props": {
+        "eyebrow": "In a slot",
+        "headline": "A statement inside",
+        "content": { "component": "Headline", "props": { "text": "Made for agents", "motion": "chars", "mark": "agents" } }
+      },
+      "durationMs": 5000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "end",
+      "component": "TitleCard",
+      "props": { "kicker": "motioncraft", "title": "Your next video starts here", "titleMotion": "words", "emphasis": "next", "subtitle": "Code-drawn, checked, local" },
+      "durationMs": 4000
+    }
+  ]
+}

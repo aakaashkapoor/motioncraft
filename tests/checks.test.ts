@@ -457,6 +457,19 @@ describe("runChecks (integration)", { timeout: 60_000 }, () => {
     expect(new Set(layout.map((p) => p.frame)).size).toBe(3);
   });
 
+  it("reads a headline rising character by character as its words, clear of its clip", async (ctx) => {
+    const sb = storyboard({
+      title: "Chars",
+      aspect: "9:16",
+      theme: "light",
+      scenes: [{ id: "chars", component: "Headline", props: { text: "Made for agents", motion: "chars", mark: "agents" }, durationMs: 2400 }],
+    });
+    // Three words need 2.25 s; read as thirteen characters they would need 4.75 s.
+    const result = await check(ctx, sb, lightTheme);
+    expect(result.problems.map(formatProblem)).toEqual([]);
+    expect(result.warnings.map(formatProblem)).toEqual([]);
+  });
+
   it("measures real colors and timing in the page", async (ctx) => {
     const sb = await loadStoryboard("..", "examples", "hello", "storyboard.json");
     const dim: Theme = { ...neutralTheme, colors: { ...neutralTheme.colors, textMuted: "#2a2d33" } };
@@ -466,5 +479,31 @@ describe("runChecks (integration)", { timeout: 60_000 }, () => {
     expect(contrast.length).toBeGreaterThan(0);
     expect(contrast.every((p) => /"Videos drawn in code"|"No cloud\. No accounts\."/.test(p.message))).toBe(true);
     expect(result.problems.filter((p) => p.check === "readability").map((p) => p.sceneId)).toEqual(["hello", "local"]);
+  });
+});
+
+describe("camera shots", () => {
+  // While the camera holds a shot, what lies outside the shot is cropped scenery, not layout.
+  const offFrame = { x: 200, y: 2100, width: 400, height: 100 };
+
+  it("leave text out of shot to the camera: no safe-area or overflow problem", () => {
+    expect(checkSafeArea(frame(text({ rect: offFrame })), "9:16")).toHaveLength(1);
+    expect(checkSafeArea(frame(text({ rect: offFrame, outOfShot: true })), "9:16")).toEqual([]);
+    expect(checkOverflow(frame(text({ rect: offFrame, outOfShot: true })), FRAME_9x16)).toEqual([]);
+    expect(checkOverflow(frame(text({ rect: offFrame })), FRAME_9x16)).toHaveLength(1);
+  });
+
+  it("still judge text in shot", () => {
+    expect(checkSafeArea(frame(text({ rect: offFrame, outOfShot: false })), "9:16")).toHaveLength(1);
+  });
+
+  it("leave key elements and blocks out of shot alone", () => {
+    const key = { label: "logo", rect: offFrame, opacity: 1 };
+    expect(checkSafeArea({ texts: [], keys: [key], blocks: [] }, "9:16")).toHaveLength(1);
+    expect(checkSafeArea({ texts: [], keys: [{ ...key, outOfShot: true }], blocks: [] }, "9:16")).toEqual([]);
+    const centered = block({ rect: { x: 240, y: 700, width: 600, height: 300 } });
+    const pushedAside = block({ rect: { x: 900, y: 1700, width: 600, height: 300 } });
+    expect(checkCentering(withBlocks(centered, pushedAside), "9:16")).toHaveLength(1);
+    expect(checkCentering(withBlocks(centered, { ...pushedAside, outOfShot: true }), "9:16")).toEqual([]);
   });
 });

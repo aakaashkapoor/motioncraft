@@ -44,6 +44,11 @@ export interface MeasuredText {
   fontSize: number;
   /** Inside an element a component shrank on purpose to fit (see `TYPE_FIT_ATTRIBUTE`). */
   fitted: boolean;
+  /**
+   * Clear of the camera's shot while the camera is on one: scenery the camera
+   * moves, not layout. The wide frames around the shot judge it.
+   */
+  outOfShot?: boolean;
 }
 
 /** A non-text element marked `data-key-element` that must stay in the safe area. */
@@ -51,6 +56,8 @@ export interface MeasuredKey {
   label: string;
   rect: Rect;
   opacity: number;
+  /** See `MeasuredText.outOfShot`. */
+  outOfShot?: boolean;
 }
 
 /**
@@ -64,6 +71,8 @@ export interface MeasuredBlock {
   opacity: number;
   /** The burned-in narration caption rather than the scene itself. */
   caption: boolean;
+  /** See `MeasuredText.outOfShot`. */
+  outOfShot?: boolean;
 }
 
 export interface FrameMeasurement {

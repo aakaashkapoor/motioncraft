@@ -1,0 +1,48 @@
+{
+  "title": "Living ground, 16:9: the mesh with grain (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "themeOverrides": { "ground": { "style": "mesh", "grain": 0.18 } },
+  "scenes": [
+    {
+      "id": "title",
+      "component": "TitleCard",
+      "props": { "kicker": "Design v3", "title": "A living ground", "subtitle": "Soft light that never stops" },
+      "narration": "The ground keeps moving while the words hold still.",
+      "durationMs": 4500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "styles",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Three ways to breathe",
+        "headline": "The ground stays alive",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              { "icon": "sparkles", "title": "Mesh", "subtitle": "Drifting light" },
+              { "icon": "box", "title": "Grid", "subtitle": "A slow breath" },
+              { "icon": "clock", "title": "Grain", "subtitle": "Twelve times a second" }
+            ]
+          }
+        },
+        "note": "Text keeps its contrast"
+      },
+      "durationMs": 8000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "drift",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Every blob",
+        "headline": "Wanders, then returns",
+        "content": { "component": "BigNumber", "props": { "value": 60, "suffix": " px", "label": "Of drift, every 4 to 6 s" } }
+      },
+      "durationMs": 5000
+    }
+  ]
+}

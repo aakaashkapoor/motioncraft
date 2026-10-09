@@ -7,7 +7,10 @@
 // band at the top or bottom; 16:9 in a column at the side. When docking at
 // that size would crowd out the content, it becomes an icon chip instead of a
 // tiny window. The content lays out at its own size in the box that is left.
+// Under a moving camera (design v3, life #12) the docked window sits back on
+// the background layer and the content in front of it; a chip floats.
 
+import { CameraFree, CameraLayer } from "../camera/Camera";
 import { Icon, isIconName, type IconName } from "../icons";
 import { contentArea, textColumn } from "../layout/caption";
 import { frameSize, type Rect } from "../layout/frame";
@@ -171,7 +174,9 @@ function DockedFrame({ spec, Component, progress, theme, aspect, dock, box, scal
         transformOrigin: "0 0",
       }}
     >
-      <Component {...spec.props} progress={progress} theme={theme} aspect={aspect} area={dock} />
+      <CameraFree>
+        <Component {...spec.props} progress={progress} theme={theme} aspect={aspect} area={dock} />
+      </CameraFree>
     </div>
   );
 }
@@ -227,15 +232,8 @@ export function Pinned({ progress, theme, aspect, area, pinned, content, corner 
   const { endMs } = useSceneTime(progress);
   const ahead = arrive === "settled" ? -endMs : 0;
 
-  return (
-    <div data-pinned={corner} style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }}>
-      {Content !== undefined && (
-        <div data-pinned-content="" style={{ display: "contents" }}>
-          <VisibleRectContext.Provider value={layout.content}>
-            <Content {...content!.props} progress={progress} theme={theme} aspect={aspect} area={layout.content} />
-          </VisibleRectContext.Provider>
-        </div>
-      )}
+  const docked = (
+    <CameraLayer key="pinned" depth={layout.mode === "dock" ? "background" : "floating"} aspect={aspect}>
       <MotionDelay ms={ahead}>
         {layout.mode === "dock" ? (
           <DockedFrame spec={pinned} Component={Docked} progress={progress} theme={theme} aspect={aspect} dock={layout.dock} box={layout.pinned} scale={layout.scale} />
@@ -243,6 +241,21 @@ export function Pinned({ progress, theme, aspect, area, pinned, content, corner 
           <PinnedChip spec={pinned} label={layout.label} progress={progress} theme={theme} aspect={aspect} box={layout.pinned} />
         )}
       </MotionDelay>
+    </CameraLayer>
+  );
+  const main = Content !== undefined && (
+    <CameraLayer key="content" depth="foreground" aspect={aspect}>
+      <div data-pinned-content="" style={{ display: "contents" }}>
+        <VisibleRectContext.Provider value={layout.content}>
+          <Content {...content!.props} progress={progress} theme={theme} aspect={aspect} area={layout.content} />
+        </VisibleRectContext.Provider>
+      </div>
+    </CameraLayer>
+  );
+  // Nearer layers last: a docked window behind the content, a chip in front.
+  return (
+    <div data-pinned={corner} style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }}>
+      {layout.mode === "dock" ? [docked, main] : [main, docked]}
     </div>
   );
 }

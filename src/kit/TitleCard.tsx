@@ -1,8 +1,9 @@
 // A headline card: optional kicker, title, optional subtitle, centered on the
 // frame's optical center above the caption band, no wider than the text column.
-// Long titles step down the type ramp until the card fits. Lands as a whole:
-// fades in with a short `text.in` rise on the scene's lead, holds, then exits
-// fast at the end.
+// Long titles step down the type ramp until the card fits. Lands line by line
+// from the scene's lead: the kicker, then the title (as a whole by default, or
+// word by word for a hook; see `HeadlineText`), then the subtitle, each with a
+// short `text.in` rise; holds, then leaves upward, fast, at the end.
 
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
@@ -10,10 +11,12 @@ import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
-import type { Theme, TypeRole } from "../theme/types";
+import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { accentInk, headlineColor } from "../theme/roles";
 import { useSceneTime } from "./frameContext";
-import { exitOpacity, fade, tween } from "./motion";
+import { HeadlineText } from "./Headline";
+import { headlineTiming, headlineWords, linePose, wordLeaving, type HeadlineMotion, type MarkStyle } from "./headlineMotion";
+import { exitOpacity, fade } from "./motion";
 import type { KitProps } from "./types";
 
 export interface TitleCardProps extends KitProps {
@@ -21,6 +24,13 @@ export interface TitleCardProps extends KitProps {
   subtitle?: string;
   /** Small label above the title. */
   kicker?: string;
+  /** How the title lands: as a whole (the default), word by word, or character by character. */
+  titleMotion?: HeadlineMotion;
+  /** One or two words of the title set in the accent. */
+  emphasis?: string | string[];
+  /** One word of the title marked by a sweep of the accent once it has landed. */
+  mark?: string;
+  markStyle?: MarkStyle;
 }
 
 /** Title steps to try, largest first. */
@@ -67,14 +77,22 @@ export function titleCardBox(theme: Theme, aspect: Aspect, text: TitleText, slot
   return { box: placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot)), step };
 }
 
-export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle, kicker }: TitleCardProps) {
+export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle, kicker, titleMotion, emphasis, mark, markStyle }: TitleCardProps) {
   const { box, step } = titleCardBox(theme, aspect, { title, subtitle, kicker }, slot);
   const time = useSceneTime(progress);
   const { leadMs, fx } = theme.motion;
   const textIn = theme.motion["text.in"];
   const opacity = Math.min(fade(fx, time.ms - leadMs), exitOpacity(theme, time, textIn.ms));
-  const rise = Math.round((1 - tween(textIn, time.ms - leadMs)) * theme.spacing.lg * 100) / 100;
   const { colors, fonts, spacing, type } = theme;
+  // Line by line: the kicker on the lead, the title a line later, the subtitle a line after the title's last word.
+  const titleStart = leadMs + (kicker === undefined ? 0 : textIn.lineStaggerMs);
+  const titleWords = headlineTiming(theme, headlineWords(title), titleStart, titleMotion).words;
+  const subtitleStart = (titleWords.at(-1) ?? titleStart) + textIn.lineStaggerMs;
+  const leaving = wordLeaving(theme, 0, 1, time.leftMs);
+  const lands = (spec: TypeSpec, start: number) => {
+    const pose = linePose(theme, spec.size * spec.lineHeight, time.ms - start, leaving);
+    return { opacity: pose.opacity, transform: `translateY(${pose.y}px)` };
+  };
 
   return (
     <div
@@ -92,7 +110,7 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
         textAlign: "center",
       }}
     >
-      <div data-block="TitleCard" style={{ transform: `translateY(${rise}px)`, maxWidth: "100%" }}>
+      <div data-block="TitleCard" style={{ maxWidth: "100%" }}>
         {kicker !== undefined && (
           <p
             style={{
@@ -103,6 +121,7 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
               textTransform: "uppercase",
               color: accentInk(theme),
               overflowWrap: "break-word",
+              ...lands(type.eyebrow[aspect], leadMs),
             }}
           >
             {kicker}
@@ -118,7 +137,17 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
             textWrap: "balance",
           }}
         >
-          {title}
+          <HeadlineText
+            text={title}
+            theme={theme}
+            spec={type[step][aspect]}
+            time={time}
+            start={titleStart}
+            motion={titleMotion}
+            emphasis={emphasis}
+            mark={mark}
+            markStyle={markStyle}
+          />
         </h1>
         {subtitle !== undefined && (
           <p
@@ -130,6 +159,7 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
               color: colors.textMuted,
               overflowWrap: "break-word",
               textWrap: "balance",
+              ...lands(type.subtitle[aspect], subtitleStart),
             }}
           >
             {subtitle}

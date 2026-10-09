@@ -3,6 +3,7 @@
 // the theme can derive and check them; which colors is up to the storyboard.
 
 import { HEX_COLOR } from "../theme/color";
+import { SHOT_FILL } from "./shots";
 import { lightTheme } from "../theme/light";
 import { ACCENT_INTENSITIES, CURVE_NAMES, GROUND_STYLES } from "../theme/types";
 import { TRANSITION_TYPES } from "./types";
@@ -49,6 +50,16 @@ const RENAMED_MOTION: Record<string, string> = {
 
 const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
+/**
+ * Tokens with a range of their own (design v3, life #1): what a shot may fill,
+ * and breathing that only zooms in (1.00-1.04) and drifts at most 16 px.
+ */
+const RANGES: Record<string, readonly [number, number]> = {
+  "motion.shot.fill": [SHOT_FILL.min, SHOT_FILL.max],
+  "motion.breathe.scale": [1, 1.04],
+  "motion.breathe.driftPx": [0, 16],
+};
+
 /** The problem with a whole motion curve (a name, a cubic bezier or a spring), or undefined if it is one. */
 function curveError(label: string, value: unknown): string | undefined {
   const bezier =
@@ -67,8 +78,17 @@ function curveError(label: string, value: unknown): string | undefined {
 function leafError(path: string, reference: unknown, value: unknown): string | undefined {
   const label = `themeOverrides.${path}`;
   const key = path.split(".").at(-1)!;
+  if (typeof reference === "boolean") return typeof value === "boolean" ? undefined : `${label} must be true or false (got ${describe(value)})`;
   if (typeof reference === "number") {
+    const range = RANGES[path];
+    if (range !== undefined) {
+      const [min, max] = range;
+      return isNumber(value) && value >= min && value <= max ? undefined : `${label} must be a number from ${min} to ${max} (got ${describe(value)})`;
+    }
     if (path === "ground.seed") return Number.isInteger(value) ? undefined : `${label} must be an integer (got ${describe(value)})`;
+    if (path === "ground.grain") {
+      return isNumber(value) && value >= 0 && value <= 1 ? undefined : `${label} must be an opacity from 0 to 1 (got ${describe(value)})`;
+    }
     if (key === "size" || key === "stiffness") {
       return isNumber(value) && value > 0 ? undefined : `${label} must be a positive number (got ${describe(value)})`;
     }

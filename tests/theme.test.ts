@@ -107,6 +107,18 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
     expect(Number.isInteger(theme.ground.seed)).toBe(true);
   });
 
+  it("has the living-ground tokens of design v3, life #5, with grain off by default", () => {
+    expect(theme.ground.grain).toBe(0);
+    // Three blobs, 900-1200 px across, in the accent and a tint of it at 10-22% alpha.
+    expect(theme.ground.mesh).toEqual({ blobs: 3, minPx: 900, maxPx: 1200, minAlpha: 0.1, maxAlpha: 0.22 });
+    // Each drifts +-60 px along seeded noise, looping in 4-6 s.
+    expect(theme.motion.drift).toEqual({ px: 60, minMs: 4000, maxMs: 6000 });
+    // The grid breathes scale and opacity 1.0 <-> 1.04 over 8 s.
+    expect(theme.motion["grid.breathe"]).toEqual({ ms: 8000, scale: 1.04, curve: "sineInOut" });
+    // Grain, where it is on, is re-seeded at 12 fps.
+    expect(theme.motion.grainFps).toBe(12);
+  });
+
   it("has a full type ramp for both aspects", () => {
     expect(Object.keys(theme.type).sort()).toEqual([...TYPE_ROLES].sort());
     for (const role of TYPE_ROLES) {
@@ -234,6 +246,11 @@ describe("built-in themes", () => {
     expect(relativeLuminance(darkTheme.colors.surface)).toBeGreaterThan(relativeLuminance(darkTheme.colors.ground));
   });
 
+  it("dark grounds itself on the living mesh; light keeps the reference's flat ground", () => {
+    expect(darkTheme.ground.style).toBe("mesh");
+    expect(lightTheme.ground.style).toBe("solid");
+  });
+
   it("neutral keeps the v1 look", () => {
     expect(neutralTheme.colors.ground).toBe("#0b0d10");
     expect(neutralTheme.colors.surface).toBe("#1a1d23");
@@ -295,7 +312,7 @@ describe("resolveTheme", () => {
     expect(theme.colors.ground).toBe("#101820");
     expect(theme.colors.textMuted).toBe("#b0b8c0");
     expect(theme.colors.text).toBe(darkTheme.colors.text);
-    expect(theme.ground).toEqual({ style: "noise", seed: 42 });
+    expect(theme.ground).toEqual({ ...darkTheme.ground, style: "noise", seed: 42 });
     expect(theme.type.headline["9:16"]).toEqual({ ...darkTheme.type.headline["9:16"], weight: 900 });
     expect(theme.type.headline["16:9"]).toEqual(darkTheme.type.headline["16:9"]);
     expect(theme.radius).toEqual({ ...darkTheme.radius, md: 12 });
