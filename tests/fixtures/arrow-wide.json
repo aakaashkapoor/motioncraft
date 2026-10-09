@@ -1,0 +1,71 @@
+{
+  "title": "Arrow fixture, 16:9 (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "straight",
+      "component": "Arrow",
+      "props": {
+        "from": {
+          "x": 300,
+          "y": 540
+        },
+        "to": {
+          "x": 1600,
+          "y": 540
+        }
+      },
+      "narration": "An arrow draws itself from one point to another.",
+      "durationMs": 3000
+    },
+    {
+      "id": "curved",
+      "component": "Arrow",
+      "props": {
+        "from": {
+          "x": 400,
+          "y": 800
+        },
+        "to": {
+          "x": 1500,
+          "y": 300
+        },
+        "curve": 0.3,
+        "label": "Then"
+      },
+      "durationMs": 3000
+    },
+    {
+      "id": "anchored",
+      "component": "Arrow",
+      "props": {
+        "anchors": {
+          "a": {
+            "x": 300,
+            "y": 200,
+            "width": 360,
+            "height": 200
+          },
+          "b": {
+            "x": 1260,
+            "y": 600,
+            "width": 360,
+            "height": 200
+          }
+        },
+        "from": {
+          "anchor": "a"
+        },
+        "to": {
+          "anchor": "b",
+          "side": "top"
+        },
+        "curve": -0.2,
+        "color": "text"
+      },
+      "durationMs": 3000
+    }
+  ]
+}

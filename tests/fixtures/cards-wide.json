@@ -1,0 +1,56 @@
+{
+  "title": "Cards sample (16:9)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "scenes": [
+    {
+      "id": "card",
+      "component": "Card",
+      "props": { "icon": "shield", "title": "Runs locally", "subtitle": "Nothing leaves your machine", "step": 1, "highlighted": true },
+      "durationMs": 4000
+    },
+    {
+      "id": "stack",
+      "component": "CardRow",
+      "props": {
+        "cards": [
+          { "icon": "terminal", "title": "Write", "subtitle": "Describe the video", "step": 1 },
+          { "icon": "code", "title": "Build", "subtitle": "Scenes from the kit", "step": 2 },
+          { "icon": "check", "title": "Check", "subtitle": "Layout and contrast", "step": 3 }
+        ],
+        "highlight": 1
+      },
+      "durationMs": 6000
+    },
+    {
+      "id": "grid",
+      "component": "CardRow",
+      "props": {
+        "cards": [
+          { "icon": "terminal", "title": "Write", "subtitle": "Describe the video" },
+          { "icon": "code", "title": "Build", "subtitle": "Scenes from the kit" },
+          { "icon": "check", "title": "Check", "subtitle": "Layout and contrast" },
+          { "icon": "chat", "title": "Narrate", "subtitle": "A local voice" },
+          { "icon": "shield", "title": "Ship", "subtitle": "A finished MP4" }
+        ],
+        "highlight": 4
+      },
+      "durationMs": 7000
+    },
+    {
+      "id": "features",
+      "component": "FeatureList",
+      "props": {
+        "title": "Why it works",
+        "items": [
+          { "icon": "shield", "text": "Runs locally, no upload" },
+          { "icon": "code", "text": "Every frame is code-drawn" },
+          { "icon": "check", "text": "Checked for overflow and contrast" },
+          { "icon": "chat", "text": "Narrated with captions" }
+        ]
+      },
+      "durationMs": 7000
+    }
+  ]
+}
