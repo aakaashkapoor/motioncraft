@@ -1,7 +1,9 @@
 // The design kit: code-drawn scene components, keyed by the name a storyboard
 // scene uses in its `component` field.
 
+import { AppWindow } from "./AppWindow";
 import { BigNumber } from "./BigNumber";
+import { BrowserWindow } from "./BrowserWindow";
 import { Caption, captionLimits } from "./Caption";
 import { FlowDiagram } from "./FlowDiagram";
 import { StepList } from "./StepList";
@@ -21,6 +23,7 @@ export { presence, themeEasing } from "./motion";
 export { asKitComponent } from "./types";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./StepList";
 export { Ground, groundStyle, type GroundProps } from "./Ground";
+export { AppWindow, BrowserWindow, slotTransform, windowLayout, type AppWindowProps, type BrowserWindowProps, type SlotContent } from "./windows";
 
 export const kit: Record<string, KitComponent> = {
   TitleCard: asKitComponent(TitleCard),
@@ -28,4 +31,6 @@ export const kit: Record<string, KitComponent> = {
   BigNumber: asKitComponent(BigNumber),
   FlowDiagram: asKitComponent(FlowDiagram),
   StepList: asKitComponent(StepList),
+  AppWindow: asKitComponent(AppWindow),
+  BrowserWindow: asKitComponent(BrowserWindow),
 };

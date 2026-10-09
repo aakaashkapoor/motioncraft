@@ -1,0 +1,39 @@
+{
+  "title": "Windows fixture (must pass layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "browser",
+      "component": "BrowserWindow",
+      "props": {
+        "url": "https://example.com/docs",
+        "tabs": ["Docs", "Pricing"],
+        "shareId": "window",
+        "content": {
+          "component": "StepList",
+          "props": { "title": "Get started", "items": ["Install the skill", "Write a prompt", "Watch it render"] }
+        }
+      },
+      "narration": "Open the docs and follow three short steps.",
+      "durationMs": 6000
+    },
+    {
+      "id": "app",
+      "component": "AppWindow",
+      "props": {
+        "title": "Results",
+        "shareId": "window",
+        "content": { "component": "BigNumber", "props": { "value": 42, "suffix": "%", "label": "faster renders" } }
+      },
+      "durationMs": 5000
+    },
+    {
+      "id": "minimal",
+      "component": "AppWindow",
+      "props": { "title": "Untitled", "chrome": "minimal" },
+      "durationMs": 3000
+    }
+  ]
+}
