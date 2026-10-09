@@ -1,7 +1,7 @@
 // WCAG 2.x relative luminance and contrast ratio.
 // https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
 
-import { parseHex } from "./color";
+import { mixColors, parseHex } from "./color";
 
 function channel(value: number): number {
   const c = value / 255;
@@ -27,4 +27,19 @@ export function luminanceContrast(la: number, lb: number): number {
 /** Contrast ratio between two hex colors, 1 to 21. Order does not matter. */
 export function contrastRatio(a: string, b: string): number {
   return luminanceContrast(relativeLuminance(a), relativeLuminance(b));
+}
+
+/** WCAG AA for normal text, as the layer-1 contrast check requires. */
+export const AA_CONTRAST = 4.5;
+
+/**
+ * `color`, mixed toward `toward` in 5% steps just far enough to reach `min`
+ * contrast on every one of `backgrounds`; `toward` itself if no step does.
+ */
+export function readableColor(color: string, toward: string, backgrounds: readonly string[], min = AA_CONTRAST): string {
+  for (let step = 0; step <= 20; step++) {
+    const candidate = step === 0 ? color : mixColors(color, toward, step / 20);
+    if (backgrounds.every((bg) => contrastRatio(candidate, bg) >= min)) return candidate;
+  }
+  return toward;
 }

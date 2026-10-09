@@ -60,6 +60,17 @@ export function createReadyGate(): ReadyGate {
   };
 }
 
+/**
+ * Loads every CSS font request with `load` (`document.fonts.load` in the page)
+ * and fails naming each request that no face matched: a weight with no face
+ * would otherwise be drawn in a neighbouring weight or a fallback font.
+ */
+export async function loadFonts(requests: readonly string[], load: (font: string) => Promise<readonly unknown[]>): Promise<void> {
+  const loaded = await Promise.all(requests.map(async (font) => ({ font, faces: await load(font) })));
+  const missing = loaded.filter(({ faces }) => faces.length === 0).map(({ font }) => font);
+  if (missing.length > 0) throw new Error(`no bundled face for ${missing.join(", ")}`);
+}
+
 /** An image on the frame: `decode` resolves once it can be painted. */
 export interface ReadyImage {
   label: string;

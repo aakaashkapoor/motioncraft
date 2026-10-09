@@ -6,7 +6,6 @@
 import { interpolate } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
-import { fontSize } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { CARD_TITLE_STEPS, CardFace, cardEntrance, cardHeight, cardMetrics, type CardData, type CardMetrics, type CardOrientation } from "./Card";
@@ -31,8 +30,8 @@ const CARD_ENTER = 0.25;
 const CARDS_DONE = 0.6;
 /** The highlight's spring, starting once the cards have landed. */
 const HIGHLIGHT_ENTER = 0.15;
-/** A row needs each card at least this wide, in em of the largest title size. */
-const MIN_ROW_CARD_EM = 5;
+/** A row needs each card at least this wide, in em of the ramp's `subtitle` step. */
+const MIN_ROW_CARD_EM = 4.5;
 
 /** The [start, end] of each card's entrance, as fractions of the scene. */
 export function cardRowTiming(count: number): Array<[number, number]> {
@@ -61,7 +60,7 @@ export function cardRowLayout(theme: Theme, aspect: Aspect, cards: readonly Card
   const gap = theme.spacing.md;
   const n = cards.length;
   const rowCell = (area.width - (n - 1) * gap) / n;
-  const wide = area.width > area.height && rowCell >= MIN_ROW_CARD_EM * fontSize(theme, CARD_TITLE_STEPS[0]!, aspect);
+  const wide = area.width > area.height && rowCell >= MIN_ROW_CARD_EM * theme.type.subtitle[aspect].size;
   const cols = wide ? n : n <= 3 ? 1 : 2;
   const rows = Math.ceil(n / cols);
   const orientation: CardOrientation = cols === 1 ? "row" : "column";

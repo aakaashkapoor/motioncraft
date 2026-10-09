@@ -1,43 +1,62 @@
-// Tokens the built-in themes share: type ramp, fitting scale, spacing, radii
-// and motion. Each theme spreads these and sets its own colors and ground.
+// Tokens the built-in themes share: the type ramp, named weights, spacing,
+// radii and motion. Each theme spreads these and sets its own colors and ground.
 
-import type { ThemeMotion, ThemeRadius, ThemeSpacing, ThemeTypeScale, TypeRamp, TypeSpec } from "./types";
+import type { ThemeMotion, ThemeRadius, ThemeSpacing, ThemeWeights, TypeRamp, TypeSpec } from "./types";
 
 export const SYSTEM_SANS =
   'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
 export const SYSTEM_MONO =
   'ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
 
+export const baseWeights: ThemeWeights = {
+  regular: 400,
+  medium: 500,
+  semibold: 600,
+  bold: 700,
+  heavy: 800,
+};
+
+const { medium, semibold, bold, heavy } = baseWeights;
+/** Code reads best a touch heavier than regular on a video frame. */
+const MONO_WEIGHT = 450;
+
 const spec = (size: number, weight: number, tracking: number, lineHeight: number): TypeSpec => ({ size, weight, tracking, lineHeight });
 
+/** One step in both aspects: the same weight, tracking and line height, a size for each. */
+const step = (tall: number, wide: number, weight: number, tracking: number, lineHeight: number) => ({
+  "9:16": spec(tall, weight, tracking, lineHeight),
+  "16:9": spec(wide, weight, tracking, lineHeight),
+});
+
 /**
- * Sized for 1080px-wide 9:16 frames watched on a phone, and for 1080px-tall
- * 16:9 frames (about 0.8x). Headlines are heavy with tight tracking; eyebrows
- * are small and spaced out.
+ * Design v3, table B: a modular scale (ratio 1.25, base 48 px on 9:16 and 44
+ * px on 16:9). A 16:9 video is shown smaller on a phone, so its text is about
+ * 0.92x of 9:16, never less. Tracking tightens and line height closes up as
+ * size grows; the uppercase eyebrow is spaced out.
  */
 export const baseTypeRamp: TypeRamp = {
-  eyebrow: { "9:16": spec(36, 600, 0.12, 1.3), "16:9": spec(28, 600, 0.12, 1.3) },
-  headline: { "9:16": spec(128, 800, -0.02, 1.02), "16:9": spec(104, 800, -0.02, 1.02) },
-  title: { "9:16": spec(88, 700, -0.015, 1.08), "16:9": spec(68, 700, -0.015, 1.08) },
-  body: { "9:16": spec(52, 450, 0, 1.35), "16:9": spec(40, 450, 0, 1.35) },
-  caption: { "9:16": spec(40, 500, 0, 1.3), "16:9": spec(32, 500, 0, 1.3) },
-  mono: { "9:16": spec(40, 450, 0, 1.45), "16:9": spec(32, 450, 0, 1.45) },
+  numeral: step(240, 220, bold, -0.04, 0.9),
+  hero: step(152, 140, heavy, -0.035, 0.95),
+  display: step(120, 112, heavy, -0.03, 1.0),
+  headline: step(96, 88, bold, -0.025, 1.05),
+  title: step(76, 72, bold, -0.02, 1.1),
+  subtitle: step(60, 56, semibold, -0.01, 1.15),
+  body: step(48, 44, medium, 0, 1.3),
+  label: step(40, 36, medium, 0, 1.3),
+  eyebrow: step(32, 28, semibold, 0.08, 1.2),
+  mono: step(40, 36, MONO_WEIGHT, 0, 1.45),
 };
 
-export const baseTypeScale: ThemeTypeScale = {
-  caption: 40,
-  body: 52,
-  subtitle: 64,
-  title: 88,
-  display: 128,
-};
-
+/** Design v3, section C: an 8 px base. */
 export const baseSpacing: ThemeSpacing = {
-  xs: 8,
-  sm: 16,
+  xxs: 8,
+  xs: 16,
+  sm: 24,
   md: 32,
-  lg: 56,
-  xl: 96,
+  lg: 48,
+  xl: 64,
+  xxl: 96,
+  xxxl: 128,
 };
 
 export const baseRadius: ThemeRadius = {

@@ -124,7 +124,7 @@ describe("Arrow anchors", () => {
         <Arrow progress={0.5} theme={theme} aspect="9:16" from={{ anchor: "chat" }} to={{ anchor: "cards" }} />
       </AnchorProvider>,
     );
-    const gap = theme.spacing.sm;
+    const gap = theme.spacing.xs;
     const expected = arrowGeometry({ x: 250, y: 500 + gap }, { x: 250, y: 1000 - gap }, 0, 1);
     expect(line(html).d).toBe(expected.d);
   });

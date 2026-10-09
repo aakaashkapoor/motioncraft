@@ -36,5 +36,5 @@ export async function runChecks(options: RunChecksOptions): Promise<CheckResult>
     for (const frame of frames) result.push({ frame, measurement: await measure(frame) });
     return result;
   });
-  return judge(storyboard, timeline, measured);
+  return judge(storyboard, timeline, measured, theme);
 }

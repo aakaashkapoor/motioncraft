@@ -7,7 +7,6 @@ import {
   contentArea,
   estimateLines,
   estimateTextHeight,
-  fontScale,
   fontSize,
   frameSize,
   neutralTheme,
@@ -56,15 +55,7 @@ describe("safeArea", () => {
   });
 });
 
-describe("fontScale", () => {
-  it("is 1 for the primary 9:16 format", () => {
-    expect(fontScale("9:16")).toBe(1);
-  });
-
-  it("is positive for every aspect", () => {
-    for (const aspect of ASPECTS) expect(fontScale(aspect)).toBeGreaterThan(0);
-  });
-
+describe("type sizes", () => {
   it("keeps body text readable relative to frame height in both shapes", () => {
     for (const aspect of ASPECTS) {
       const { height } = frameSize(aspect);
@@ -73,10 +64,15 @@ describe("fontScale", () => {
     }
   });
 
-  it("applies the scale to the theme's type scale", () => {
-    expect(fontSize(neutralTheme, "title", "16:9")).toBe(
-      Math.round(neutralTheme.typeScale.title * fontScale("16:9")),
-    );
+  it("reads each aspect's size straight from the ramp, with no scaling", () => {
+    expect(fontSize(neutralTheme, "title", "16:9")).toBe(neutralTheme.type.title["16:9"].size);
+    expect(fontSize(neutralTheme, "title", "9:16")).toBe(neutralTheme.type.title["9:16"].size);
+  });
+
+  it("never sets 16:9 text below 0.9x of 9:16: a 16:9 video plays smaller on a phone", () => {
+    for (const role of ["display", "title", "body", "label"] as const) {
+      expect(fontSize(neutralTheme, role, "16:9")).toBeGreaterThanOrEqual(0.9 * fontSize(neutralTheme, role, "9:16"));
+    }
   });
 });
 

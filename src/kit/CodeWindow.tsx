@@ -6,6 +6,7 @@
 import { interpolate } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
+import { TYPE_FIT_ATTRIBUTE } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { mixColors } from "../theme/color";
 import type { Theme } from "../theme/types";
@@ -99,7 +100,11 @@ export function CodeWindow({
       shareId={shareId}
       titleBar={<TitleBar theme={theme} aspect={aspect} title={title} chrome={chrome} />}
     >
-      <div style={{ fontFamily: theme.fonts.mono, fontWeight: mono.weight, letterSpacing: `${mono.tracking}em` }}>
+      <div
+        // The mono step, shrunk to fit when the code needs it.
+        {...(size < mono.size ? { [TYPE_FIT_ATTRIBUTE]: "" } : {})}
+        style={{ fontFamily: theme.fonts.mono, fontWeight: mono.weight, letterSpacing: `${mono.tracking}em` }}
+      >
         {lines.map((tokens, i) => {
           const number = i + 1;
           const lit = picked.has(number);

@@ -7,10 +7,10 @@ import { Icon } from "../icons";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
-import { fontSize } from "../layout/type";
+import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
-import type { Theme, TypeStep } from "../theme/types";
+import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { themeEasing } from "./motion";
 import { springIn } from "./springIn";
 import type { KitProps } from "./types";
@@ -33,10 +33,8 @@ const ROW_ENTER = 0.25;
 /** By this point every row is fully in. */
 const ROWS_DONE = 0.65;
 
-/** Row text sizes to try, largest first. */
-const ROW_STEPS: readonly TypeStep[] = ["subtitle", "body", "caption"];
-const TITLE_LINE_HEIGHT = 1.1;
-const ROW_LINE_HEIGHT = 1.25;
+/** Row text steps to try, largest first. */
+const ROW_STEPS: readonly TypeRole[] = ["subtitle", "body", "label"];
 /** Icon circle diameter as a multiple of the row font size. */
 const CIRCLE_EM = 1.7;
 /** Icon size as a fraction of the circle. */
@@ -51,15 +49,15 @@ export function featureListTiming(count: number): Array<[number, number]> {
 }
 
 interface FeatureLayout {
-  textSize: number;
+  text: TypeSpec;
   circle: number;
   /** Horizontal travel of the slide-in, reserved on both sides so rows never leave the area. */
   slide: number;
 }
 
-function layoutFor(theme: Theme, aspect: Aspect, step: TypeStep): FeatureLayout {
-  const textSize = fontSize(theme, step, aspect);
-  return { textSize, circle: Math.round(textSize * CIRCLE_EM), slide: theme.spacing.md };
+function layoutFor(theme: Theme, aspect: Aspect, step: TypeRole): FeatureLayout {
+  const text = theme.type[step][aspect];
+  return { text, circle: Math.round(text.size * CIRCLE_EM), slide: theme.spacing.md };
 }
 
 function estimateHeight(theme: Theme, aspect: Aspect, width: number, title: string | undefined, items: FeatureItem[], l: FeatureLayout): number {
@@ -67,10 +65,10 @@ function estimateHeight(theme: Theme, aspect: Aspect, width: number, title: stri
   const inner = width - 2 * l.slide;
   let height = 0;
   if (title !== undefined) {
-    height += estimateTextHeight(title, inner, { size: fontSize(theme, "title", aspect), lineHeight: TITLE_LINE_HEIGHT }) + spacing.lg;
+    height += estimateTextHeight(title, inner, theme.type.title[aspect]) + spacing.lg;
   }
   for (const item of items) {
-    height += Math.max(l.circle, estimateTextHeight(item.text, inner - l.circle - spacing.md, { size: l.textSize, lineHeight: ROW_LINE_HEIGHT }));
+    height += Math.max(l.circle, estimateTextHeight(item.text, inner - l.circle - spacing.md, l.text));
   }
   return height + spacing.md * Math.max(0, items.length - 1);
 }
@@ -114,11 +112,10 @@ export function FeatureList({ progress, theme, aspect, area: slot, items, title 
               opacity: titleIn,
               transform: `translateY(${(1 - titleIn) * spacing.lg}px)`,
               fontFamily: fonts.display,
-              fontSize: fontSize(theme, "title", aspect),
-              fontWeight: 700,
-              lineHeight: TITLE_LINE_HEIGHT,
+              ...typeCss(theme.type.title[aspect]),
               color: colors.text,
               overflowWrap: "break-word",
+              textWrap: "balance",
             }}
           >
             {title}
@@ -160,9 +157,7 @@ export function FeatureList({ progress, theme, aspect, area: slot, items, title 
                   style={{
                     color: colors.text,
                     fontFamily: fonts.body,
-                    fontSize: layout.textSize,
-                    fontWeight: 500,
-                    lineHeight: ROW_LINE_HEIGHT,
+                    ...typeCss(layout.text),
                     minWidth: 0,
                     overflowWrap: "break-word",
                   }}

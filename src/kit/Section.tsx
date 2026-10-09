@@ -10,6 +10,7 @@ import { expoOut, interpolate } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
+import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { headlineColor } from "../theme/roles";
 import type { Theme, TypeSpec } from "../theme/types";
@@ -63,7 +64,7 @@ const MAX_STACKED_HEADLINE = 0.4;
 const TEXT_COLUMN_SHARE = 0.48;
 // The eyebrow is uppercase and widely tracked: wider than average text.
 const EYEBROW_CHAR_EM = 0.82;
-/** Height of a glyph box in em. A tight headline line height is shorter, so glyphs poke out of the line box. */
+/** Height of a glyph box in em. A tighter line height is shorter, so glyphs poke out of the line box. */
 const GLYPH_BOX_EM = 1.4;
 
 /** Room in px kept above and below tightly set text so its glyphs stay inside its box. */
@@ -71,8 +72,9 @@ export function glyphPad(spec: TypeSpec): number {
   return Math.ceil(Math.max(0, (GLYPH_BOX_EM - spec.lineHeight) / 2) * spec.size);
 }
 
+/** Height of `text` set in `spec` with its glyph padding above and below; 0 without text. */
 const height = (text: string | undefined, width: number, spec: TypeSpec, charEm?: number): number =>
-  text === undefined ? 0 : estimateTextHeight(text, width, { size: spec.size, lineHeight: spec.lineHeight, charEm });
+  text === undefined ? 0 : estimateTextHeight(text, width, { size: spec.size, lineHeight: spec.lineHeight, charEm }) + 2 * glyphPad(spec);
 
 /**
  * Where each part goes, in frame px, inside `area` (the content area by
@@ -90,15 +92,14 @@ export function sectionLayout(
   const { spacing, type } = theme;
   const arrangement = aspect === "16:9" && contentWidth === "narrow" ? "beside" : "below";
 
-  const noteHeight = height(text.note, area.width, type.caption[aspect]);
+  const noteHeight = height(text.note, area.width, type.label[aspect]);
   const bodyHeight = text.note === undefined ? area.height : area.height - noteHeight - spacing.lg;
-  const textWidth = arrangement === "beside" ? Math.floor((area.width - spacing.xl) * TEXT_COLUMN_SHARE) : area.width;
+  const textWidth = arrangement === "beside" ? Math.floor((area.width - spacing.xxl) * TEXT_COLUMN_SHARE) : area.width;
 
   const eyebrowHeight = height(text.eyebrow, textWidth, type.eyebrow[aspect], EYEBROW_CHAR_EM);
-  const eyebrowSpace = text.eyebrow === undefined ? 0 : eyebrowHeight + spacing.sm;
+  const eyebrowSpace = text.eyebrow === undefined ? 0 : eyebrowHeight + spacing.xs;
   const maxHeadline = arrangement === "beside" ? bodyHeight - eyebrowSpace : bodyHeight * MAX_STACKED_HEADLINE;
-  const headlineAt = (role: SectionLayout["headlineRole"]) =>
-    height(text.headline, textWidth, type[role][aspect]) + 2 * glyphPad(type[role][aspect]);
+  const headlineAt = (role: SectionLayout["headlineRole"]) => height(text.headline, textWidth, type[role][aspect]);
   const headlineRole = HEADLINE_ROLES.find((role) => headlineAt(role) <= maxHeadline) ?? HEADLINE_ROLES.at(-1)!;
   const headlineHeight = headlineAt(headlineRole);
 
@@ -107,7 +108,7 @@ export function sectionLayout(
   const headline = { x: area.x, y: top + eyebrowSpace, width: textWidth, height: headlineHeight };
   let content: Rect;
   if (arrangement === "beside") {
-    const x = area.x + textWidth + spacing.xl;
+    const x = area.x + textWidth + spacing.xxl;
     content = { x, y: area.y, width: area.x + area.width - x, height: bodyHeight };
   } else {
     const y = headline.y + headlineHeight + spacing.lg;
@@ -182,13 +183,13 @@ export function Section({ progress, theme, aspect, area, headline, eyebrow, cont
   const { colors, fonts, type } = theme;
   const headlineSpec = type[layout.headlineRole][aspect];
   const eyebrowSpec = type.eyebrow[aspect];
-  const noteSpec = type.caption[aspect];
+  const noteSpec = type.label[aspect];
+  // Each part keeps its glyph padding inside its box (see `glyphPad`).
   const textStyle = (spec: TypeSpec) => ({
     margin: 0,
-    fontSize: spec.size,
-    fontWeight: spec.weight,
-    letterSpacing: `${spec.tracking}em`,
-    lineHeight: spec.lineHeight,
+    boxSizing: "border-box" as const,
+    padding: `${glyphPad(spec)}px 0`,
+    ...typeCss(spec),
     overflowWrap: "break-word" as const,
   });
 
@@ -215,10 +216,9 @@ export function Section({ progress, theme, aspect, area, headline, eyebrow, cont
         style={{
           ...at(layout.headline),
           ...textStyle(headlineSpec),
-          boxSizing: "border-box",
-          padding: `${glyphPad(headlineSpec)}px 0`,
           fontFamily: fonts.display,
           color: headlineColor(theme),
+          textWrap: "balance",
         }}
       >
         {words.map((word, i) => {

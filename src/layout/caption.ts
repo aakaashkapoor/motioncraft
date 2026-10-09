@@ -3,15 +3,13 @@
 
 import type { Theme } from "../theme/types";
 import { safeArea, type Aspect, type Rect } from "./frame";
-import { fontSize } from "./type";
 
 export const CAPTION_MAX_LINES = 2;
-export const CAPTION_LINE_HEIGHT = 1.3;
 
-/** Height of the caption band in px: two lines of body text plus the plate's padding. */
+/** Height of the caption band in px: two lines of caption text (the ramp's `subtitle`) plus the plate's padding. */
 export function captionBandHeight(theme: Theme, aspect: Aspect): number {
-  const size = fontSize(theme, "body", aspect);
-  return Math.ceil(CAPTION_MAX_LINES * size * CAPTION_LINE_HEIGHT + 2 * theme.spacing.sm);
+  const { size, lineHeight } = theme.type.subtitle[aspect];
+  return Math.ceil(CAPTION_MAX_LINES * size * lineHeight + 2 * theme.spacing.xs);
 }
 
 /** The caption band's rectangle: the bottom of the safe area. */

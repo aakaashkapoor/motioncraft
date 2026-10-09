@@ -1,15 +1,15 @@
 // A headline card: optional kicker, title, optional subtitle, centered in the
-// safe area above the caption band. Long titles step down the type scale until
+// safe area above the caption band. Long titles step down the type ramp until
 // the card fits. Fades in with a slight rise, holds, then fades out.
 
 import { interpolate } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
-import { fontSize } from "../layout/type";
+import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
-import type { Theme, TypeStep } from "../theme/types";
-import { headlineColor } from "../theme/roles";
+import type { Theme, TypeRole } from "../theme/types";
+import { accentInk, headlineColor } from "../theme/roles";
 import { presence, themeEasing } from "./motion";
 import type { KitProps } from "./types";
 
@@ -23,28 +23,22 @@ export interface TitleCardProps extends KitProps {
 const ENTER = 0.2;
 const EXIT = 0.1;
 
-/** Title sizes to try, largest first. */
-const TITLE_STEPS: readonly TypeStep[] = ["display", "title", "subtitle"];
-const TITLE_LINE_HEIGHT = 1.05;
-const SUBTITLE_LINE_HEIGHT = 1.25;
-// The kicker uses the browser's "normal" line height; estimate it generously.
-const KICKER_LINE_HEIGHT = 1.35;
-// Uppercase, semibold, with 0.12em letter spacing: wider than average text.
+/** Title steps to try, largest first. */
+const TITLE_STEPS: readonly TypeRole[] = ["display", "headline", "title", "subtitle"];
+// Uppercase and widely tracked: wider than average text.
 const KICKER_CHAR_EM = 0.82;
 
 type TitleText = Pick<TitleCardProps, "title" | "subtitle" | "kicker">;
 
 /** Estimated height in px of the card's text with the title at `step`. */
-function estimateCardHeight(theme: Theme, aspect: Aspect, width: number, text: TitleText, step: TypeStep): number {
-  const { spacing } = theme;
-  let height = estimateTextHeight(text.title, width, { size: fontSize(theme, step, aspect), lineHeight: TITLE_LINE_HEIGHT });
+function estimateCardHeight(theme: Theme, aspect: Aspect, width: number, text: TitleText, step: TypeRole): number {
+  const { spacing, type } = theme;
+  let height = estimateTextHeight(text.title, width, type[step][aspect]);
   if (text.kicker !== undefined) {
-    const size = fontSize(theme, "caption", aspect);
-    height += spacing.md + estimateTextHeight(text.kicker, width, { size, lineHeight: KICKER_LINE_HEIGHT, charEm: KICKER_CHAR_EM });
+    height += spacing.md + estimateTextHeight(text.kicker, width, { ...type.eyebrow[aspect], charEm: KICKER_CHAR_EM });
   }
   if (text.subtitle !== undefined) {
-    const size = fontSize(theme, "subtitle", aspect);
-    height += spacing.md + estimateTextHeight(text.subtitle, width, { size, lineHeight: SUBTITLE_LINE_HEIGHT });
+    height += spacing.md + estimateTextHeight(text.subtitle, width, type.subtitle[aspect]);
   }
   return height;
 }
@@ -54,7 +48,7 @@ function estimateCardHeight(theme: Theme, aspect: Aspect, width: number, text: T
  * (the content area, above the caption band, by default). If none fits, the smallest step: the card then overflows
  * visibly and the layer-1 checks report it.
  */
-export function titleCardStep(theme: Theme, aspect: Aspect, text: TitleText, area: Rect = contentArea(theme, aspect)): TypeStep {
+export function titleCardStep(theme: Theme, aspect: Aspect, text: TitleText, area: Rect = contentArea(theme, aspect)): TypeRole {
   const fits = TITLE_STEPS.find((step) => estimateCardHeight(theme, aspect, area.width, text, step) <= area.height);
   return fits ?? TITLE_STEPS[TITLE_STEPS.length - 1]!;
 }
@@ -65,7 +59,7 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
   const easing = themeEasing(theme);
   const opacity = presence(progress, ENTER, EXIT, easing);
   const rise = interpolate(progress, [0, ENTER], [theme.spacing.lg, 0], { easing });
-  const { colors, fonts, spacing } = theme;
+  const { colors, fonts, spacing, type } = theme;
 
   return (
     <div
@@ -90,11 +84,9 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
               margin: 0,
               marginBottom: spacing.md,
               fontFamily: fonts.body,
-              fontSize: fontSize(theme, "caption", aspect),
-              fontWeight: 600,
-              letterSpacing: "0.12em",
+              ...typeCss(type.eyebrow[aspect]),
               textTransform: "uppercase",
-              color: colors.accent,
+              color: accentInk(theme),
               overflowWrap: "break-word",
             }}
           >
@@ -105,11 +97,10 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
           style={{
             margin: 0,
             fontFamily: fonts.display,
-            fontSize: fontSize(theme, step, aspect),
-            fontWeight: 700,
-            lineHeight: TITLE_LINE_HEIGHT,
+            ...typeCss(type[step][aspect]),
             color: headlineColor(theme),
             overflowWrap: "break-word",
+            textWrap: "balance",
           }}
         >
           {title}
@@ -120,10 +111,10 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
               margin: 0,
               marginTop: spacing.md,
               fontFamily: fonts.body,
-              fontSize: fontSize(theme, "subtitle", aspect),
-              lineHeight: SUBTITLE_LINE_HEIGHT,
+              ...typeCss(type.subtitle[aspect]),
               color: colors.textMuted,
               overflowWrap: "break-word",
+              textWrap: "balance",
             }}
           >
             {subtitle}

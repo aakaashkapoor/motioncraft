@@ -6,6 +6,7 @@ import {
   checkOverflow,
   checkReadability,
   checkSafeArea,
+  checkTypeScale,
   countWords,
   effectiveBackground,
   formatProblem,
@@ -22,7 +23,7 @@ import {
 } from "../src/checks";
 import { contains, describeExcess, excess, union } from "../src/checks/geometry";
 import { sceneWords } from "../src/checks/readability";
-import { buildTimeline, neutralTheme, safeArea, validateStoryboard, type Storyboard, type Theme } from "../src/index";
+import { buildTimeline, lightTheme, neutralTheme, rampSteps, safeArea, validateStoryboard, type Storyboard, type Theme } from "../src/index";
 import { BrowserNotFoundError } from "../src/render/browser";
 import { estimateDurations } from "../src/render/durations";
 import { resolveTheme } from "../src/render/themes";
@@ -38,6 +39,8 @@ function text(overrides: Partial<MeasuredText> = {}): MeasuredText {
     color: "rgb(245, 246, 248)",
     backgrounds: ["rgb(11, 13, 16)"],
     caption: false,
+    fontSize: 48,
+    fitted: false,
     ...overrides,
   };
 }
@@ -197,6 +200,35 @@ function storyboard(input: unknown): Storyboard {
   return result.storyboard;
 }
 
+describe("type-scale", () => {
+  const steps = rampSteps(lightTheme, "9:16");
+
+  it("passes text set at a step of the ramp, allowing sub-pixel rounding", () => {
+    expect(checkTypeScale(frame(text({ fontSize: 48 }), text({ fontSize: 240 }), text({ fontSize: 32.4 })), steps)).toEqual([]);
+  });
+
+  it("warns on text whose computed size is off the ramp, naming the steps around it", () => {
+    expect(checkTypeScale(frame(text({ fontSize: 42 })), steps)).toEqual([
+      'text "Hello there" is 42px, which is not a step of the type ramp (between label 40px and body 48px)',
+    ]);
+    expect(checkTypeScale(frame(text({ text: "Tiny", fontSize: 20 })), steps)).toEqual([
+      'text "Tiny" is 20px, which is not a step of the type ramp (below eyebrow 32px)',
+    ]);
+    expect(checkTypeScale(frame(text({ text: "Huge", fontSize: 300 })), steps)).toEqual([
+      'text "Huge" is 300px, which is not a step of the type ramp (above numeral 240px)',
+    ]);
+  });
+
+  it("allows fitted text that shrank on purpose, and ignores text that is not visible", () => {
+    expect(checkTypeScale(frame(text({ fontSize: 31, fitted: true }), text({ fontSize: 42, opacity: 0 })), steps)).toEqual([]);
+  });
+
+  it("reads the ramp of the aspect, including mono", () => {
+    expect(rampSteps(lightTheme, "16:9").map((s) => s.size)).toEqual([220, 140, 112, 88, 72, 56, 44, 36, 28, 36]);
+    expect(checkTypeScale(frame(text({ fontSize: 36 })), rampSteps(lightTheme, "16:9"))).toEqual([]);
+  });
+});
+
 describe("judge", () => {
   const sb = storyboard({
     title: "T",
@@ -209,8 +241,19 @@ describe("judge", () => {
   const timeline = buildTimeline(sb, {}); // quick: 0..29, slow: 30..179
 
   it("passes clean frames", () => {
-    const result = judge(sb, timeline, [{ frame: 100, measurement: frame(text({ text: "Hi" })) }]);
-    expect(result).toEqual({ passed: true, problems: [] });
+    const result = judge(sb, timeline, [{ frame: 100, measurement: frame(text({ text: "Hi" })) }], lightTheme);
+    expect(result).toEqual({ passed: true, problems: [], warnings: [] });
+  });
+
+  it("reports off-ramp text as a warning, once per scene, without failing the run", () => {
+    const off = frame(text({ text: "Off", fontSize: 50 }));
+    const result = judge(sb, timeline, [30, 100, 179].map((n) => ({ frame: n, measurement: off })), lightTheme);
+    expect(result.passed).toBe(true);
+    expect(result.problems).toEqual([]);
+    expect(result.warnings).toEqual([
+      { check: "type-scale", sceneId: "slow", frame: 30, message: 'text "Off" is 50px, which is not a step of the type ramp (between body 48px and subtitle 60px)' },
+    ]);
+    expect(formatProblem(result.warnings[0]!)).toMatch(/^warn \[type-scale\] scene "slow", frame 30: text "Off" is 50px/);
   });
 
   it("tags each problem with its check, scene and frame", () => {
@@ -311,10 +354,22 @@ async function check(ctx: TestContext, sb: Storyboard, theme: Theme = resolveThe
 }
 
 describe("runChecks (integration)", { timeout: 60_000 }, () => {
-  it("passes examples/hello", async (ctx) => {
+  it("passes examples/hello, with every text on the type ramp", async (ctx) => {
     const result = await check(ctx, await loadStoryboard("..", "examples", "hello", "storyboard.json"));
     expect(result.problems.map(formatProblem)).toEqual([]);
+    expect(result.warnings.map(formatProblem)).toEqual([]);
     expect(result.passed).toBe(true);
+  });
+
+  it("allows terminal text that shrank to fit its window", async (ctx) => {
+    const lines = Array.from({ length: 24 }, (_, i) => ({ prompt: i % 4 === 0, text: `step ${i + 1}: building the storyboard frames` }));
+    const sb = storyboard({
+      title: "Fit",
+      aspect: "9:16",
+      scenes: [{ id: "term", component: "TerminalWindow", props: { lines }, durationMs: 9000 }],
+    });
+    const result = await check(ctx, sb, lightTheme);
+    expect(result.warnings.map(formatProblem)).toEqual([]);
   });
 
   it("fails a too-long title in 9:16 on overflow or safe area", async (ctx) => {

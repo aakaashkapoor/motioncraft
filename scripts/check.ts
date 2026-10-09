@@ -1,6 +1,7 @@
 // Layer-1 checks: the storyboard checks (transitions, theme colors, media files),
-// then the start, middle and end frame of every scene. Prints the problems and
-// exits non-zero on any error or frame problem; warnings alone pass.
+// then the start, middle and end frame of every scene (overflow, safe area,
+// contrast, readability, and the type-scale warning). Prints the problems and
+// warnings and exits non-zero on any error or frame problem; warnings alone pass.
 //   npx tsx scripts/check.ts <storyboard.json>
 
 import { readFile } from "node:fs/promises";
@@ -34,8 +35,10 @@ async function main(argv: string[]): Promise<void> {
   }
 
   const result = await runChecks({ storyboard, theme, durations: estimateDurations(storyboard), mediaDir });
+  for (const warning of result.warnings) console.log(formatProblem(warning));
+  const warnings = issues.length + result.warnings.length;
   if (result.passed) {
-    console.log(`${file}: all layer-1 checks passed${issues.length > 0 ? ` (${issues.length} warning${issues.length === 1 ? "" : "s"})` : ""}`);
+    console.log(`${file}: all layer-1 checks passed${warnings > 0 ? ` (${warnings} warning${warnings === 1 ? "" : "s"})` : ""}`);
     return;
   }
   for (const problem of result.problems) console.log(formatProblem(problem));

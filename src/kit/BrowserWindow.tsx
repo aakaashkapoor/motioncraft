@@ -49,7 +49,7 @@ function Chevron({ direction, size, color }: { direction: "left" | "right"; size
 function Tabs({ theme, aspect, tabs, active, height }: { theme: Theme; aspect: Aspect; tabs: string[]; active: number; height: number }) {
   const { colors, radius, spacing } = theme;
   return (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", gap: spacing.xs, alignItems: "center" }}>
+    <div style={{ flex: 1, minWidth: 0, display: "flex", gap: spacing.xxs, alignItems: "center" }}>
       {tabs.map((tab, i) => {
         const selected = i === active;
         return (
@@ -80,7 +80,7 @@ function Tabs({ theme, aspect, tabs, active, height }: { theme: Theme; aspect: A
 export function BrowserWindow({ progress, theme, aspect, area, url, tabs, activeTab = 0, chrome = "traffic", content, shareId }: BrowserWindowProps) {
   const { colors, radius, spacing } = theme;
   const { titleBar, toolbar } = windowLayout(theme, aspect, true, area);
-  const iconSize = Math.round(theme.type.caption[aspect].size * 0.8);
+  const iconSize = Math.round(theme.type.label[aspect].size * 0.8);
   return (
     <WindowShell
       progress={progress}
@@ -108,7 +108,7 @@ export function BrowserWindow({ progress, theme, aspect, area, url, tabs, active
               height: Math.round(toolbar * ADDRESS_HEIGHT),
               display: "flex",
               alignItems: "center",
-              gap: spacing.sm,
+              gap: spacing.xs,
               padding: `0 ${spacing.md}px`,
               borderRadius: radius.pill,
               backgroundColor: colors.surfaceAlt,

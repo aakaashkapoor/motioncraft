@@ -94,9 +94,9 @@ describe("BigNumber", () => {
   });
 
   it.each(ASPECTS)("steps the number down for very long values (%s)", (aspect) => {
-    expect(bigNumberStep(neutralTheme, aspect, "$1,250")).toBe("display");
+    expect(bigNumberStep(neutralTheme, aspect, "$1,250")).toBe("numeral");
     const long = bigNumberStep(neutralTheme, aspect, "$1,234,567,890,123,456,789,012.45");
-    expect(fontSize(neutralTheme, long, aspect)).toBeLessThan(fontSize(neutralTheme, "display", aspect));
+    expect(fontSize(neutralTheme, long, aspect)).toBeLessThan(fontSize(neutralTheme, "numeral", aspect));
   });
 
   it("leaves out the label when not given and escapes text", () => {

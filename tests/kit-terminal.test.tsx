@@ -7,6 +7,7 @@ import {
   contentArea,
   contrastRatio,
   darkTheme,
+  highlightBand,
   highlightCode,
   kit,
   lightTheme,
@@ -247,7 +248,9 @@ describe("syntaxColors", () => {
   it.each([lightTheme, darkTheme, neutralTheme])("gives readable, distinct colors on the $name theme", (theme) => {
     const colors = syntaxColors(theme);
     for (const color of Object.values(colors)) expect(contrastRatio(color, theme.colors.surface)).toBeGreaterThanOrEqual(4.5);
-    expect(colors.keyword).toBe(theme.colors.accent);
+    // The keyword is the accent, deepened only when the accent does not read on the window (the light orange).
+    const reads = contrastRatio(theme.colors.accent, theme.colors.surface) >= 4.5 && contrastRatio(theme.colors.accent, highlightBand(theme)) >= 4.5;
+    expect(colors.keyword === theme.colors.accent).toBe(reads);
     expect(new Set([colors.keyword, colors.string, colors.number, colors.plain, colors.comment]).size).toBe(5);
   });
 });

@@ -1,0 +1,147 @@
+{
+  "title": "Type ramp fixture (9:16)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "title",
+      "component": "TitleCard",
+      "props": {
+        "kicker": "Design v3",
+        "title": "One type ramp",
+        "subtitle": "Source Sans 3, every weight real"
+      },
+      "narration": "Every size now comes from one ramp.",
+      "durationMs": 4500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "numeral",
+      "component": "BigNumber",
+      "props": {
+        "value": 10,
+        "label": "steps, from numeral to mono"
+      },
+      "durationMs": 3500,
+      "transition": {
+        "type": "slide"
+      }
+    },
+    {
+      "id": "weights",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Weights",
+        "headline": "Hierarchy by weight",
+        "content": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Body is medium",
+              "Subtitles are semibold",
+              "Titles are bold",
+              "Display is heavy"
+            ],
+            "highlight": 2
+          }
+        },
+        "note": "Each one is drawn, never swapped"
+      },
+      "durationMs": 8500,
+      "transition": {
+        "type": "wipe",
+        "direction": "left"
+      }
+    },
+    {
+      "id": "cards",
+      "component": "CardRow",
+      "props": {
+        "cards": [
+          {
+            "icon": "zap",
+            "title": "Sizes",
+            "subtitle": "From the ramp",
+            "step": 1
+          },
+          {
+            "icon": "box",
+            "title": "Spacing",
+            "subtitle": "On 8 px",
+            "step": 2
+          },
+          {
+            "icon": "check",
+            "title": "Checked",
+            "subtitle": "type-scale",
+            "step": 3
+          }
+        ],
+        "highlight": 2
+      },
+      "narration": "Spacing sits on an eight pixel scale.",
+      "durationMs": 5000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "chat",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "launch",
+        "sidebar": {
+          "workspace": "Acme",
+          "channels": [
+            "launch",
+            "design"
+          ]
+        },
+        "messages": [
+          {
+            "author": "Maya",
+            "time": "9:41",
+            "text": "Do the weights render now?"
+          },
+          {
+            "author": "Agent",
+            "badge": "BOT",
+            "time": "9:42",
+            "text": "All five, from 400 to 800.",
+            "highlight": true,
+            "reactions": [
+              {
+                "emoji": "+",
+                "count": 3
+              }
+            ]
+          }
+        ]
+      },
+      "durationMs": 10000,
+      "transition": {
+        "type": "slide"
+      }
+    },
+    {
+      "id": "terminal",
+      "component": "TerminalWindow",
+      "props": {
+        "title": "terminal",
+        "lines": [
+          {
+            "prompt": true,
+            "text": "npx tsx scripts/check.ts type-ramp.json"
+          },
+          {
+            "text": "all layer-1 checks passed"
+          }
+        ]
+      },
+      "durationMs": 4500
+    }
+  ]
+}

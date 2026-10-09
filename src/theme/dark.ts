@@ -1,5 +1,5 @@
-import { MONO_FAMILY, SANS_FAMILY } from "../render/fonts";
-import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseTypeScale, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { MONO_FAMILY, SANS_FAMILY } from "../render/fontFaces";
+import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
 import type { Theme } from "./types";
 
 // A deep blue-tinted ground with raised surfaces, light text and a periwinkle
@@ -27,7 +27,7 @@ export const darkTheme: Theme = {
     mono: `${MONO_FAMILY}, ${SYSTEM_MONO}`,
   },
   type: baseTypeRamp,
-  typeScale: baseTypeScale,
+  weights: baseWeights,
   spacing: baseSpacing,
   radius: baseRadius,
   cardShadow: { y: 24, blur: 72, opacity: 0.5 },

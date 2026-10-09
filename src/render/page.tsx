@@ -17,7 +17,8 @@ import type { Theme } from "../theme/types";
 import { transitionStyle } from "../transitions";
 import { morphEndpoints, morphProgress, sharedIds, type BoundaryMeasurement, type SharedMeasurements } from "../transitions/shared";
 import { createPageEncoder, type PageEncoder } from "./encode";
-import { domImages, pageGate, waitUntilReady } from "./ready";
+import { fontLoadRequests } from "./fontFaces";
+import { domImages, loadFonts, pageGate, waitUntilReady } from "./ready";
 import { SHARED_SCENE_ATTRIBUTE, SharedMorph } from "./SharedMorph";
 import { readSharedBoxes } from "./sharedMeasure";
 
@@ -183,11 +184,11 @@ export function mountPage(): void {
     },
   });
 
-  // Load every bundled face up front: a face no frame has used yet must not be
-  // missing (or silently replaced) when one first does.
+  // Load every bundled family at every kit weight up front: a weight no frame
+  // has used yet must not be missing (or silently replaced) when one first does.
   const fontsHandle = pageGate.delayRender("bundled fonts");
   let fontsLoaded = false;
-  Promise.all([...document.fonts].map((face) => face.load())).then(
+  loadFonts(fontLoadRequests(), (font) => document.fonts.load(font)).then(
     () => {
       fontsLoaded = true;
       pageGate.continueRender(fontsHandle);

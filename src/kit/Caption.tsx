@@ -1,11 +1,11 @@
-// A burned-in caption: up to two lines of text on a solid plate in the caption
-// band at the bottom of the safe area (see `layout/caption`). Longer text is
-// split into pages shown one after another, so every word is seen and nothing
-// is cut off.
+// A burned-in caption: up to two lines of text, set in the ramp's `subtitle`
+// step, on a solid plate in the caption band at the bottom of the safe area
+// (see `layout/caption`). Longer text is split into pages shown one after
+// another, so every word is seen and nothing is cut off.
 
-import { CAPTION_LINE_HEIGHT, CAPTION_MAX_LINES, captionBand } from "../layout/caption";
+import { CAPTION_MAX_LINES, captionBand } from "../layout/caption";
 import type { Aspect } from "../layout/frame";
-import { fontSize } from "../layout/type";
+import { typeCss } from "../layout/type";
 import type { Theme } from "../theme/types";
 import { pageAt, pageCaption, type CaptionLimits } from "./captionPages";
 import { presence, themeEasing } from "./motion";
@@ -25,7 +25,7 @@ const CHAR_WIDTH = 0.6;
 /** How much caption text fits on one page for a theme and aspect (an estimate). */
 export function captionLimits(theme: Theme, aspect: Aspect): CaptionLimits {
   const textWidth = captionBand(theme, aspect).width - 2 * theme.spacing.md;
-  const size = fontSize(theme, "body", aspect);
+  const size = theme.type.subtitle[aspect].size;
   const maxCharsPerLine = Math.max(1, Math.floor(textWidth / (size * CHAR_WIDTH)));
   return { maxCharsPerLine, maxLines: CAPTION_MAX_LINES };
 }
@@ -36,8 +36,8 @@ export function Caption({ progress, theme, aspect, text }: CaptionProps) {
   if (page === undefined) return null;
   const band = captionBand(theme, aspect);
   const opacity = presence(progress, ENTER, EXIT, themeEasing(theme));
-  const size = fontSize(theme, "body", aspect);
-  const padY = theme.spacing.sm;
+  const spec = theme.type.subtitle[aspect];
+  const padY = theme.spacing.xs;
   const padX = theme.spacing.md;
 
   return (
@@ -64,10 +64,9 @@ export function Caption({ progress, theme, aspect, text }: CaptionProps) {
           backgroundColor: theme.colors.ground,
           color: theme.colors.text,
           fontFamily: theme.fonts.body,
-          fontSize: size,
-          fontWeight: 600,
-          lineHeight: CAPTION_LINE_HEIGHT,
+          ...typeCss(spec),
           textAlign: "center",
+          textWrap: "balance",
           // Only a single word wider than the line can need this.
           overflowWrap: "anywhere",
         }}

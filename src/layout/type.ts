@@ -1,20 +1,46 @@
-import type { Theme, TypeStep } from "../theme/types";
+// Reading the type ramp: a step's spec, its size, the sizes on the ramp, and
+// the CSS for a spec. The ramp lives in the theme (`theme.type`); sizes are
+// already set per aspect there, so nothing here scales them.
+
+import type { Theme, TypeRole, TypeSpec } from "../theme/types";
+import { TYPE_ROLES } from "../theme/types";
 import type { Aspect } from "./frame";
 
 /**
- * Multiplier applied to a theme's type scale for an aspect.
- *
- * Theme sizes are designed for 9:16, which is watched full-screen on a phone:
- * scale 1. A 16:9 frame has the same 1080px short side but only 1080px of
- * height for stacked lines (vs 1920) and is usually watched on a bigger
- * screen, so text is scaled down a little to keep layouts from overflowing
- * while staying readable (body text stays above ~3.5% of frame height).
+ * Marks text that a component shrank below its ramp step on purpose, to fit
+ * its box (a terminal's or a code window's mono). The type-scale check allows
+ * any size inside it.
  */
-export function fontScale(aspect: Aspect): number {
-  return aspect === "9:16" ? 1 : 0.8;
+export const TYPE_FIT_ATTRIBUTE = "data-type-fit";
+
+/** A step of the theme's ramp at an aspect. */
+export function typeSpec(theme: Theme, role: TypeRole, aspect: Aspect): TypeSpec {
+  return theme.type[role][aspect];
 }
 
-/** A theme's font size for a type step, in px, adjusted for the aspect. */
-export function fontSize(theme: Theme, step: TypeStep, aspect: Aspect): number {
-  return Math.round(theme.typeScale[step] * fontScale(aspect));
+/** A step's font size in px at an aspect. */
+export function fontSize(theme: Theme, role: TypeRole, aspect: Aspect): number {
+  return theme.type[role][aspect].size;
+}
+
+/** Every step of the ramp at an aspect, largest first, mono last. */
+export function rampSteps(theme: Theme, aspect: Aspect): Array<{ role: TypeRole; size: number }> {
+  return TYPE_ROLES.map((role) => ({ role, size: theme.type[role][aspect].size }));
+}
+
+/** The distinct font sizes on the ramp at an aspect, largest first. */
+export function rampSizes(theme: Theme, aspect: Aspect): number[] {
+  return [...new Set(rampSteps(theme, aspect).map((step) => step.size))];
+}
+
+export interface TypeCss {
+  fontSize: number;
+  fontWeight: number;
+  letterSpacing: string;
+  lineHeight: number;
+}
+
+/** The CSS for a ramp spec: size, weight, tracking and line height. */
+export function typeCss(spec: TypeSpec): TypeCss {
+  return { fontSize: spec.size, fontWeight: spec.weight, letterSpacing: `${spec.tracking}em`, lineHeight: spec.lineHeight };
 }
