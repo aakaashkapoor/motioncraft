@@ -10,7 +10,7 @@ import { createContext, useContext } from "react";
 import { drawPath } from "../engine/choreography";
 import { interpolate, type Easing } from "../engine/easing";
 import { frameSize, type Rect } from "../layout/frame";
-import { fontSize } from "../layout/type";
+import { typeCss } from "../layout/type";
 import type { ColorRole } from "../theme/types";
 import { arrowGeometry, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type Point } from "./arrowGeometry";
 import { themeEasing } from "./motion";
@@ -90,9 +90,9 @@ export function Arrow({ progress, theme, aspect, area, from, to, curve = 0, wind
   const { width, height } = frameSize(aspect);
   const box = area ?? { x: 0, y: 0, width, height };
 
-  const stroke = spacing.xs;
+  const stroke = spacing.xxs;
   const headSize = spacing.md * 0.75;
-  const ends = resolveArrowEnds(from, to, { ...sceneAnchors, ...anchors }, spacing.sm);
+  const ends = resolveArrowEnds(from, to, { ...sceneAnchors, ...anchors }, spacing.xs);
   const start = isAnchored(from) ? clampInto(ends.start, box) : ends.start;
   const end = isAnchored(to) ? clampInto(ends.end, box) : ends.end;
   const geometry = arrowGeometry(start, end, curve, headSize);
@@ -136,14 +136,13 @@ export function Arrow({ progress, theme, aspect, area, from, to, curve = 0, wind
             top: round(geometry.mid.y - box.y),
             transform: "translate(-50%, -50%)",
             opacity: round(timing.label),
-            padding: `${spacing.xs}px ${spacing.sm}px`,
+            padding: `${spacing.xxs}px ${spacing.xs}px`,
             backgroundColor: colors.surface,
             border: `${hairline}px solid ${colors.border}`,
             borderRadius: radius.pill,
             fontFamily: fonts.body,
-            fontSize: fontSize(theme, "caption", aspect),
-            fontWeight: 600,
-            lineHeight: 1.2,
+            ...typeCss(theme.type.label[aspect]),
+            fontWeight: theme.weights.semibold,
             color: colors.text,
             whiteSpace: "nowrap",
           }}

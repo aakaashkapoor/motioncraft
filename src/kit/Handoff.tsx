@@ -46,7 +46,7 @@ const TO_FROM = 0.3;
 /** Where the source, the receiver and the arrow go inside `area`. Pure. */
 export function handoffLayout(theme: Theme, aspect: Aspect, area: Rect = contentArea(theme, aspect)): HandoffLayout {
   const direction = area.width >= area.height * ROW_RATIO ? "row" : "column";
-  const gap = theme.spacing.xl * 2.5;
+  const gap = theme.spacing.xxl * 2.5;
   if (direction === "row") {
     const width = Math.round((area.width - gap) * FROM_SHARE.row);
     const from = { x: area.x, y: area.y, width, height: area.height };

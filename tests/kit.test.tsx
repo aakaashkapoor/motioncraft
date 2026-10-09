@@ -93,7 +93,8 @@ describe("TitleCard", () => {
     expect(html).toContain("&lt;b&gt;");
   });
 
-  const longTitle = "My owner taught his coding robot to accept a reviewer before building my video engine";
+  const longTitle =
+    "My owner taught his coding robot to accept a reviewer before building my video engine, and then to check every frame twice";
   const titleSize = (html: string): number => {
     const m = /<h1 style="[^"]*font-size:(\d+(?:\.\d+)?)px/.exec(html);
     if (m?.[1] === undefined) throw new Error(`no h1 font-size in ${html}`);

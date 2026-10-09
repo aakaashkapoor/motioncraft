@@ -4,12 +4,10 @@
 // nudged toward the text color until it reads on the window's backgrounds.
 
 import { mixColors, parseHex, toHex } from "../theme/color";
-import { contrastRatio } from "../theme/contrast";
+import { readableColor } from "../theme/contrast";
 import type { Theme } from "../theme/types";
 import type { SyntaxRole } from "./highlight";
 
-/** WCAG AA for normal text, as the layer-1 contrast check requires. */
-const MIN_CONTRAST = 4.5;
 /** How far a highlighted code line's band is tinted toward the accent. */
 export const HIGHLIGHT_TINT = 0.12;
 
@@ -43,20 +41,11 @@ export function rotateHue(color: string, degrees: number): string {
   return toHex(hslToRgb([(((h + degrees) % 360) + 360) % 360, s, l]));
 }
 
-/** `color`, mixed toward `toward` just enough to reach AA on every background. */
-function readable(color: string, toward: string, backgrounds: readonly string[]): string {
-  for (let step = 0; step <= 20; step++) {
-    const candidate = step === 0 ? color : mixColors(color, toward, step / 20);
-    if (backgrounds.every((bg) => contrastRatio(candidate, bg) >= MIN_CONTRAST)) return candidate;
-  }
-  return toward;
-}
-
 /** A readable color for each syntax role, on the window surface and the highlight band. */
 export function syntaxColors(theme: Theme): Record<SyntaxRole, string> {
   const { colors } = theme;
   const backgrounds = [colors.surface, highlightBand(theme)];
-  const fit = (color: string) => readable(color, colors.text, backgrounds);
+  const fit = (color: string) => readableColor(color, colors.text, backgrounds);
   return {
     plain: fit(colors.text),
     keyword: fit(colors.accent),

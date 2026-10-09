@@ -8,6 +8,7 @@ import {
   Ground,
   GROUND_STYLES,
   TitleCard,
+  accentInk,
   buildTimeline,
   groundStyle,
   lightTheme,
@@ -85,11 +86,14 @@ describe("accent intensity in components", () => {
     expect(html).toMatch(new RegExp(`<h1[^>]*color:${lightTheme.colors.text}`));
   });
 
-  it("bold paints headlines and stats in the accent", () => {
+  it("bold paints headlines and stats in the accent, deepened where needed to read", () => {
     const title = renderToStaticMarkup(<TitleCard progress={0.5} theme={bold} aspect="9:16" title="Ship it" />);
-    expect(title).toMatch(new RegExp(`<h1[^>]*color:${bold.colors.accent}`));
+    expect(title).toMatch(new RegExp(`<h1[^>]*color:${accentInk(bold)}`));
     const stat = renderToStaticMarkup(<BigNumber progress={0.5} theme={bold} aspect="9:16" value={42} />);
-    expect(stat).toMatch(new RegExp(`<h1[^>]*color:${bold.colors.accent}`));
+    expect(stat).toMatch(new RegExp(`<h1[^>]*color:${accentInk(bold)}`));
+    // The dark theme's accent already reads, so it is used as is.
+    const dark = resolveTheme(board({ theme: "dark", accentIntensity: "bold" }));
+    expect(renderToStaticMarkup(<TitleCard progress={0.5} theme={dark} aspect="9:16" title="Ship it" />)).toMatch(new RegExp(`<h1[^>]*color:${dark.colors.accent}`));
   });
 
   it("bold fills cards with the accent and labels them in accentText", () => {

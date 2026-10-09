@@ -10,6 +10,7 @@ import { interpolate } from "../engine/easing";
 import { spring } from "../engine/spring";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
+import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
 import type { Theme } from "../theme/types";
@@ -45,9 +46,9 @@ const EXIT = 0.1;
 const START_SCALE = 0.9;
 /** Resolution of the enter spring, stretched over `ENTER`. */
 const SPRING_FRAMES = 60;
-/** Toolbar height, as a multiple of the caption type size. */
+/** Toolbar height, as a multiple of the label type size. */
 const TOOLBAR_EM = 2.2;
-/** Traffic light diameter, as a multiple of the caption type size. */
+/** Traffic light diameter, as a multiple of the label type size. */
 const LIGHT_EM = 0.42;
 
 export interface WindowLayout {
@@ -64,7 +65,7 @@ export interface WindowLayout {
 /** Where the window and its parts go: it fills `area` (the content area by default). Pure. */
 export function windowLayout(theme: Theme, aspect: Aspect, toolbar: boolean, area: Rect = contentArea(theme, aspect)): WindowLayout {
   const box = area;
-  const em = theme.type.caption[aspect].size;
+  const em = theme.type.label[aspect].size;
   const titleBar = windowMetrics(theme, aspect).barHeight;
   const toolbarHeight = toolbar ? Math.round(em * TOOLBAR_EM) : 0;
   const top = titleBar + toolbarHeight;
@@ -86,14 +87,14 @@ export function windowMotion(theme: Theme, progress: number): { opacity: number;
   const fadeOut = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
   return {
     opacity: Math.min(fadeIn, fadeOut),
-    rise: theme.spacing.xl * (1 - settled),
+    rise: theme.spacing.xxl * (1 - settled),
     scale: START_SCALE + (1 - START_SCALE) * settled,
   };
 }
 
 /** Diameter of one traffic light, the gap between them and the width of all three, in px. */
 function lightsMetrics(theme: Theme, aspect: Aspect): { size: number; gap: number; width: number } {
-  const size = Math.round(theme.type.caption[aspect].size * LIGHT_EM);
+  const size = Math.round(theme.type.label[aspect].size * LIGHT_EM);
   const gap = Math.round(size * 0.6);
   return { size, gap, width: 3 * size + 2 * gap };
 }
@@ -133,7 +134,7 @@ export function WindowShell({ progress, theme, aspect, area, kind, shareId, cont
   const { opacity, rise, scale } = windowMotion(theme, progress);
   const { colors, spacing, hairline, cardShadow } = theme;
   const divider = `${hairline}px solid ${colors.border}`;
-  const bar = { height: layout.titleBar, display: "flex", alignItems: "center", gap: spacing.sm, padding: `0 ${spacing.md}px`, boxSizing: "border-box" } as const;
+  const bar = { height: layout.titleBar, display: "flex", alignItems: "center", gap: spacing.xs, padding: `0 ${spacing.md}px`, boxSizing: "border-box" } as const;
 
   return (
     <div
@@ -194,18 +195,15 @@ export function WindowShell({ progress, theme, aspect, area, kind, shareId, cont
   );
 }
 
-/** One line of chrome text: never wraps, ends in an ellipsis when too long. */
+/** One line of chrome text in the label step: never wraps, ends in an ellipsis when too long. */
 export function chromeText(theme: Theme, aspect: Aspect, color: string) {
-  const spec = theme.type.caption[aspect];
   return {
     minWidth: 0,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     fontFamily: theme.fonts.body,
-    fontSize: spec.size,
-    fontWeight: spec.weight,
-    lineHeight: spec.lineHeight,
+    ...typeCss(theme.type.label[aspect]),
     color,
   } as const;
 }

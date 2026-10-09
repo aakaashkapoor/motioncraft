@@ -125,9 +125,15 @@ taste.
 
 ### Built-in themes
 
-- `light` (the default): warm light-grey ground, white cards, one blue accent.
+- `light` (the default): a flat warm-grey ground (`#e6e7df`), pure white cards
+  with a soft wide shadow and 28 px corners, pale chips (`#f1f2ea`), near-black
+  text and one orange accent (`#fb5a1f`), set in Source Sans 3.
 - `dark`: deep tinted ground, raised surfaces, a soft blue accent, faint dot grid.
-- `neutral`: the v1 look, kept for compatibility.
+- `neutral`: the v1 look (system fonts), kept for compatibility.
+
+Text set in the accent (a kicker, a highlighted step, `bold` headlines) is the
+accent deepened just enough to read at WCAG AA, so the light theme's orange
+shows as a burnt orange in text and as itself in fills, rings and icons.
 
 ### The vocabulary
 
@@ -143,11 +149,49 @@ taste.
     neutrals tinted, never pure `#000000` or `#ffffff`.
   - `ground.style`: `solid`, `vignette`, `grid` or `noise`.
   - `fonts.display`, `fonts.body`, `fonts.mono`: CSS font stacks. Only the
-    bundled fonts are guaranteed to be present.
+    bundled fonts are guaranteed to be present: `mc-sans` (Source Sans 3, the
+    default sans), `mc-mono` (Source Code Pro, the default mono), and `mc-geist`
+    and `mc-geist-mono` (Geist and Geist Mono, an alternative). All four are
+    variable fonts, so every weight is drawn as itself. There is no serif;
+    emphasis is weight or the accent color.
+  - `type`: the type ramp (below). Override a step per aspect, e.g.
+    `{ "type": { "headline": { "9:16": { "size": 104 } } } }`.
+  - `weights`: the five weights, `regular` 400, `medium` 500, `semibold` 600,
+    `bold` 700, `heavy` 800. Ramp steps carry their own; components use these
+    for emphasis inside a step (a highlighted item, a name in a chat).
+  - `spacing`: the 8 px scale, `xxs` 8, `xs` 16, `sm` 24, `md` 32, `lg` 48,
+    `xl` 64, `xxl` 96, `xxxl` 128.
   - `radius` (`sm`, `md`, `lg`, `pill`), `cardShadow` (`y`, `blur`, `opacity`),
     `hairline`.
   - `motion`: `transition` and `transitionMs` (the defaults for boundaries),
     `enterMs`, `exitMs`, `staggerMs`, `easing`, `springs`.
+
+### The type ramp
+
+Every piece of text in the kit is set in one step of one ramp, with that
+step's size, weight, tracking and line height; nothing else picks a size.
+Components that need to fit long text step down the ramp (a long title goes
+from `display` to `headline` to `title`), so sizes always stay on it. 16:9 is
+about 0.92x of 9:16, never smaller: a 16:9 video is shown smaller on a phone.
+
+| Step | Used for | 9:16 px | 16:9 px | Weight | Tracking | Line height |
+| --- | --- | --- | --- | --- | --- | --- |
+| `numeral` | `BigNumber` digits | 240 | 220 | 700 | -0.04 em | 0.9 |
+| `hero` | a 1-3 word hook, an end card | 152 | 140 | 800 | -0.035 em | 0.95 |
+| `display` | `TitleCard` title | 120 | 112 | 800 | -0.03 em | 1.0 |
+| `headline` | `Section` headline | 96 | 88 | 700 | -0.025 em | 1.05 |
+| `title` | card and window titles, list titles | 76 | 72 | 700 | -0.02 em | 1.1 |
+| `subtitle` | subtitles, captions | 60 | 56 | 600 | -0.01 em | 1.15 |
+| `body` | card body, list and chat text | 48 | 44 | 500 | 0 | 1.3 |
+| `label` | timestamps, window chrome, notes | 40 | 36 | 500 | 0 | 1.3 |
+| `eyebrow` | uppercase kicker, badges | 32 | 28 | 600 | +0.08 em | 1.2 |
+| `mono` | code and terminal | 40 | 36 | 450 | 0 | 1.45 |
+
+Headlines, captions and card titles are balanced across their lines
+(`text-wrap: balance`); numbers use tabular figures. Small marks (kickers,
+badges, step numbers) use `eyebrow`; anything meant to be read is `label` or
+larger. Terminals and code windows shrink their `mono` text only as far as
+their lines need to fit.
 
 Colors come from these tokens. Components draw with theme roles, so do not put
 your own hex colors in props: the theme-color check warns on any color in props
@@ -166,11 +210,25 @@ takes a color, pass a role name such as `"accent"`, or leave it out.
 | "our brand colors are navy and gold" | `"themeOverrides": { "colors": { "ground": "#14213d", ... } }` and `"accent": "#fca311"`, then let the contrast check confirm the text reads |
 | "snappier" | `"themeOverrides": { "motion": { "transitionMs": 400, "enterMs": 350 } }` |
 | "rounder" / "sharper" | `"themeOverrides": { "radius": { "md": 40 } }` / `{ "radius": { "md": 8 } }` |
+| "use Geist" | `"themeOverrides": { "fonts": { "display": "mc-geist, sans-serif", "body": "mc-geist, sans-serif", "mono": "mc-geist-mono, monospace" } }` |
+| "bigger headlines" | `"themeOverrides": { "type": { "headline": { "9:16": { "size": 104 }, "16:9": { "size": 96 } } } }` |
 
 "Use a dark theme, with lots of orange":
 
 ```json
 { "theme": "dark", "accent": "#ff6a00", "accentIntensity": "bold" }
+```
+
+Geist instead of Source Sans 3, with heavier headlines:
+
+```json
+{
+  "theme": "light",
+  "themeOverrides": {
+    "fonts": { "display": "mc-geist, sans-serif", "body": "mc-geist, sans-serif", "mono": "mc-geist-mono, monospace" },
+    "type": { "headline": { "9:16": { "weight": 800 }, "16:9": { "weight": 800 } } }
+  }
+}
 ```
 
 Brand colors on a light base:
@@ -201,6 +259,8 @@ and after every fix. Storyboard checks run first, then the frame checks.
 - **Frame checks** on the start, middle and end of every scene: `overflow`
   (text clipped or off frame), `safe-area` (inside the platform's UI-free zone),
   `contrast` (WCAG) and `readability` (time on screen for the words shown).
+  `type-scale` (warn) reports rendered text whose size is not a step of the
+  type ramp; text a terminal or code window shrank to fit is allowed.
 
 Warnings do not fail the run, but treat them as mistakes unless you meant it.
 

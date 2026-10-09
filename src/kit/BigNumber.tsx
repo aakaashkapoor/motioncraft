@@ -5,9 +5,9 @@
 import { interpolate, type Easing } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import { AVG_CHAR_EM } from "../layout/textFit";
-import { fontSize } from "../layout/type";
+import { fontSize, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
-import type { Theme, TypeStep } from "../theme/types";
+import type { Theme, TypeRole } from "../theme/types";
 import { headlineColor } from "../theme/roles";
 import { presence, themeEasing } from "./motion";
 import type { KitProps } from "./types";
@@ -29,10 +29,8 @@ const EXIT = 0.1;
 /** The count finishes at this fraction of the scene, then holds. */
 const COUNT_END = 0.5;
 
-/** Number sizes to try, largest first. */
-const NUMBER_STEPS: readonly TypeStep[] = ["display", "title", "subtitle"];
-const NUMBER_LINE_HEIGHT = 1.05;
-const LABEL_LINE_HEIGHT = 1.25;
+/** Number steps to try, largest first: the ramp's `numeral`, then smaller steps for long numbers. */
+const NUMBER_STEPS: readonly TypeRole[] = ["numeral", "hero", "display", "headline"];
 
 const easeOutCubic: Easing = (t) => 1 - (1 - t) ** 3;
 
@@ -55,7 +53,7 @@ export function formatBigNumber(value: number, decimals: number): string {
  * none fits, the smallest step: the number then overflows visibly and the
  * layer-1 checks report it.
  */
-export function bigNumberStep(theme: Theme, aspect: Aspect, text: string, width = contentArea(theme, aspect).width): TypeStep {
+export function bigNumberStep(theme: Theme, aspect: Aspect, text: string, width = contentArea(theme, aspect).width): TypeRole {
   const fits = NUMBER_STEPS.find((step) => text.length * fontSize(theme, step, aspect) * AVG_CHAR_EM <= width);
   return fits ?? NUMBER_STEPS[NUMBER_STEPS.length - 1]!;
 }
@@ -64,7 +62,8 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
   const area = slot ?? contentArea(theme, aspect);
   const finalText = `${prefix}${formatBigNumber(value, decimals)}${suffix}`;
   const step = bigNumberStep(theme, aspect, finalText, area.width);
-  const size = fontSize(theme, step, aspect);
+  const spec = theme.type[step][aspect];
+  const size = spec.size;
   const easing = themeEasing(theme);
   const opacity = presence(progress, ENTER, EXIT, easing);
   const rise = interpolate(progress, [0, ENTER], [theme.spacing.lg, 0], { easing });
@@ -102,9 +101,7 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
           style={{
             margin: 0,
             fontFamily: fonts.display,
-            fontSize: size,
-            fontWeight: 700,
-            lineHeight: NUMBER_LINE_HEIGHT,
+            ...typeCss(spec),
             fontVariantNumeric: "tabular-nums",
             whiteSpace: "nowrap",
             color: headlineColor(theme),
@@ -118,9 +115,9 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
           data-underline="true"
           style={{
             width: underline,
-            height: spacing.xs,
-            marginTop: spacing.sm,
-            borderRadius: spacing.xs / 2,
+            height: spacing.xxs,
+            marginTop: spacing.xs,
+            borderRadius: spacing.xxs / 2,
             backgroundColor: colors.accent,
           }}
         />
@@ -130,10 +127,10 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
               margin: 0,
               marginTop: spacing.md,
               fontFamily: fonts.body,
-              fontSize: fontSize(theme, "subtitle", aspect),
-              lineHeight: LABEL_LINE_HEIGHT,
+              ...typeCss(theme.type.subtitle[aspect]),
               color: colors.textMuted,
               overflowWrap: "break-word",
+              textWrap: "balance",
             }}
           >
             {label}

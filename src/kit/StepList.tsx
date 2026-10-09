@@ -6,9 +6,10 @@
 import { interpolate, type Easing } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import { estimateTextHeight } from "../layout/textFit";
-import { fontSize } from "../layout/type";
+import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
-import type { Theme, TypeStep } from "../theme/types";
+import { accentInk } from "../theme/roles";
+import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { themeEasing } from "./motion";
 import type { KitProps } from "./types";
 
@@ -29,10 +30,11 @@ const ITEM_ENTER = 0.2;
 /** By this point of the scene every item is fully in. */
 const ITEMS_DONE = 0.65;
 
-/** Item sizes to try, largest first. */
-const ITEM_STEPS: readonly TypeStep[] = ["subtitle", "body", "caption"];
-const TITLE_LINE_HEIGHT = 1.1;
-const ITEM_LINE_HEIGHT = 1.25;
+/** Item steps to try, largest first. */
+const ITEM_STEPS = ["subtitle", "body", "label"] as const satisfies readonly TypeRole[];
+type ItemStep = (typeof ITEM_STEPS)[number];
+/** The step of the number in a marker, a notch below the item's so it sits inside the circle. */
+const MARKER_STEP: Record<ItemStep, TypeRole> = { subtitle: "label", body: "label", label: "eyebrow" };
 /** Marker diameter as a multiple of the item font size. */
 const MARKER_EM = 1.25;
 /** Dot diameter as a fraction of the marker. */
@@ -45,16 +47,20 @@ export function stepListTiming(count: number): Array<[number, number]> {
 }
 
 interface StepLayout {
-  itemStep: TypeStep;
-  itemSize: number;
+  itemStep: ItemStep;
+  item: TypeSpec;
+  /** The marker's number, in the bold weight. */
+  number: TypeSpec;
   markerSize: number;
   /** Horizontal travel of the slide-in, in px. Reserved on both sides of the list so items never leave the area. */
   slide: number;
 }
 
-function layoutFor(theme: Theme, aspect: Aspect, itemStep: TypeStep): StepLayout {
-  const itemSize = fontSize(theme, itemStep, aspect);
-  return { itemStep, itemSize, markerSize: Math.round(itemSize * MARKER_EM), slide: theme.spacing.md };
+function layoutFor(theme: Theme, aspect: Aspect, itemStep: ItemStep): StepLayout {
+  const { type, weights } = theme;
+  const item = type[itemStep][aspect];
+  const number = { ...type[MARKER_STEP[itemStep]][aspect], weight: weights.bold };
+  return { itemStep, item, number, markerSize: Math.round(item.size * MARKER_EM), slide: theme.spacing.md };
 }
 
 /** Estimated height in px of the list's title and items at `layout`. */
@@ -63,11 +69,10 @@ function estimateListHeight(theme: Theme, aspect: Aspect, width: number, title: 
   const textWidth = width - 2 * layout.slide - layout.markerSize - spacing.md;
   let height = 0;
   if (title !== undefined) {
-    const size = fontSize(theme, "title", aspect);
-    height += estimateTextHeight(title, width - 2 * layout.slide, { size, lineHeight: TITLE_LINE_HEIGHT }) + spacing.lg;
+    height += estimateTextHeight(title, width - 2 * layout.slide, theme.type.title[aspect]) + spacing.lg;
   }
   for (const item of items) {
-    height += Math.max(layout.markerSize, estimateTextHeight(item, textWidth, { size: layout.itemSize, lineHeight: ITEM_LINE_HEIGHT }));
+    height += Math.max(layout.markerSize, estimateTextHeight(item, textWidth, layout.item));
   }
   return height + spacing.md * Math.max(0, items.length - 1);
 }
@@ -105,9 +110,8 @@ function Marker({ index, kind, layout, theme }: { index: number; kind: "number" 
             backgroundColor: theme.colors.accent,
             color: theme.colors.accentText,
             fontFamily: theme.fonts.body,
-            fontSize: Math.round(layout.itemSize * 0.7),
-            fontWeight: 700,
-            lineHeight: 1,
+            ...typeCss(layout.number),
+            fontVariantNumeric: "tabular-nums",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -163,11 +167,10 @@ export function StepList({ progress, theme, aspect, area: slot, items, title, hi
               opacity: titleOpacity,
               transform: `translateY(${titleRise}px)`,
               fontFamily: fonts.display,
-              fontSize: fontSize(theme, "title", aspect),
-              fontWeight: 700,
-              lineHeight: TITLE_LINE_HEIGHT,
+              ...typeCss(theme.type.title[aspect]),
               color: colors.text,
               overflowWrap: "break-word",
+              textWrap: "balance",
             }}
           >
             {title}
@@ -191,13 +194,12 @@ export function StepList({ progress, theme, aspect, area: slot, items, title, hi
                 <span
                   data-step-text=""
                   style={{
-                    color: i === highlight ? colors.accent : colors.text,
+                    color: i === highlight ? accentInk(theme) : colors.text,
                     // Center a single line on the marker; further lines run below it.
-                    paddingTop: Math.max(0, (layout.markerSize - layout.itemSize * ITEM_LINE_HEIGHT) / 2),
+                    paddingTop: Math.max(0, (layout.markerSize - layout.item.size * layout.item.lineHeight) / 2),
                     fontFamily: fonts.body,
-                    fontSize: layout.itemSize,
-                    fontWeight: i === highlight ? 700 : 500,
-                    lineHeight: ITEM_LINE_HEIGHT,
+                    ...typeCss(layout.item),
+                    fontWeight: i === highlight ? theme.weights.bold : layout.item.weight,
                     minWidth: 0,
                     overflowWrap: "break-word",
                   }}

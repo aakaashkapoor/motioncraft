@@ -3,6 +3,7 @@
 // the other files of this folder and run in Node.
 
 import type { Rect } from "../layout/frame";
+import { TYPE_FIT_ATTRIBUTE } from "../layout/type";
 import { union } from "./geometry";
 import type { FrameMeasurement, MeasuredKey, MeasuredText } from "./types";
 
@@ -82,6 +83,8 @@ function measureText(el: Element, root: Element, origin: DOMRect): MeasuredText 
     color: getComputedStyle(el).color,
     backgrounds: backgroundsUnder(el, rect, origin, chain),
     caption: el.closest(`[${CAPTION_ATTRIBUTE}]`) !== null,
+    fontSize: parseFloat(getComputedStyle(el).fontSize),
+    fitted: el.closest(`[${TYPE_FIT_ATTRIBUTE}]`) !== null,
   };
 }
 

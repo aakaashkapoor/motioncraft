@@ -17,25 +17,24 @@ export type {
   ThemeRadius,
   ThemeShadow,
   ThemeSpacing,
-  ThemeTypeScale,
+  ThemeWeights,
   TypeRamp,
   TypeRole,
   TypeSpec,
-  TypeStep,
 } from "./theme/types";
 export { ACCENT_INTENSITIES, GROUND_STYLES, SPRING_PRESETS, TYPE_ROLES } from "./theme/types";
 export { neutralTheme } from "./theme/neutral";
 export { lightTheme } from "./theme/light";
 export { darkTheme } from "./theme/dark";
 export { deepMerge, resolveTheme, themes } from "./theme/resolve";
-export { cardColors, headlineColor, type CardColors } from "./theme/roles";
+export { accentInk, cardColors, headlineColor, type CardColors } from "./theme/roles";
 export { mixColors, withAlpha } from "./theme/color";
 export { contrastRatio, relativeLuminance } from "./theme/contrast";
 
 export { frameSize, safeArea } from "./layout/frame";
 export type { Rect, Size } from "./layout/frame";
-export { fontScale, fontSize } from "./layout/type";
-export { CAPTION_LINE_HEIGHT, CAPTION_MAX_LINES, captionBand, captionBandHeight, contentArea } from "./layout/caption";
+export { fontSize, rampSizes, rampSteps, TYPE_FIT_ATTRIBUTE, typeCss, typeSpec, type TypeCss } from "./layout/type";
+export { CAPTION_MAX_LINES, captionBand, captionBandHeight, contentArea } from "./layout/caption";
 export { AVG_CHAR_EM, charsPerLine, estimateLines, estimateTextHeight } from "./layout/textFit";
 export type { TextStyle } from "./layout/textFit";
 

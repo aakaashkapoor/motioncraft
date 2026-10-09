@@ -43,16 +43,22 @@ license and author. Everything here must allow commercial use and modification
 
 ### Fonts (`assets/fonts/`)
 
-Embedded in the render page under private family names (`mc-sans`, `mc-mono`;
-see `src/render/fonts.ts`). Full license text: [`Geist-OFL.txt`](Geist-OFL.txt).
+Embedded in the render page under private family names (`mc-sans`, `mc-mono`,
+`mc-geist`, `mc-geist-mono`; see `src/render/fontFaces.ts`). Every file is a
+variable font (one `wght` axis), so each weight the kit uses is drawn as
+itself. Source Sans 3 and Source Code Pro are the defaults; Geist and Geist
+Mono are an alternative a theme can choose. Full license texts:
+[`SourceSans3-OFL.txt`](SourceSans3-OFL.txt),
+[`SourceCodePro-OFL.txt`](SourceCodePro-OFL.txt),
+[`Geist-OFL.txt`](Geist-OFL.txt).
 
 | File | Font | License | Copyright | Source |
 | ---- | ---- | ------- | --------- | ------ |
-| Geist-Regular.woff2 (400) | Geist 1.7.2 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | npm `geist@1.7.2`, `dist/fonts/geist-sans/` — https://github.com/vercel/geist-font |
-| Geist-SemiBold.woff2 (600) | Geist 1.7.2 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | npm `geist@1.7.2`, `dist/fonts/geist-sans/` — https://github.com/vercel/geist-font |
-| Geist-ExtraBold.woff2 (800) | Geist | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | https://github.com/vercel/geist-font/raw/main/fonts/Geist/webfonts/Geist-ExtraBold.woff2 (the npm package has no upright ExtraBold) |
-| GeistMono-Regular.woff2 (400) | Geist Mono 1.7.2 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | npm `geist@1.7.2`, `dist/fonts/geist-mono/` — https://github.com/vercel/geist-font |
-| GeistMono-SemiBold.woff2 (600) | Geist Mono 1.7.2 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | npm `geist@1.7.2`, `dist/fonts/geist-mono/` — https://github.com/vercel/geist-font |
+| SourceSans3VF-Upright.ttf.woff2 (`wght` 200-900) | Source Sans 3 3.052 | SIL OFL 1.1 | © 2010-2024 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source' | release 3.052R, `WOFF2/VF/` — https://github.com/adobe-fonts/source-sans |
+| SourceCodeVF-Upright.ttf.woff2 (`wght` 200-900) | Source Code Pro 1.026 (VF) | SIL OFL 1.1 | © 2023 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source' | release 2.042R-u/1.062R-i/1.026R-vf, `WOFF2/VF/` — https://github.com/adobe-fonts/source-code-pro |
+| Geist-Variable.woff2 (`wght` 100-900) | Geist 1.800 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | `fonts/Geist/webfonts/Geist[wght].woff2` on `main` (downloaded 2026-10-09), renamed — https://github.com/vercel/geist-font |
+| GeistMono-Variable.woff2 (`wght` 100-900) | Geist Mono 1.700 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | `fonts/GeistMono/webfonts/GeistMono[wght].woff2` on `main` (downloaded 2026-10-09), renamed — https://github.com/vercel/geist-font |
 
-The font files are unmodified. motioncraft does not use the Reserved Font
-Name for any derivative.
+The font files are unmodified (the Geist files are only renamed, to keep
+brackets out of file names). motioncraft does not use the Reserved Font
+Names for any derivative.

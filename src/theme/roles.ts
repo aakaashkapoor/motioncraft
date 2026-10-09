@@ -2,11 +2,22 @@
 // keeps the accent to one element per scene; `bold` also paints headlines and
 // cards in it. (`full` is applied to the colors themselves by `resolveTheme`.)
 
+import { readableColor } from "./contrast";
 import type { Theme } from "./types";
+
+/**
+ * The accent as a text color: the accent itself where it reads (WCAG AA) on
+ * the ground and on cards, else nudged toward the text color until it does.
+ * A bright accent such as the light theme's orange stays an orange, only deeper.
+ */
+export function accentInk(theme: Theme): string {
+  const { accent, text, ground, surface } = theme.colors;
+  return readableColor(accent, text, [ground, surface]);
+}
 
 /** Color for a scene's main headline or stat. */
 export function headlineColor(theme: Theme): string {
-  return theme.accentIntensity === "bold" ? theme.colors.accent : theme.colors.text;
+  return theme.accentIntensity === "bold" ? accentInk(theme) : theme.colors.text;
 }
 
 export interface CardColors {

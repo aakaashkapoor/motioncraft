@@ -3,8 +3,11 @@
 
 import type { Rect } from "../layout/frame";
 
-export const CHECK_NAMES = ["overflow", "safe-area", "contrast", "readability"] as const;
+export const CHECK_NAMES = ["overflow", "safe-area", "contrast", "readability", "type-scale"] as const;
 export type CheckName = (typeof CHECK_NAMES)[number];
+
+/** Checks whose problems are warnings: reported, but they do not fail the run. */
+export const WARNING_CHECKS: ReadonlySet<CheckName> = new Set<CheckName>(["type-scale"]);
 
 export interface Problem {
   check: CheckName;
@@ -14,8 +17,11 @@ export interface Problem {
 }
 
 export interface CheckResult {
+  /** No problems; warnings are allowed. */
   passed: boolean;
   problems: Problem[];
+  /** Advice from the warning checks (see `WARNING_CHECKS`). */
+  warnings: Problem[];
 }
 
 /** An element with its own text, as laid out on one frame. */
@@ -34,6 +40,10 @@ export interface MeasuredText {
   backgrounds: string[];
   /** Part of the burned-in narration caption rather than the scene itself. */
   caption: boolean;
+  /** Computed CSS font size in px. */
+  fontSize: number;
+  /** Inside an element a component shrank on purpose to fit (see `TYPE_FIT_ATTRIBUTE`). */
+  fitted: boolean;
 }
 
 /** A non-text element marked `data-key-element` that must stay in the safe area. */

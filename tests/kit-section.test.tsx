@@ -126,6 +126,13 @@ describe("Section", () => {
     expect(boxOf(nestedRoot(html))).toEqual(layout.content);
   });
 
+  it.each(ASPECTS)("keeps the eyebrow's and note's glyphs inside their boxes, so neither pokes out of the safe area (%s)", (aspect) => {
+    // A glyph box is about 1.33 em in Source Sans 3; the eyebrow's line is only 1.2 em.
+    const layout = sectionLayout(lightTheme, aspect, { eyebrow: "Why", headline: HEADLINE, note: "Checked first" });
+    expect(layout.eyebrow!.height).toBeGreaterThanOrEqual(1.4 * lightTheme.type.eyebrow[aspect].size);
+    expect(layout.note!.height).toBeGreaterThanOrEqual(1.4 * lightTheme.type.label[aspect].size);
+  });
+
   it("puts narrow content beside the headline in 16:9 and below it in 9:16", () => {
     const text = { eyebrow: "Why it matters", headline: HEADLINE, note: "Numbers from the 2026 survey" };
     const wide = sectionLayout(neutralTheme, "16:9", text);

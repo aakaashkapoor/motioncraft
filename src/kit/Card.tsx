@@ -10,10 +10,10 @@ import { interpolate } from "../engine/easing";
 import { Icon } from "../icons";
 import { contentArea } from "../layout/caption";
 import { estimateTextHeight } from "../layout/textFit";
-import { fontSize } from "../layout/type";
+import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { mixColors, withAlpha } from "../theme/color";
-import type { Theme, TypeStep } from "../theme/types";
+import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { themeEasing } from "./motion";
 import { springIn } from "./springIn";
 import type { KitProps } from "./types";
@@ -30,11 +30,15 @@ export interface CardData {
 /** `column`: icon above the text. `row`: icon left of the text, for wide, short cards. */
 export type CardOrientation = "column" | "row";
 
-/** Sizes in px for one card. */
+/** Type and sizes in px for one card. */
 export interface CardMetrics {
   orientation: CardOrientation;
-  titleSize: number;
-  subtitleSize: number;
+  /** The title's ramp step, always in the `title` step's weight. */
+  title: TypeSpec;
+  /** The subtitle's ramp step, a step below the title's. */
+  subtitle: TypeSpec;
+  /** The step number's ramp step, in the bold weight. */
+  number: TypeSpec;
   /** Diameter of the icon circle. */
   badge: number;
   iconSize: number;
@@ -44,25 +48,27 @@ export interface CardMetrics {
   border: number;
 }
 
-/** Title sizes to try, largest first. */
-export const CARD_TITLE_STEPS: readonly TypeStep[] = ["subtitle", "body", "caption"];
-const SUBTITLE_STEP: Record<TypeStep, TypeStep> = { display: "title", title: "subtitle", subtitle: "body", body: "caption", caption: "caption" };
-const TITLE_LINE_HEIGHT = 1.15;
-const SUBTITLE_LINE_HEIGHT = 1.3;
+/** Title steps to try, largest first. */
+export const CARD_TITLE_STEPS = ["title", "subtitle", "body", "label"] as const satisfies readonly TypeRole[];
+export type CardTitleStep = (typeof CARD_TITLE_STEPS)[number];
+/** The subtitle's step under each title step. */
+const SUBTITLE_STEP: Record<CardTitleStep, TypeRole> = { title: "body", subtitle: "body", body: "label", label: "label" };
 /** Highlight lift: how much a lit card grows. */
 const LIFT = 0.04;
 
-export function cardMetrics(theme: Theme, aspect: Aspect, titleStep: TypeStep, orientation: CardOrientation): CardMetrics {
-  const titleSize = fontSize(theme, titleStep, aspect);
-  const subtitleSize = fontSize(theme, SUBTITLE_STEP[titleStep], aspect);
-  const badge = Math.round(titleSize * 1.6);
+export function cardMetrics(theme: Theme, aspect: Aspect, titleStep: CardTitleStep, orientation: CardOrientation): CardMetrics {
+  const { type, weights } = theme;
+  const title = { ...type[titleStep][aspect], weight: type.title[aspect].weight };
+  const subtitle = type[SUBTITLE_STEP[titleStep]][aspect];
+  const badge = Math.round(title.size * 1.6);
   return {
     orientation,
-    titleSize,
-    subtitleSize,
+    title,
+    subtitle,
+    number: { ...type.label[aspect], weight: weights.bold },
     badge,
     iconSize: Math.round(badge * 0.55),
-    stepSize: Math.round(subtitleSize * 1.5),
+    stepSize: Math.round(subtitle.size * 1.5),
     padding: aspect === "9:16" ? theme.spacing.md : Math.round(theme.spacing.md * 0.8),
     border: theme.hairline,
   };
@@ -71,7 +77,7 @@ export function cardMetrics(theme: Theme, aspect: Aspect, titleStep: TypeStep, o
 /** Width in px left for the title and subtitle in a card of `width`. */
 function textWidth(card: CardData, width: number, m: CardMetrics, theme: Theme): number {
   let w = width - 2 * (m.padding + m.border);
-  if (card.step !== undefined) w -= m.stepSize + theme.spacing.sm;
+  if (card.step !== undefined) w -= m.stepSize + theme.spacing.xs;
   if (m.orientation === "row" && card.icon !== undefined) w -= m.badge + theme.spacing.md;
   return Math.max(1, w);
 }
@@ -79,12 +85,12 @@ function textWidth(card: CardData, width: number, m: CardMetrics, theme: Theme):
 /** Estimated height in px of `card` laid out `width` px wide. */
 export function cardHeight(theme: Theme, card: CardData, width: number, m: CardMetrics): number {
   const tw = textWidth(card, width, m, theme);
-  let text = estimateTextHeight(card.title, tw, { size: m.titleSize, lineHeight: TITLE_LINE_HEIGHT });
+  let text = estimateTextHeight(card.title, tw, m.title);
   if (card.subtitle !== undefined) {
-    text += theme.spacing.xs + estimateTextHeight(card.subtitle, tw, { size: m.subtitleSize, lineHeight: SUBTITLE_LINE_HEIGHT });
+    text += theme.spacing.xxs + estimateTextHeight(card.subtitle, tw, m.subtitle);
   }
   const top = card.icon !== undefined ? m.badge : card.step !== undefined ? m.stepSize : 0;
-  const body = m.orientation === "row" ? Math.max(text, top) : top + (top > 0 ? theme.spacing.sm : 0) + text;
+  const body = m.orientation === "row" ? Math.max(text, top) : top + (top > 0 ? theme.spacing.xs : 0) + text;
   return Math.ceil(body + 2 * (m.padding + m.border));
 }
 
@@ -126,7 +132,7 @@ export function CardFace({ theme, metrics: m, icon, title, subtitle, step, highl
         flexDirection: row ? "row" : "column",
         alignItems: row ? "center" : "flex-start",
         justifyContent: "flex-start",
-        gap: row ? spacing.md : spacing.sm,
+        gap: row ? spacing.md : spacing.xs,
       }}
     >
       {icon !== undefined && (
@@ -145,15 +151,14 @@ export function CardFace({ theme, metrics: m, icon, title, subtitle, step, highl
           <Icon name={icon} size={m.iconSize} color={on ? (bold ? colors.accent : colors.accentText) : colors.accent} />
         </div>
       )}
-      <div style={{ minWidth: 0, paddingRight: step !== undefined ? m.stepSize + spacing.sm : 0 }}>
+      <div style={{ minWidth: 0, paddingRight: step !== undefined ? m.stepSize + spacing.xs : 0 }}>
         <div
           style={{
             color: text,
             fontFamily: fonts.display,
-            fontSize: m.titleSize,
-            fontWeight: 700,
-            lineHeight: TITLE_LINE_HEIGHT,
+            ...typeCss(m.title),
             overflowWrap: "break-word",
+            textWrap: "balance",
           }}
         >
           {title}
@@ -161,12 +166,10 @@ export function CardFace({ theme, metrics: m, icon, title, subtitle, step, highl
         {subtitle !== undefined && (
           <div
             style={{
-              marginTop: spacing.xs,
+              marginTop: spacing.xxs,
               color: muted,
               fontFamily: fonts.body,
-              fontSize: m.subtitleSize,
-              fontWeight: 500,
-              lineHeight: SUBTITLE_LINE_HEIGHT,
+              ...typeCss(m.subtitle),
               overflowWrap: "break-word",
             }}
           >
@@ -188,9 +191,8 @@ export function CardFace({ theme, metrics: m, icon, title, subtitle, step, highl
             backgroundColor: on ? colors.accent : fill,
             color: on ? colors.accentText : colors.textMuted,
             fontFamily: fonts.body,
-            fontSize: Math.round(m.subtitleSize * 0.8),
-            fontWeight: 700,
-            lineHeight: 1,
+            ...typeCss(m.number),
+            fontVariantNumeric: "tabular-nums",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

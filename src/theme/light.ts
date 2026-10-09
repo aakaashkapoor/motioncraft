@@ -1,25 +1,28 @@
-import { MONO_FAMILY, SANS_FAMILY } from "../render/fonts";
-import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseTypeScale, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { MONO_FAMILY, SANS_FAMILY } from "../render/fontFaces";
+import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
 import type { Theme } from "./types";
 
-// The default theme: a warm light-grey ground, white cards with soft long
-// shadows, near-black text and one blue accent.
+// The default theme, from the owner's reference (design v3): a flat warm-grey
+// ground, pure white cards with a soft wide shadow, pale chips, near-black
+// text, the reference's warm grey for quiet marks and one orange accent.
+// Muted text is that grey deepened just enough to read at WCAG AA on the
+// ground; text set in the accent goes through `accentInk` for the same reason.
 
 export const lightTheme: Theme = {
   name: "light",
   colors: {
-    ground: "#f1efeb",
-    surface: "#fdfcfa",
-    surfaceAlt: "#f7f5f1",
-    text: "#1c1a17",
-    textMuted: "#56524b",
-    textSubtle: "#807b72",
-    accent: "#2f54d4",
-    accentText: "#fbfaf8",
-    border: "#e0dcd4",
-    shadow: "#2a2418",
+    ground: "#e6e7df",
+    surface: "#ffffff",
+    surfaceAlt: "#f1f2ea",
+    text: "#1c1b18",
+    textMuted: "#676660",
+    textSubtle: "#8d8c85",
+    accent: "#fb5a1f",
+    accentText: "#1c1b18",
+    border: "#dcddd4",
+    shadow: "#2e2d24",
   },
-  ground: { style: "vignette", seed: 1 },
+  ground: { style: "solid", seed: 1 },
   accentIntensity: "subtle",
   fonts: {
     display: `${SANS_FAMILY}, ${SYSTEM_SANS}`,
@@ -27,10 +30,10 @@ export const lightTheme: Theme = {
     mono: `${MONO_FAMILY}, ${SYSTEM_MONO}`,
   },
   type: baseTypeRamp,
-  typeScale: baseTypeScale,
+  weights: baseWeights,
   spacing: baseSpacing,
-  radius: baseRadius,
-  cardShadow: { y: 24, blur: 64, opacity: 0.12 },
+  radius: { ...baseRadius, md: 28 },
+  cardShadow: { y: 24, blur: 80, opacity: 0.08 },
   hairline: 2,
   motion: baseMotion,
 };

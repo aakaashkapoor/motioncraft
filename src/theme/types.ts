@@ -1,8 +1,9 @@
 import type { SpringPreset } from "../engine/spring";
-// The shape every theme fills in (design v2, section 1). A theme is a plain
-// object of tokens: color roles, ground style, accent intensity, type, shape,
-// depth and motion. Kit components read from it and never hard-code values.
-// A storyboard can override any token (see `resolveTheme`).
+// The shape every theme fills in (design v2, section 1; type and spacing from
+// design v3, sections B and C). A theme is a plain object of tokens: color
+// roles, ground style, accent intensity, type, shape, depth and motion. Kit
+// components read from it and never hard-code values. A storyboard can
+// override any token (see `resolveTheme`).
 
 import type { Aspect, TransitionType } from "../storyboard/types";
 
@@ -71,33 +72,39 @@ export interface TypeSpec {
   lineHeight: number;
 }
 
-export const TYPE_ROLES = ["eyebrow", "headline", "title", "body", "caption", "mono"] as const;
+/**
+ * The steps of the type ramp (design v3, table B), largest first, then mono:
+ * `numeral` BigNumber digits; `hero` a 1-3 word hook or end card; `display` a
+ * TitleCard title; `headline` a Section headline; `title` card and window
+ * titles, big list items; `subtitle` subtitles and captions; `body` card body,
+ * list and chat text; `label` timestamps, small UI, notes; `eyebrow` a kicker;
+ * `mono` code and terminal.
+ */
+export const TYPE_ROLES = ["numeral", "hero", "display", "headline", "title", "subtitle", "body", "label", "eyebrow", "mono"] as const;
 export type TypeRole = (typeof TYPE_ROLES)[number];
 
-/** The type ramp: every role, specified for each aspect. */
+/** The one type ramp: every step, specified for each aspect. Components read size, weight, tracking and line height only from it. */
 export type TypeRamp = Record<TypeRole, Record<Aspect, TypeSpec>>;
 
-/**
- * Font sizes in px, designed for the 9:16 frame (see `fontScale`). The fitting
- * scale components step down when text is too long for its box.
- */
-export interface ThemeTypeScale {
-  caption: number;
-  body: number;
-  subtitle: number;
-  title: number;
-  display: number;
+/** The five weights the system uses. Ramp steps carry their own; these are for emphasis inside a step. */
+export interface ThemeWeights {
+  regular: number;
+  medium: number;
+  semibold: number;
+  bold: number;
+  heavy: number;
 }
 
-export type TypeStep = keyof ThemeTypeScale;
-
-/** Spacing in px, designed for the 9:16 frame. */
+/** The 8 px spacing scale, in px: 8, 16, 24, 32, 48, 64, 96, 128 by default. */
 export interface ThemeSpacing {
+  xxs: number;
   xs: number;
   sm: number;
   md: number;
   lg: number;
   xl: number;
+  xxl: number;
+  xxxl: number;
 }
 
 /** Corner radii in px. `md` is the default for cards and panels. */
@@ -153,7 +160,7 @@ export interface Theme {
   accentIntensity: AccentIntensity;
   fonts: ThemeFonts;
   type: TypeRamp;
-  typeScale: ThemeTypeScale;
+  weights: ThemeWeights;
   spacing: ThemeSpacing;
   radius: ThemeRadius;
   cardShadow: ThemeShadow;

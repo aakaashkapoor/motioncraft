@@ -56,8 +56,8 @@ describe("checkThemeColors", () => {
   });
 
   it("accepts the theme's own colors in any case or length", () => {
-    // light accent is #2f54d4
-    expect(checkThemeColors(storyboard({ scenes: [chat("#2F54D4")] }))).toEqual([]);
+    // light accent is #fb5a1f
+    expect(checkThemeColors(storyboard({ scenes: [chat("#FB5A1F")] }))).toEqual([]);
   });
 
   it("accepts colors the storyboard overrides, through accent or themeOverrides", () => {

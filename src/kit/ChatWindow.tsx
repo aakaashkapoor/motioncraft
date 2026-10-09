@@ -10,10 +10,11 @@ import { interpolate, type Easing } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
+import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { mixColors, withAlpha } from "../theme/color";
 import { contrastRatio } from "../theme/contrast";
-import type { Theme, TypeRole } from "../theme/types";
+import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { themeEasing } from "./motion";
 import type { KitProps } from "./types";
 
@@ -90,8 +91,8 @@ const SIDEBAR_SHARE = 0.26;
 const MAX_SIDEBAR_WIDTH = 380;
 /** In 16:9, the side-by-side layout (sidebar, cards beside) needs an area at least this many times wider than tall. */
 const WIDE_RATIO = 1.5;
-/** Text roles to try for message text, largest first. */
-const TEXT_ROLES: readonly TypeRole[] = ["body", "caption"];
+/** Ramp steps to try for message text, largest first. */
+const TEXT_ROLES: readonly TypeRole[] = ["body", "label"];
 const AVATAR_EM = 1.7;
 const DOT_COUNT = 3;
 /** Headroom over the estimated content height, so estimates that run short don't clip. */
@@ -125,9 +126,11 @@ export interface ChatWindowLayout {
   cards?: Rect;
   /** 0 when the sidebar is collapsed or absent. */
   sidebarWidth: number;
+  /** The message text's ramp step: `body`, or `label` when the messages need the room. */
   textRole: TypeRole;
-  textSize: number;
-  smallSize: number;
+  text: TypeSpec;
+  /** Names, times, channels and the composer: the `label` step. */
+  meta: TypeSpec;
   avatarSize: number;
   headerHeight: number;
   composerHeight: number;
@@ -135,22 +138,26 @@ export interface ChatWindowLayout {
 
 type LayoutInput = Pick<ChatWindowProps, "messages" | "sidebar" | "cards">;
 
+/** Height of one line of text in a ramp step, in px. */
+const lineOf = (spec: TypeSpec) => spec.size * spec.lineHeight;
+
 function sizesFor(theme: Theme, aspect: Aspect, textRole: TypeRole) {
-  const textSize = theme.type[textRole][aspect].size;
-  const smallSize = Math.round(textSize * 0.78);
-  const avatarSize = Math.round(textSize * AVATAR_EM);
-  const headerHeight = Math.ceil(theme.type.body[aspect].size * 1.35 + 2 * theme.spacing.sm + (aspect === "9:16" ? smallSize * 1.3 : 0));
-  const composerHeight = Math.ceil(smallSize * 1.3 + 2 * theme.spacing.sm + 2 * theme.spacing.sm);
-  return { textRole, textSize, smallSize, avatarSize, headerHeight, composerHeight };
+  const { type, spacing } = theme;
+  const text = type[textRole][aspect];
+  const meta = type.label[aspect];
+  const avatarSize = Math.round(text.size * AVATAR_EM);
+  const headerHeight = Math.ceil(lineOf(type.body[aspect]) + 2 * spacing.xs + (aspect === "9:16" ? lineOf(meta) : 0));
+  const composerHeight = Math.ceil(lineOf(meta) + 4 * spacing.xs);
+  return { textRole, text, meta, avatarSize, headerHeight, composerHeight };
 }
 
-/** Estimated height of one message at a text size, in a list `width` px wide. */
-function messageHeight(theme: Theme, m: ChatMessage, width: number, textSize: number, smallSize: number, avatarSize: number): number {
+/** Estimated height of one message with message text `text`, in a list `width` px wide. */
+function messageHeight(theme: Theme, m: ChatMessage, width: number, text: TypeSpec, meta: TypeSpec, avatarSize: number): number {
   const { spacing } = theme;
-  const textWidth = width - avatarSize - spacing.sm - 2 * spacing.sm;
-  let height = smallSize * 1.3 + spacing.xs + estimateTextHeight(m.text, textWidth, { size: textSize, lineHeight: 1.35 });
-  if (m.reactions?.length) height += spacing.xs + smallSize * 1.7;
-  return Math.max(avatarSize, height) + 2 * spacing.xs;
+  const textWidth = width - avatarSize - spacing.xs - 2 * spacing.xs;
+  let height = lineOf(meta) + spacing.xxs + estimateTextHeight(m.text, textWidth, text);
+  if (m.reactions?.length) height += spacing.xxs + lineOf(meta) + spacing.xs;
+  return Math.max(avatarSize, height) + 2 * spacing.xxs;
 }
 
 /**
@@ -179,9 +186,9 @@ export function chatWindowLayout(
 
   const candidates = TEXT_ROLES.map((role) => sizesFor(theme, aspect, role));
   const needed = (s: (typeof candidates)[number]) => {
-    const list = messages.reduce((sum, m) => sum + messageHeight(theme, m, listWidth, s.textSize, s.smallSize, s.avatarSize), 0);
-    const chat = list + spacing.sm * (Math.max(0, messages.length - 1) + 2) + s.headerHeight + s.composerHeight;
-    const side = sidebarWidth > 0 && sidebar ? 2 * spacing.md + (sidebar.channels.length + 1) * (s.smallSize * 1.3 + 2 * spacing.xs) + spacing.sm : 0;
+    const list = messages.reduce((sum, m) => sum + messageHeight(theme, m, listWidth, s.text, s.meta, s.avatarSize), 0);
+    const chat = list + spacing.xs * (Math.max(0, messages.length - 1) + 2) + s.headerHeight + s.composerHeight;
+    const side = sidebarWidth > 0 && sidebar ? 2 * spacing.md + (sidebar.channels.length + 1) * (lineOf(s.meta) + 2 * spacing.xxs) + spacing.xs : 0;
     return Math.max(chat, side);
   };
   const sizes = candidates.find((s) => needed(s) <= room) ?? candidates.at(-1)!;
@@ -219,7 +226,7 @@ function inkOn(theme: Theme, fill: string): string {
   return contrastRatio(text, fill) >= contrastRatio(surface, fill) ? text : surface;
 }
 
-function Avatar({ message, size, theme }: { message: ChatMessage; size: number; theme: Theme }) {
+function Avatar({ message, size, meta, theme }: { message: ChatMessage; size: number; meta: TypeSpec; theme: Theme }) {
   const fill = message.avatar?.color ?? defaultAvatarColor(theme, message.author);
   return (
     <div
@@ -231,9 +238,8 @@ function Avatar({ message, size, theme }: { message: ChatMessage; size: number; 
         backgroundColor: fill,
         color: inkOn(theme, fill),
         fontFamily: theme.fonts.body,
-        fontSize: Math.round(size * 0.4),
-        fontWeight: 700,
-        lineHeight: 1,
+        ...typeCss(meta),
+        fontWeight: theme.weights.bold,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -244,52 +250,50 @@ function Avatar({ message, size, theme }: { message: ChatMessage; size: number; 
   );
 }
 
-function MessageBody({ message, layout, theme }: { message: ChatMessage; layout: ChatWindowLayout; theme: Theme }) {
-  const { colors, fonts, spacing, radius } = theme;
-  const { textSize, smallSize } = layout;
+function MessageBody({ message, layout, theme, aspect }: { message: ChatMessage; layout: ChatWindowLayout; theme: Theme; aspect: Aspect }) {
+  const { colors, fonts, spacing, radius, weights } = theme;
+  const { text, meta } = layout;
   return (
-    <div style={{ display: "flex", gap: spacing.sm, alignItems: "flex-start" }}>
-      <Avatar message={message} size={layout.avatarSize} theme={theme} />
-      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: spacing.xs }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: spacing.xs * 1.5, fontFamily: fonts.body, lineHeight: 1.3 }}>
-          <span style={{ color: colors.text, fontSize: smallSize, fontWeight: 700 }}>{message.author}</span>
+    <div style={{ display: "flex", gap: spacing.xs, alignItems: "flex-start" }}>
+      <Avatar message={message} size={layout.avatarSize} meta={meta} theme={theme} />
+      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: spacing.xxs }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: spacing.xxs * 1.5, fontFamily: fonts.body, ...typeCss(meta) }}>
+          <span style={{ color: colors.text, fontWeight: weights.bold }}>{message.author}</span>
           {message.badge !== undefined && (
             <span
               style={{
                 alignSelf: "center",
-                padding: `2px ${spacing.xs}px`,
+                padding: `2px ${spacing.xxs}px`,
                 borderRadius: radius.sm / 2,
                 backgroundColor: colors.surfaceAlt,
                 color: colors.textMuted,
-                fontSize: Math.round(smallSize * 0.62),
-                fontWeight: 700,
-                letterSpacing: "0.06em",
+                ...typeCss(theme.type.eyebrow[aspect]),
+                textTransform: "uppercase",
               }}
             >
               {message.badge}
             </span>
           )}
-          <span style={{ color: colors.textMuted, fontSize: Math.round(smallSize * 0.8) }}>{message.time}</span>
+          <span style={{ color: colors.textMuted }}>{message.time}</span>
         </div>
-        <div style={{ color: colors.text, fontFamily: fonts.body, fontSize: textSize, lineHeight: 1.35, overflowWrap: "break-word" }}>{message.text}</div>
+        <div style={{ color: colors.text, fontFamily: fonts.body, ...typeCss(text), overflowWrap: "break-word" }}>{message.text}</div>
         {message.reactions !== undefined && message.reactions.length > 0 && (
-          <div style={{ display: "flex", gap: spacing.xs }}>
+          <div style={{ display: "flex", gap: spacing.xxs }}>
             {message.reactions.map((reaction, i) => (
               <span
                 key={i}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: spacing.xs,
-                  padding: `${spacing.xs / 2}px ${spacing.sm}px`,
+                  gap: spacing.xxs,
+                  padding: `${spacing.xxs / 2}px ${spacing.xs}px`,
                   borderRadius: radius.pill,
                   border: `${theme.hairline}px solid ${colors.border}`,
                   backgroundColor: colors.surfaceAlt,
                   color: colors.textMuted,
                   fontFamily: fonts.body,
-                  fontSize: Math.round(smallSize * 0.85),
-                  fontWeight: 600,
-                  lineHeight: 1.3,
+                  ...typeCss(meta),
+                  fontWeight: weights.semibold,
                 }}
               >
                 {reaction.emoji}
@@ -306,15 +310,15 @@ function MessageBody({ message, layout, theme }: { message: ChatMessage; layout:
 /** Three dots that pulse in turn while someone types. */
 function TypingIndicator({ message, local, layout, theme }: { message: ChatMessage; local: number; layout: ChatWindowLayout; theme: Theme }) {
   const { colors, spacing, radius } = theme;
-  const dot = Math.round(layout.smallSize * 0.32);
+  const dot = Math.round(layout.meta.size * 0.32);
   return (
-    <div style={{ display: "flex", gap: spacing.sm, alignItems: "center" }}>
-      <Avatar message={message} size={layout.avatarSize} theme={theme} />
+    <div style={{ display: "flex", gap: spacing.xs, alignItems: "center" }}>
+      <Avatar message={message} size={layout.avatarSize} meta={layout.meta} theme={theme} />
       <div
         style={{
           display: "flex",
           gap: dot * 0.8,
-          padding: `${spacing.sm}px ${spacing.md * 0.75}px`,
+          padding: `${spacing.xs}px ${spacing.md * 0.75}px`,
           borderRadius: radius.pill,
           backgroundColor: colors.surfaceAlt,
         }}
@@ -356,12 +360,12 @@ function Sidebar({ sidebar, channel, layout, theme }: { sidebar: ChatSidebar; ch
         borderRight: `${theme.hairline}px solid ${colors.border}`,
         display: "flex",
         flexDirection: "column",
-        gap: spacing.xs,
+        gap: spacing.xxs,
         fontFamily: fonts.body,
         boxSizing: "border-box",
       }}
     >
-      <div style={{ color: colors.text, fontSize: layout.smallSize, fontWeight: 800, lineHeight: 1.3, marginBottom: spacing.sm, overflowWrap: "break-word" }}>
+      <div style={{ color: colors.text, ...typeCss(layout.meta), fontWeight: theme.weights.heavy, marginBottom: spacing.xs, overflowWrap: "break-word" }}>
         {sidebar.workspace}
       </div>
       {sidebar.channels.map((name, i) => (
@@ -369,13 +373,12 @@ function Sidebar({ sidebar, channel, layout, theme }: { sidebar: ChatSidebar; ch
           key={i}
           data-chat-channel={i === active ? "active" : ""}
           style={{
-            padding: `${spacing.xs}px ${spacing.sm}px`,
+            padding: `${spacing.xxs}px ${spacing.xs}px`,
             borderRadius: radius.sm,
             backgroundColor: i === active ? colors.accent : "transparent",
             color: i === active ? colors.accentText : colors.textMuted,
-            fontSize: Math.round(layout.smallSize * 0.85),
-            fontWeight: i === active ? 700 : 500,
-            lineHeight: 1.3,
+            ...typeCss(layout.meta),
+            fontWeight: i === active ? theme.weights.bold : layout.meta.weight,
             overflowWrap: "break-word",
           }}
         >
@@ -403,9 +406,9 @@ function Header({ channel, workspace, layout, theme, aspect }: { channel: string
       }}
     >
       {aspect === "9:16" && workspace !== undefined && (
-        <div style={{ color: colors.textMuted, fontSize: layout.smallSize, fontWeight: 600, lineHeight: 1.3 }}>{workspace}</div>
+        <div style={{ color: colors.textMuted, ...typeCss(layout.meta), fontWeight: theme.weights.semibold }}>{workspace}</div>
       )}
-      <div style={{ color: colors.text, fontSize: theme.type.body[aspect].size, fontWeight: 700, lineHeight: 1.35 }}>{`# ${channel}`}</div>
+      <div style={{ color: colors.text, ...typeCss(theme.type.body[aspect]), fontWeight: theme.weights.bold }}>{`# ${channel}`}</div>
     </div>
   );
 }
@@ -413,19 +416,18 @@ function Header({ channel, workspace, layout, theme, aspect }: { channel: string
 function Composer({ channel, layout, theme }: { channel: string; layout: ChatWindowLayout; theme: Theme }) {
   const { colors, fonts, spacing, radius } = theme;
   return (
-    <div style={{ flex: "none", height: layout.composerHeight, padding: spacing.sm, boxSizing: "border-box" }}>
+    <div style={{ flex: "none", height: layout.composerHeight, padding: spacing.xs, boxSizing: "border-box" }}>
       <div
         style={{
           height: "100%",
-          padding: `0 ${spacing.sm}px`,
+          padding: `0 ${spacing.xs}px`,
           borderRadius: radius.sm,
           border: `${theme.hairline}px solid ${colors.border}`,
           display: "flex",
           alignItems: "center",
           color: colors.textMuted,
           fontFamily: fonts.body,
-          fontSize: layout.smallSize,
-          lineHeight: 1.3,
+          ...typeCss(layout.meta),
           boxSizing: "border-box",
         }}
       >
@@ -486,16 +488,16 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
             style={{
               flex: 1,
               minHeight: 0,
-              padding: `${spacing.sm}px ${spacing.md}px`,
+              padding: `${spacing.xs}px ${spacing.md}px`,
               display: "flex",
               flexDirection: "column",
               justifyContent: "flex-end",
-              gap: spacing.sm,
+              gap: spacing.xs,
             }}
           >
             {messages.map((message, i) => {
               const { typing, appear } = timing[i]!;
-              const shown = rise(progress, appear, spacing.sm * 1.5, easing);
+              const shown = rise(progress, appear, spacing.xs * 1.5, easing);
               const local = (progress - typing[0]) / (typing[1] - typing[0]);
               return (
                 <div key={i} style={{ position: "relative" }}>
@@ -504,15 +506,15 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
                     style={{
                       opacity: shown.opacity,
                       transform: `translateY(${shown.offset}px)`,
-                      padding: spacing.xs,
+                      padding: spacing.xxs,
                       borderRadius: radius.sm,
-                      borderLeft: `${spacing.xs / 2}px solid ${message.highlight ? colors.accent : "transparent"}`,
+                      borderLeft: `${spacing.xxs / 2}px solid ${message.highlight ? colors.accent : "transparent"}`,
                       backgroundColor: message.highlight ? mixColors(colors.surface, colors.accent, 0.08) : "transparent",
                     }}
                   >
-                    <MessageBody message={message} layout={layout} theme={theme} />
+                    <MessageBody message={message} layout={layout} theme={theme} aspect={aspect} />
                   </div>
-                  <div data-chat-typing={i} style={{ position: "absolute", left: spacing.xs * 1.5, top: spacing.xs, opacity: typingOpacity(progress, typing) }}>
+                  <div data-chat-typing={i} style={{ position: "absolute", left: spacing.xxs * 1.5, top: spacing.xxs, opacity: typingOpacity(progress, typing) }}>
                     <TypingIndicator message={message} local={local} layout={layout} theme={theme} />
                   </div>
                 </div>
@@ -551,7 +553,7 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
                   boxShadow: shadow,
                 }}
               >
-                <MessageBody message={card} layout={layout} theme={theme} />
+                <MessageBody message={card} layout={layout} theme={theme} aspect={aspect} />
               </div>
             );
           })}

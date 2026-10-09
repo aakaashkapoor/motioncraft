@@ -7,6 +7,7 @@
 import { interpolate } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
+import { TYPE_FIT_ATTRIBUTE, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { syntaxColors } from "./syntaxColors";
@@ -114,7 +115,7 @@ export function TerminalWindow({ progress, theme, aspect, area, lines, title = "
     />
   );
   const marker = (
-    <span data-terminal-prompt="" style={{ color: colors.keyword, fontWeight: 600 }}>
+    <span data-terminal-prompt="" style={{ color: colors.keyword, fontWeight: theme.weights.semibold }}>
       {`${PROMPT_MARKER} `}
     </span>
   );
@@ -148,12 +149,11 @@ export function TerminalWindow({ progress, theme, aspect, area, lines, title = "
       titleBar={<TitleBar theme={theme} aspect={aspect} title={title} chrome={chrome} />}
     >
       <div
+        // The mono step, shrunk to fit when the lines need it.
+        {...(size < mono.size ? { [TYPE_FIT_ATTRIBUTE]: "" } : {})}
         style={{
           fontFamily: theme.fonts.mono,
-          fontSize: size,
-          fontWeight: mono.weight,
-          lineHeight: mono.lineHeight,
-          letterSpacing: `${mono.tracking}em`,
+          ...typeCss({ ...mono, size }),
           whiteSpace: "pre-wrap",
           overflowWrap: "anywhere",
         }}

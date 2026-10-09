@@ -6,7 +6,7 @@ import type { Rect } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 
-/** Advance width of one mono character, in em (Geist Mono is 0.6; a little spare). */
+/** Advance width of one mono character, in em (Source Code Pro and Geist Mono are 0.6; a little spare). */
 export const MONO_ADVANCE = 0.62;
 /** The smallest mono size tried, as a fraction of the theme's mono size. */
 const MIN_MONO_SCALE = 0.55;
@@ -15,7 +15,7 @@ const MONO_STEP = 0.92;
 /** In 16:9 a window takes this share of the content area's width; in 9:16 all of it. Never more than its area. */
 const WIDE_WIDTH = 0.8;
 
-/** Title bar height, as a multiple of the caption type size. */
+/** Title bar height, as a multiple of the label type size. */
 const TITLE_BAR_EM = 2;
 
 export interface WindowMetrics {
@@ -29,7 +29,7 @@ export interface WindowMetrics {
 
 export function windowMetrics(theme: Theme, aspect: Aspect): WindowMetrics {
   return {
-    barHeight: Math.round(theme.type.caption[aspect].size * TITLE_BAR_EM),
+    barHeight: Math.round(theme.type.label[aspect].size * TITLE_BAR_EM),
     padding: aspect === "9:16" ? theme.spacing.md : Math.round(theme.spacing.md * 1.25),
     border: theme.hairline,
   };

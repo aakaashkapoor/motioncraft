@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   ASPECTS,
   GROUND_STYLES,
+  TYPE_ROLES,
+  accentInk,
   contrastRatio,
   darkTheme,
   lightTheme,
@@ -60,13 +62,14 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
     expect(themes[name]).toBe(theme);
   });
 
-  it("fills every color role with a hex color, never pure black or white", () => {
+  it("fills every color role with a hex color; neutrals are tinted, never pure black, and only cards may be pure white", () => {
     const roles = ["ground", "surface", "surfaceAlt", "text", "textMuted", "textSubtle", "accent", "accentText", "border", "shadow"];
     expect(Object.keys(colors).sort()).toEqual(roles.sort());
-    for (const value of Object.values(colors)) {
+    for (const [role, value] of Object.entries(colors)) {
       expect(value).toMatch(HEX);
       expect(value.toLowerCase()).not.toBe("#000000");
-      expect(value.toLowerCase()).not.toBe("#ffffff");
+      // The owner's reference has pure white cards; nothing else is.
+      if (role !== "surface") expect(value.toLowerCase(), role).not.toBe("#ffffff");
     }
   });
 
@@ -83,16 +86,20 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
     expect(contrastRatio(colors.text, colors.surface)).toBeGreaterThanOrEqual(7);
   });
 
-  it("keeps the accent legible on the ground and accentText legible on the accent", () => {
-    expect(contrastRatio(colors.accent, colors.ground)).toBeGreaterThanOrEqual(4.5);
+  it("keeps accent marks visible on cards, accent text readable, and accentText legible on the accent", () => {
+    // Accent fills, rings and icons: WCAG non-text contrast (3:1) on the cards they sit on.
+    expect(contrastRatio(colors.accent, colors.surface)).toBeGreaterThanOrEqual(3);
+    // Text set in the accent uses accentInk, which reads at AA on the ground and the cards.
+    for (const bg of [colors.ground, colors.surface]) expect(contrastRatio(accentInk(theme), bg)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(colors.accentText, colors.accent)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("orders text emphasis: text > textMuted > textSubtle against the ground", () => {
+  it("orders text emphasis: text > textMuted > textSubtle, and textSubtle still shows on cards", () => {
     const vs = (c: string) => contrastRatio(c, colors.ground);
     expect(vs(colors.text)).toBeGreaterThan(vs(colors.textMuted));
     expect(vs(colors.textMuted)).toBeGreaterThan(vs(colors.textSubtle));
-    expect(vs(colors.textSubtle)).toBeGreaterThanOrEqual(3);
+    // Decoration (window controls, toolbar icons) and large text on cards only.
+    expect(contrastRatio(colors.textSubtle, colors.surface)).toBeGreaterThanOrEqual(3);
   });
 
   it("picks a known ground style", () => {
@@ -101,21 +108,16 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
   });
 
   it("has a full type ramp for both aspects", () => {
-    for (const role of ["eyebrow", "headline", "title", "body", "caption", "mono"] as const) {
+    expect(Object.keys(theme.type).sort()).toEqual([...TYPE_ROLES].sort());
+    for (const role of TYPE_ROLES) {
       for (const aspect of ASPECTS) {
         const spec = theme.type[role][aspect];
         expect(spec.size).toBeGreaterThan(0);
         expect(spec.weight).toBeGreaterThanOrEqual(100);
         expect(spec.weight).toBeLessThanOrEqual(900);
         expect(Number.isFinite(spec.tracking)).toBe(true);
-        expect(spec.lineHeight).toBeGreaterThanOrEqual(1);
+        expect(spec.lineHeight).toBeGreaterThanOrEqual(0.85);
       }
-    }
-    for (const aspect of ASPECTS) {
-      const t = theme.type;
-      expect(t.headline[aspect].size).toBeGreaterThan(t.title[aspect].size);
-      expect(t.title[aspect].size).toBeGreaterThan(t.body[aspect].size);
-      expect(t.eyebrow[aspect].size).toBeLessThan(t.body[aspect].size);
     }
   });
 
@@ -125,13 +127,16 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
     expect(theme.fonts.mono).toMatch(/monospace$/);
   });
 
-  it("has increasing type, spacing and radius scales", () => {
+  it("has ordered type, spacing and radius scales", () => {
     const sorted = (xs: number[]) => xs.slice().sort((a, b) => a - b);
-    const t = theme.typeScale;
-    const steps = [t.caption, t.body, t.subtitle, t.title, t.display];
-    expect(steps).toEqual(sorted(steps));
-    const s = theme.spacing;
-    expect([s.xs, s.sm, s.md, s.lg, s.xl]).toEqual(sorted([s.xs, s.sm, s.md, s.lg, s.xl]));
+    for (const aspect of ASPECTS) {
+      // Largest step first, mono aside.
+      const steps = TYPE_ROLES.filter((role) => role !== "mono").map((role) => theme.type[role][aspect].size);
+      expect(steps).toEqual(sorted(steps).reverse());
+      expect(new Set(steps).size).toBe(steps.length);
+    }
+    const s = Object.values(theme.spacing);
+    expect(s).toEqual(sorted(s));
     const r = theme.radius;
     expect([r.sm, r.md, r.lg, r.pill]).toEqual(sorted([r.sm, r.md, r.lg, r.pill]));
   });
@@ -152,6 +157,36 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
 });
 
 describe("built-in themes", () => {
+  it("light takes its colors from the owner's reference", () => {
+    const { colors } = lightTheme;
+    expect(colors.ground).toBe("#e6e7df");
+    expect(colors.surface).toBe("#ffffff");
+    expect(colors.surfaceAlt).toBe("#f1f2ea");
+    expect(colors.textSubtle).toBe("#8d8c85");
+    expect(colors.accent).toBe("#fb5a1f");
+    // A flat ground, soft wide card shadow and ~28 px corners.
+    expect(lightTheme.ground.style).toBe("solid");
+    expect(lightTheme.radius.md).toBe(28);
+    expect(lightTheme.cardShadow.blur).toBeGreaterThanOrEqual(3 * lightTheme.cardShadow.y);
+    expect(lightTheme.cardShadow.opacity).toBeLessThanOrEqual(0.12);
+  });
+
+  it("light keeps its secondary text and accent text readable on the reference ground", () => {
+    const { colors } = lightTheme;
+    for (const bg of [colors.ground, colors.surface, colors.surfaceAlt]) {
+      expect(contrastRatio(colors.textMuted, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(accentInk(lightTheme), bg)).toBeGreaterThanOrEqual(4.5);
+    }
+    // Still the reference's warm grey and orange, only deep enough to read.
+    expect(contrastRatio(colors.textMuted, colors.ground)).toBeLessThan(5.5);
+    expect(contrastRatio(accentInk(lightTheme), colors.ground)).toBeLessThan(5.5);
+  });
+
+  it("accentInk is the accent itself wherever the accent already reads", () => {
+    expect(accentInk(darkTheme)).toBe(darkTheme.colors.accent);
+    expect(accentInk(neutralTheme)).toBe(neutralTheme.colors.accent);
+  });
+
   it("light is a light theme with white-ish cards and dark text", () => {
     expect(relativeLuminance(lightTheme.colors.ground)).toBeGreaterThan(0.7);
     expect(relativeLuminance(lightTheme.colors.surface)).toBeGreaterThan(relativeLuminance(lightTheme.colors.ground));

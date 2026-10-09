@@ -167,7 +167,7 @@ describe("FlowDiagram", () => {
   it("picks a label size that keeps every word whole", () => {
     const layout = flowDiagramLayout(neutralTheme, "16:9", NODES, CAPTION);
     const size = fontSize(neutralTheme, layout.labelStep, "16:9");
-    const inner = layout.nodes[0]!.width - 2 * (neutralTheme.spacing.md + neutralTheme.spacing.xs / 2);
+    const inner = layout.nodes[0]!.width - 2 * (neutralTheme.spacing.md + neutralTheme.spacing.xxs / 2);
     expect(charsPerLine(inner, size)).toBeGreaterThanOrEqual("Storyboard".length);
     expect(flowDiagramLayout(neutralTheme, "16:9", ["Go", "Stop"]).labelStep).toBe("title");
   });

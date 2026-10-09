@@ -1,4 +1,4 @@
-import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseTypeScale, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
 import type { Theme } from "./types";
 
 // The v1 look, kept for compatibility: a near-black solid ground, near-white
@@ -26,7 +26,7 @@ export const neutralTheme: Theme = {
     mono: SYSTEM_MONO,
   },
   type: baseTypeRamp,
-  typeScale: baseTypeScale,
+  weights: baseWeights,
   spacing: baseSpacing,
   radius: baseRadius,
   cardShadow: { y: 16, blur: 48, opacity: 0.4 },

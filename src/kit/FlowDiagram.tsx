@@ -8,9 +8,9 @@ import { interpolate } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { charsPerLine, estimateTextHeight } from "../layout/textFit";
-import { fontSize } from "../layout/type";
+import { fontSize, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
-import type { Theme, TypeStep } from "../theme/types";
+import type { Theme, TypeRole } from "../theme/types";
 import { cardColors } from "../theme/roles";
 import { themeEasing } from "./motion";
 import type { KitProps } from "./types";
@@ -28,10 +28,8 @@ export const MAX_FLOW_NODES = 4;
 const ENTER = 0.2;
 const EXIT = 0.1;
 
-/** Label sizes to try, largest first. */
-const LABEL_STEPS: readonly TypeStep[] = ["title", "subtitle", "body"];
-const LABEL_LINE_HEIGHT = 1.15;
-const CAPTION_LINE_HEIGHT = 1.25;
+/** Label steps to try, largest first. Labels are set in the `title` step's weight. */
+const LABEL_STEPS: readonly TypeRole[] = ["title", "subtitle", "body", "label"];
 
 export interface FlowArrow {
   x1: number;
@@ -42,7 +40,7 @@ export interface FlowArrow {
 
 /** Where everything goes, in px relative to the area's top-left corner. */
 export interface FlowDiagramLayout {
-  labelStep: TypeStep;
+  labelStep: TypeRole;
   nodes: Rect[];
   arrows: FlowArrow[];
   caption?: Rect;
@@ -56,16 +54,16 @@ function checkNodes(nodes: readonly string[]): void {
 
 /** Card padding and border width, from the theme spacing. */
 function cardInsets(theme: Theme): { padding: number; border: number } {
-  return { padding: theme.spacing.md, border: theme.spacing.xs / 2 };
+  return { padding: theme.spacing.md, border: theme.spacing.xxs / 2 };
 }
 
 /**
  * Lays the diagram out in `area` (the content area by default): equal cards
  * along the flow with an arrow in each gap, the caption under them, the whole
  * block centered. The flow runs left to right when the area is landscape,
- * unless only top to bottom fits (a narrow Section slot). Uses the largest
- * label size at which every card fits with no word broken; if none fits, the
- * smallest, and the layer-1 checks report the overflow.
+ * unless top to bottom fits larger labels (a narrow Section slot). Uses the
+ * largest label step at which every card fits with no word broken; if none
+ * fits, the smallest, and the layer-1 checks report the overflow.
  */
 export function flowDiagramLayout(
   theme: Theme,
@@ -79,34 +77,33 @@ export function flowDiagramLayout(
   const { padding, border } = cardInsets(theme);
   const inset = 2 * (padding + border);
   const count = nodes.length;
-  const gap = spacing.xl;
+  const gap = spacing.xxl;
 
-  const captionSize = fontSize(theme, "body", aspect);
-  const captionHeight =
-    caption === undefined ? 0 : estimateTextHeight(caption, area.width, { size: captionSize, lineHeight: CAPTION_LINE_HEIGHT });
+  const captionHeight = caption === undefined ? 0 : estimateTextHeight(caption, area.width, theme.type.body[aspect]);
   const captionSpace = caption === undefined ? 0 : spacing.lg + captionHeight;
   const room = area.height - captionSpace;
 
   // Cards share a row, but never stretch past a third of it.
   const widthOf = (row: boolean) => (row ? Math.min((area.width - (count - 1) * gap) / count, (area.width - 2 * gap) / 3) : area.width);
-  const cardHeightOf = (row: boolean, step: TypeStep) => {
-    const size = fontSize(theme, step, aspect);
+  const cardHeightOf = (row: boolean, step: TypeRole) => {
+    const spec = theme.type[step][aspect];
     const width = widthOf(row) - inset;
-    const text = Math.max(...nodes.map((label) => estimateTextHeight(label, width, { size, lineHeight: LABEL_LINE_HEIGHT })));
-    return Math.max(text, size * LABEL_LINE_HEIGHT) + inset;
+    const text = Math.max(...nodes.map((label) => estimateTextHeight(label, width, spec)));
+    return Math.max(text, spec.size * spec.lineHeight) + inset;
   };
-  const heightOf = (row: boolean, step: TypeStep) => (row ? cardHeightOf(row, step) : count * cardHeightOf(row, step) + (count - 1) * gap);
+  const heightOf = (row: boolean, step: TypeRole) => (row ? cardHeightOf(row, step) : count * cardHeightOf(row, step) + (count - 1) * gap);
   // Words must fit whole: a label broken mid-word is hard to read.
   const longestWord = Math.max(...nodes.flatMap((label) => label.split(/\s+/).map((word) => word.length)));
   const fitting = (row: boolean) =>
     LABEL_STEPS.find((step) => charsPerLine(widthOf(row) - inset, fontSize(theme, step, aspect)) >= longestWord && heightOf(row, step) <= room);
-  // A landscape area runs left to right, unless only top to bottom fits.
-  const horizontal = area.width > area.height && (fitting(true) !== undefined || fitting(false) === undefined);
+  // A landscape area runs left to right, unless top to bottom fits larger labels.
+  const rank = (step: TypeRole | undefined) => (step === undefined ? LABEL_STEPS.length : LABEL_STEPS.indexOf(step));
+  const horizontal = area.width > area.height && rank(fitting(true)) <= rank(fitting(false));
   const labelStep = fitting(horizontal) ?? LABEL_STEPS[LABEL_STEPS.length - 1]!;
   const nodeWidth = widthOf(horizontal);
   const left = horizontal ? (area.width - count * nodeWidth - (count - 1) * gap) / 2 : 0;
-  const cardHeight = (step: TypeStep) => cardHeightOf(horizontal, step);
-  const diagramHeight = (step: TypeStep) => heightOf(horizontal, step);
+  const cardHeight = (step: TypeRole) => cardHeightOf(horizontal, step);
+  const diagramHeight = (step: TypeRole) => heightOf(horizontal, step);
 
   const nodeHeight = cardHeight(labelStep);
   const top = Math.max(0, (area.height - diagramHeight(labelStep) - captionSpace) / 2);
@@ -117,7 +114,7 @@ export function flowDiagramLayout(
   );
 
   // Arrows span each gap, leaving a little air at both ends.
-  const air = spacing.sm;
+  const air = spacing.xs;
   const arrows: FlowArrow[] = rects.slice(1).map((next, i) => {
     const prev = rects[i]!;
     if (horizontal) {
@@ -155,7 +152,7 @@ export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, captio
   const steps = 2 * nodes.length - 1 + (caption === undefined ? 0 : 1);
   const nodeIn = (i: number) => easing(buildStep(progress, 2 * i, steps));
   const arrowIn = (i: number) => easing(buildStep(progress, 2 * i + 1, steps));
-  const stroke = spacing.xs;
+  const stroke = spacing.xxs;
   const head = spacing.md * 0.75;
 
   return (
@@ -232,11 +229,11 @@ export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, captio
             <span
               style={{
                 fontFamily: fonts.display,
-                fontSize: fontSize(theme, layout.labelStep, aspect),
-                fontWeight: 700,
-                lineHeight: LABEL_LINE_HEIGHT,
+                ...typeCss(theme.type[layout.labelStep][aspect]),
+                fontWeight: theme.type.title[aspect].weight,
                 color: card.text,
                 overflowWrap: "break-word",
+                textWrap: "balance",
                 maxWidth: "100%",
               }}
             >
@@ -255,11 +252,11 @@ export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, captio
             margin: 0,
             opacity: easing(buildStep(progress, steps - 1, steps)),
             fontFamily: fonts.body,
-            fontSize: fontSize(theme, "body", aspect),
-            lineHeight: CAPTION_LINE_HEIGHT,
+            ...typeCss(theme.type.body[aspect]),
             color: colors.textMuted,
             textAlign: "center",
             overflowWrap: "break-word",
+            textWrap: "balance",
           }}
         >
           {caption}
