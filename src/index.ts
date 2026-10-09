@@ -150,3 +150,6 @@ export { Ground, groundStyle, type GroundProps } from "./kit";
 export * from "./kit/windows";
 export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMessage, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";
 export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps } from "./kit/Arrow";
+export { Card, CardFace, cardHeight, cardMetrics, type CardData, type CardProps } from "./kit/Card";
+export { CardRow, cardRowLayout, cardRowTiming, type CardRowLayout, type CardRowProps } from "./kit/CardRow";
+export { FeatureList, featureListTiming, type FeatureItem, type FeatureListProps } from "./kit/FeatureList";

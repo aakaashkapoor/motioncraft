@@ -6,6 +6,9 @@ import { Arrow } from "./Arrow";
 import { BigNumber } from "./BigNumber";
 import { BrowserWindow } from "./BrowserWindow";
 import { ChatWindow } from "./ChatWindow";
+import { Card } from "./Card";
+import { CardRow } from "./CardRow";
+import { FeatureList } from "./FeatureList";
 import { Caption, captionLimits } from "./Caption";
 import { FlowDiagram } from "./FlowDiagram";
 import { StepList } from "./StepList";
@@ -40,4 +43,7 @@ export const kit: Record<string, KitComponent> = {
   CodeWindow: asKitComponent(CodeWindow),
   ChatWindow: asKitComponent(ChatWindow),
   Arrow: asKitComponent(Arrow),
+  Card: asKitComponent(Card),
+  CardRow: asKitComponent(CardRow),
+  FeatureList: asKitComponent(FeatureList),
 };
