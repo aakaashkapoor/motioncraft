@@ -12,6 +12,7 @@ import { Caption, kit } from "../kit";
 import { frameSize } from "../layout/frame";
 import type { Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
+import { createPageEncoder, type PageEncoder } from "./encode";
 
 /** Everything the page needs, serialized into the HTML as JSON. */
 export interface PageInput {
@@ -68,6 +69,8 @@ export interface PageApi {
   renderFrame(frame: number): void;
   /** Measures the frame on screen for the layer-1 checks. */
   measureFrame(): FrameMeasurement;
+  /** Encodes captured frames to H.264 (see `renderVideo`). */
+  encoder: PageEncoder;
 }
 
 declare global {
@@ -107,5 +110,6 @@ export function mountPage(): void {
       if (!frame) throw new Error("motioncraft page: no frame rendered yet");
       return measureFrame(frame);
     },
+    encoder: createPageEncoder(),
   };
 }
