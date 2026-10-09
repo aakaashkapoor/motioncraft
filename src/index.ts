@@ -82,3 +82,4 @@ export { CardRow, cardRowLayout, cardRowTiming, type CardRowLayout, type CardRow
 export { FeatureList, featureListTiming, type FeatureItem, type FeatureListProps } from "./kit/FeatureList";
 export * from "./kit/media";
 export { Pinned, pinnedLayout, type PinnedCorner, type PinnedLayout, type PinnedProps } from "./kit/Pinned";
+export { Handoff, handoffLayout, type HandoffLayout, type HandoffProps } from "./kit/Handoff";

@@ -346,6 +346,35 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "handoff",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A prompt into a window",
+        "content": {
+          "component": "Handoff",
+          "props": {
+            "from": {
+              "component": "Card",
+              "props": {
+                "icon": "chat",
+                "title": "Prompt"
+              }
+            },
+            "to": {
+              "component": "AppWindow",
+              "props": {
+                "title": "Plan"
+              }
+            },
+            "label": "plan"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

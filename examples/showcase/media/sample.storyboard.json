@@ -1,0 +1,14 @@
+{
+  "title": "Showcase sample clip: a prompt becomes a video",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "flow",
+      "component": "FlowDiagram",
+      "props": { "nodes": ["Prompt", "Storyboard", "Video"], "caption": "Made with motioncraft" },
+      "durationMs": 4000
+    }
+  ]
+}

@@ -450,6 +450,27 @@ role (default `"accent"`), `label` sits at the middle.
 }
 ```
 
+#### `Handoff`
+
+One thing handed to another: a source component `from` (a prompt `Card`, say)
+and a receiver `to` (a window), joined by an `Arrow` that draws from one into
+the other, with an optional `label`. The source arrives, the arrow draws, then
+the receiver arrives. Side by side in 16:9, stacked in 9:16, so no points to
+work out. Give the receiver a `shareId` to carry it into the next scene.
+
+```json
+{
+  "id": "handoff",
+  "component": "Handoff",
+  "props": {
+    "from": { "component": "Card", "props": { "icon": "chat", "title": "The prompt", "subtitle": "Explain our deploys" } },
+    "to": { "component": "AppWindow", "props": { "title": "Plan", "shareId": "plan", "content": { "component": "StepList", "props": { "items": ["Hook", "Steps", "Ending"] } } } },
+    "label": "plan"
+  },
+  "narration": "A one-line prompt becomes a three-scene plan."
+}
+```
+
 #### `Card`
 
 One card: `icon`, `title`, `subtitle`, an optional `step` number, and
