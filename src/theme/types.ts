@@ -204,10 +204,24 @@ export interface MarkToken extends MotionToken {
   underlinePx: number;
 }
 
-/** The camera's drift over a whole scene: scale 1 -> `scale`. */
+/** The camera pushing in to a shot (design v3, life #1). */
+export interface ShotToken extends MotionToken {
+  /** Share of the frame a shot's target fills unless the shot sets its own `fill` (0.6-0.85). */
+  fill: number;
+}
+
+/**
+ * The camera's drift over a whole scene (design v3, life #1): scale 1 ->
+ * `scale` along `curve` while its focus drifts `driftPx` up, the other way
+ * round in every other scene so scenes chain without a jump. Opt-in: `on` is
+ * false in the built-in themes and a storyboard switches it on.
+ */
 export interface BreatheToken {
+  on: boolean;
   scale: number;
   curve: MotionCurve;
+  /** How far the camera's focus drifts over the scene, in px (at most 16). */
+  driftPx: number;
 }
 
 /** The grid ground breathing: scale and opacity rise together 1 -> `scale` and back, once per `ms`. */
@@ -281,7 +295,7 @@ export interface ThemeMotion {
   /** A marker or underline sweeping in. */
   mark: MarkToken;
   /** The camera moving to a new framing. */
-  shot: MotionToken;
+  shot: ShotToken;
   /** The camera drifting during holds. */
   breathe: BreatheToken;
   /** The mesh ground's blobs wandering (design v3, life #5). */

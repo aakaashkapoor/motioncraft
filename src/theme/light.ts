@@ -36,7 +36,7 @@ export const lightTheme: Theme = {
   radius: { ...baseRadius, md: 28 },
   cardShadow: { y: 24, blur: 80, opacity: 0.08 },
   hairline: 2,
-  // The reference keeps the camera calm: breathing at most 1.00 -> 1.02.
-  motion: { ...baseMotion, breathe: { ...baseMotion.breathe, scale: 1.02 } },
+  // The reference keeps the camera calm: no breathing unless a storyboard switches it on (1.00 -> 1.02 then).
+  motion: baseMotion,
   safe: DEFAULT_SAFE_PROFILE,
 };

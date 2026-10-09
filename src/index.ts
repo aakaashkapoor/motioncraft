@@ -25,6 +25,7 @@ export type {
   MarkToken,
   MotionCurve,
   MotionToken,
+  ShotToken,
   SpringCurve,
   StaggeredToken,
   TextInToken,
@@ -106,3 +107,4 @@ export { HEADLINE_MOTIONS, HEADLINE_ROLES, Headline, HeadlineText, MARK_STYLES, 
 export { SceneFrame, frameLineSpec, sceneFrameLayout, sceneFrameTiming, type SceneFrameLayout, type SceneFrameProps, type SceneFrameText, type SceneFrameTiming } from "./kit/SceneFrame";
 export { MotionDelay, NOMINAL_SCENE_MS, SceneClockContext, useSceneMs, useSceneTime, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, tween, type Timed } from "./kit/motion";
+export * from "./camera";

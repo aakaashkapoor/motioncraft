@@ -5,13 +5,16 @@
 // arrow lands, all in about the first 1.2 s. Side by side when the area is
 // wide, stacked when it is tall, so it lays out in 9:16, 16:9 and inside a Section slot. The arrow
 // runs between the two boxes' facing edges; receivers that fill their box
-// (AppWindow, BrowserWindow) meet its head exactly.
+// (AppWindow, BrowserWindow) meet its head exactly. Under a moving camera
+// (design v3, life #12) the source floats a little nearer than the receiver
+// and the arrow, which move with the world.
 
+import { CameraLayer, useLayerPoint } from "../camera/Camera";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
-import { Arrow } from "./Arrow";
+import { Arrow, type ArrowProps } from "./Arrow";
 import type { Point } from "./arrowGeometry";
 import { MotionDelay } from "./frameContext";
 import { kit } from "./index";
@@ -69,6 +72,11 @@ function Part({ spec, progress, theme, aspect, area, part }: { spec: SlotContent
   );
 }
 
+/** The arrow, drawn with the world, its tail kept on the floating source's edge as the camera moves. */
+function HandoffArrow({ start, ...props }: Omit<ArrowProps, "from"> & { start: Point }) {
+  return <Arrow {...props} from={useLayerPoint(start, "floating")} />;
+}
+
 export function Handoff({ progress, theme, aspect, area, from, to, label }: HandoffProps) {
   const box = area ?? contentArea(theme, aspect);
   const layout = handoffLayout(theme, aspect, box);
@@ -81,13 +89,20 @@ export function Handoff({ progress, theme, aspect, area, from, to, label }: Hand
     <div style={{ position: "absolute", left: box.x, top: box.y, width: box.width, height: box.height }}>
       {/* Offset back to the frame's origin, so the parts' boxes stay in frame px. */}
       <div style={{ position: "absolute", left: -box.x, top: -box.y }}>
-        <Part {...common} spec={from} progress={progress} area={layout.from} part="from" />
-        <MotionDelay ms={toDelay}>
-          <Part {...common} spec={to} progress={progress} area={layout.to} part="to" />
-        </MotionDelay>
-        <MotionDelay ms={arrowDelay}>
-          <Arrow {...common} progress={progress} from={layout.start} to={layout.end} label={label} />
-        </MotionDelay>
+        <CameraLayer depth="foreground" aspect={aspect}>
+          <MotionDelay ms={toDelay}>
+            <Part {...common} spec={to} progress={progress} area={layout.to} part="to" />
+          </MotionDelay>
+        </CameraLayer>
+        <CameraLayer depth="floating" aspect={aspect}>
+          <Part {...common} spec={from} progress={progress} area={layout.from} part="from" />
+        </CameraLayer>
+        {/* Over the source's soft shadow, as the arrow leaves it. */}
+        <CameraLayer depth="foreground" aspect={aspect}>
+          <MotionDelay ms={arrowDelay}>
+            <HandoffArrow {...common} progress={progress} start={layout.start} to={layout.end} label={label} />
+          </MotionDelay>
+        </CameraLayer>
       </div>
     </div>
   );

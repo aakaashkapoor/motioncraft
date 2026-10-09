@@ -2,6 +2,7 @@
 // `window.motioncraft.measureFrame`); the rules that judge the numbers live in
 // the other files of this folder and run in Node.
 
+import { SHOT_ATTRIBUTE } from "../camera/attributes";
 import type { Rect } from "../layout/frame";
 import { TEXT_PIECES_ATTRIBUTE, TYPE_FIT_ATTRIBUTE } from "../layout/type";
 import { union } from "./geometry";
@@ -24,10 +25,17 @@ function toRect(box: DOMRect, origin: DOMRect): Rect {
   return { x: box.left - origin.left, y: box.top - origin.top, width: box.width, height: box.height };
 }
 
-/** The element's padding box: what `overflow` clips its content to. */
+/** The element's padding box on screen: what `overflow` clips its content to. */
 function paddingBox(el: Element, origin: DOMRect): Rect {
   const box = el.getBoundingClientRect();
-  return { x: box.left - origin.left + el.clientLeft, y: box.top - origin.top + el.clientTop, width: el.clientWidth, height: el.clientHeight };
+  // Client sizes are in the element's own px; transforms (a docked frame, the camera) scale them on screen.
+  const scale = el instanceof HTMLElement && el.offsetWidth > 0 ? box.width / el.offsetWidth : 1;
+  return {
+    x: box.left - origin.left + el.clientLeft * scale,
+    y: box.top - origin.top + el.clientTop * scale,
+    width: el.clientWidth * scale,
+    height: el.clientHeight * scale,
+  };
 }
 
 /** `el` and its ancestors up to and including `root`, nearest first. */
@@ -48,6 +56,18 @@ function clipsContent(el: Element): boolean {
 function effectiveOpacity(chain: readonly Element[]): number {
   if (getComputedStyle(chain[0]!).visibility !== "visible") return 0;
   return chain.reduce((product, node) => product * parseFloat(getComputedStyle(node).opacity), 1);
+}
+
+/**
+ * `{ outOfShot: true }` when `el` is in a camera world on a shot and `rect`
+ * misses the shot's box on screen; nothing otherwise.
+ */
+function shotState(el: Element, rect: Rect): { outOfShot?: true } {
+  const value = el.closest(`[${SHOT_ATTRIBUTE}]`)?.getAttribute(SHOT_ATTRIBUTE);
+  if (value === undefined || value === null) return {};
+  const [x = 0, y = 0, width = 0, height = 0] = value.split(" ").map(Number);
+  const meets = rect.x < x + width && x < rect.x + rect.width && rect.y < y + height && y < rect.y + rect.height;
+  return meets ? {} : { outOfShot: true };
 }
 
 function isTransparent(css: string): boolean {
@@ -113,23 +133,28 @@ function measureText(el: Element, root: Element, origin: DOMRect): MeasuredText 
     caption: el.closest(`[${CAPTION_ATTRIBUTE}]`) !== null,
     fontSize: parseFloat(getComputedStyle(el).fontSize),
     fitted: el.closest(`[${TYPE_FIT_ATTRIBUTE}]`) !== null,
+    ...shotState(el, rect),
   };
 }
 
 function measureKey(el: Element, root: Element, origin: DOMRect): MeasuredKey {
+  const rect = toRect(el.getBoundingClientRect(), origin);
   return {
     label: el.getAttribute(KEY_ATTRIBUTE) || el.tagName.toLowerCase(),
-    rect: toRect(el.getBoundingClientRect(), origin),
+    rect,
     opacity: effectiveOpacity(lineage(el, root)),
+    ...shotState(el, rect),
   };
 }
 
 function measureBlock(el: Element, root: Element, origin: DOMRect): MeasuredBlock {
+  const rect = toRect(el.getBoundingClientRect(), origin);
   return {
     label: el.getAttribute(BLOCK_ATTRIBUTE) || el.tagName.toLowerCase(),
-    rect: toRect(el.getBoundingClientRect(), origin),
+    rect,
     opacity: effectiveOpacity(lineage(el, root)),
     caption: el.closest(`[${CAPTION_ATTRIBUTE}]`) !== null,
+    ...shotState(el, rect),
   };
 }
 

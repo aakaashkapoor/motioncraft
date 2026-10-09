@@ -270,3 +270,98 @@ describe("validateStoryboard: theme overrides", () => {
     ]);
   });
 });
+
+describe("validateStoryboard: camera shots", () => {
+  const windowScene = (shots: unknown, overrides: Record<string, unknown> = {}) =>
+    scene({ component: "AppWindow", props: { title: "Plan", shareId: "plan" }, durationMs: 5000, shots, ...overrides });
+  const shotErrors = (shots: unknown, overrides?: Record<string, unknown>) => errorsOf(board({ scenes: [windowScene(shots, overrides)] }));
+
+  it("keeps shots onto a shareId, a rect and back to wide", () => {
+    const shots = [
+      { atMs: 800, target: "plan", fill: 0.8, durationMs: 700 },
+      { atMs: 2400, target: { x: 100, y: 300, width: 400, height: 300 } },
+      { atMs: 3600, target: "wide" },
+    ];
+    const result = validateStoryboard(board({ scenes: [windowScene(shots)] }));
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    expect(result.storyboard.scenes[0]!.shots).toEqual(shots);
+  });
+
+  it("leaves shots out when a scene has none", () => {
+    const result = validateStoryboard(board());
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    expect(result.storyboard.scenes[0]).not.toHaveProperty("shots");
+  });
+
+  it("requires an array of shot objects", () => {
+    expect(shotErrors({ atMs: 0, target: "plan" })).toEqual(['scenes[0] ("intro"): shots must be an array of shots (got {"atMs":0,"target":"plan"})']);
+    expect(shotErrors([5])).toEqual(['scenes[0] ("intro"): shots[0] must be an object (got 5)']);
+  });
+
+  it("checks each shot's fields", () => {
+    expect(shotErrors([{ atMs: -1, target: "plan", zoom: 2 }])).toEqual([
+      'scenes[0] ("intro"): shots[0]: unknown field "zoom"',
+      'scenes[0] ("intro"): shots[0].atMs must be a whole number of ms >= 0 (got -1)',
+    ]);
+    expect(shotErrors([{ atMs: 1.5, target: "plan" }])).toEqual(['scenes[0] ("intro"): shots[0].atMs must be a whole number of ms >= 0 (got 1.5)']);
+    expect(shotErrors([{ atMs: 0, target: "plan", fill: 0.9 }])).toEqual([
+      'scenes[0] ("intro"): shots[0].fill must be a number from 0.6 to 0.85 (got 0.9)',
+    ]);
+    expect(shotErrors([{ atMs: 0, target: "plan", fill: 0.5 }])).toHaveLength(1);
+    expect(shotErrors([{ atMs: 0, target: "plan", durationMs: 0 }])).toEqual([
+      'scenes[0] ("intro"): shots[0].durationMs must be a positive integer (got 0)',
+    ]);
+    expect(shotErrors([{ atMs: 0, target: "wide", fill: 0.7 }])).toEqual([
+      'scenes[0] ("intro"): shots[0].fill has no effect on a "wide" shot',
+    ]);
+  });
+
+  it("requires a target: a shareId in the scene, a rect, or \"wide\"", () => {
+    expect(shotErrors([{ atMs: 0 }])).toEqual([
+      'scenes[0] ("intro"): shots[0].target must be a shareId in the scene, a rect { "x", "y", "width", "height" } in frame px, or "wide" (got undefined)',
+    ]);
+    expect(shotErrors([{ atMs: 0, target: "chat" }])).toEqual([
+      'scenes[0] ("intro"): shots[0].target "chat" is not a shareId in this scene (it has "plan")',
+    ]);
+    expect(shotErrors([{ atMs: 0, target: { x: 0, y: 0, width: 0, height: 10 } }])).toEqual([
+      'scenes[0] ("intro"): shots[0].target must be a shareId in the scene, a rect { "x", "y", "width", "height" } in frame px, or "wide" (got {"x":0,"y":0,"width":0,"height":10})',
+    ]);
+  });
+
+  it("finds a shareId nested in the scene, such as a docked window", () => {
+    const pinned = scene({
+      component: "Pinned",
+      props: { pinned: { component: "ChatWindow", props: { shareId: "chat", messages: [] } } },
+      shots: [{ atMs: 0, target: "chat" }],
+    });
+    expect(validateStoryboard(board({ scenes: [pinned] })).ok).toBe(true);
+  });
+
+  it("wants shots in time order, starting inside the scene", () => {
+    expect(shotErrors([{ atMs: 2000, target: "plan" }, { atMs: 1000, target: "wide" }])).toEqual([
+      'scenes[0] ("intro"): shots[1].atMs (1000) is before shots[0].atMs (2000): list shots in time order',
+    ]);
+    expect(shotErrors([{ atMs: 5000, target: "plan" }])).toEqual([
+      'scenes[0] ("intro"): shots[0].atMs (5000) is not before the end of the scene (5000 ms)',
+    ]);
+  });
+});
+
+describe("validateStoryboard: breathing", () => {
+  it("lets a storyboard switch the camera's breathing on", () => {
+    expect(validateStoryboard(board({ themeOverrides: { motion: { breathe: { on: true } } } })).ok).toBe(true);
+    expect(errorsOf(board({ themeOverrides: { motion: { breathe: { on: "yes" } } } }))).toEqual([
+      'themeOverrides.motion.breathe.on must be true or false (got "yes")',
+    ]);
+  });
+
+  it("keeps the camera tokens within design v3's ranges", () => {
+    const ok = (motion: unknown) => validateStoryboard(board({ themeOverrides: { motion } })).ok;
+    expect(ok({ breathe: { scale: 1.04, driftPx: 16 }, shot: { fill: 0.6 } })).toBe(true);
+    expect(errorsOf(board({ themeOverrides: { motion: { shot: { fill: 0 }, breathe: { scale: 0.98, driftPx: 40 } } } }))).toEqual([
+      "themeOverrides.motion.shot.fill must be a number from 0.6 to 0.85 (got 0)",
+      "themeOverrides.motion.breathe.scale must be a number from 1 to 1.04 (got 0.98)",
+      "themeOverrides.motion.breathe.driftPx must be a number from 0 to 16 (got 40)",
+    ]);
+  });
+});
