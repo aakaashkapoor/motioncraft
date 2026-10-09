@@ -1,6 +1,7 @@
 // The design kit: code-drawn scene components, keyed by the name a storyboard
 // scene uses in its `component` field.
 
+import { Arrow } from "./Arrow";
 import { BigNumber } from "./BigNumber";
 import { Caption, captionLimits } from "./Caption";
 import { FlowDiagram } from "./FlowDiagram";
@@ -28,4 +29,5 @@ export const kit: Record<string, KitComponent> = {
   BigNumber: asKitComponent(BigNumber),
   FlowDiagram: asKitComponent(FlowDiagram),
   StepList: asKitComponent(StepList),
+  Arrow: asKitComponent(Arrow),
 };

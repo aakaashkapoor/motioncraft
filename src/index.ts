@@ -72,3 +72,4 @@ export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./
 export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./icons";
 export { cancelRender, continueRender, delayRender, RenderNotReadyError, READY_TIMEOUT_MS } from "./render/ready";
 export { Ground, groundStyle, type GroundProps } from "./kit";
+export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps } from "./kit/Arrow";
