@@ -58,7 +58,7 @@ async function capture(cdp: CDPSession): Promise<string> {
 export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
   const { storyboard, theme, durations, out, onProgress } = options;
   checkComponents(options);
-  const { fps, totalFrames } = buildTimeline(storyboard, durations);
+  const { fps, totalFrames } = buildTimeline(storyboard, durations, theme);
   const { width, height } = frameSize(storyboard.aspect);
   await mkdir(dirname(out), { recursive: true });
 

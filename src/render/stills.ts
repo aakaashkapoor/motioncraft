@@ -21,7 +21,7 @@ export function stillFileName(frame: number): string {
 export async function renderStills(options: StillsOptions): Promise<string[]> {
   const { storyboard, theme, durations, frames, outDir } = options;
   checkComponents(options);
-  checkFrames(frames, buildTimeline(storyboard, durations));
+  checkFrames(frames, buildTimeline(storyboard, durations, theme));
   await mkdir(outDir, { recursive: true });
 
   return withRenderPage({ storyboard, theme, durations }, async (page) => {

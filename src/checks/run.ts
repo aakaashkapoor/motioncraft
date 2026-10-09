@@ -20,7 +20,7 @@ export interface RunChecksOptions extends PageInput {
 export async function runChecks(options: RunChecksOptions): Promise<CheckResult> {
   const { storyboard, theme, durations } = options;
   checkComponents(options);
-  const timeline = buildTimeline(storyboard, durations);
+  const timeline = buildTimeline(storyboard, durations, theme);
   const { frames } = options;
   if (frames !== undefined) checkFrames(frames, timeline);
 

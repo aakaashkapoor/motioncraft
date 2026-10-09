@@ -51,6 +51,7 @@ export const baseMotion: ThemeMotion = {
   easing: "expoOut",
   enterMs: 500,
   exitMs: 300,
+  transition: "slide",
   transitionMs: 600,
   staggerMs: 80,
   springs: { enter: "smooth", exit: "snappy", emphasis: "bouncy" },

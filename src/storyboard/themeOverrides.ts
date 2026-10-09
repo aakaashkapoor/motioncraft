@@ -5,6 +5,7 @@
 import { HEX_COLOR } from "../theme/color";
 import { lightTheme } from "../theme/light";
 import { ACCENT_INTENSITIES, GROUND_STYLES, SPRING_PRESETS } from "../theme/types";
+import { TRANSITION_TYPES } from "./types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -35,6 +36,7 @@ export function accentIntensityError(label: string, value: unknown): string | un
 const ENUMS: Record<string, readonly string[]> = {
   "ground.style": GROUND_STYLES,
   accentIntensity: ACCENT_INTENSITIES,
+  "motion.transition": TRANSITION_TYPES,
   "motion.springs.enter": SPRING_PRESETS,
   "motion.springs.exit": SPRING_PRESETS,
   "motion.springs.emphasis": SPRING_PRESETS,

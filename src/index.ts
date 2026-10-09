@@ -39,8 +39,9 @@ export { CAPTION_LINE_HEIGHT, CAPTION_MAX_LINES, captionBand, captionBandHeight,
 export { AVG_CHAR_EM, charsPerLine, estimateLines, estimateTextHeight } from "./layout/textFit";
 export type { TextStyle } from "./layout/textFit";
 
-export { buildTimeline, frameAt } from "./engine/timeline";
-export type { FrameInfo, SceneDurations, Timeline, TimelineScene } from "./engine/timeline";
+export { DEFAULT_TRANSITION_MS, buildTimeline, frameAt, scenesOnScreen, soloFrames } from "./engine/timeline";
+export type { ActiveScene, FrameInfo, SceneDurations, SceneTransitionState, Timeline, TimelineScene, TimelineTransition, TransitionDefaults } from "./engine/timeline";
+export * from "./transitions";
 export { Easing, easeInOutCubic, easeOutBack, easeSpring, expoIn, expoOut, linear } from "./engine/easing";
 export type { SpringOptions } from "./engine/easing";
 export { bezier } from "./engine/bezier";
