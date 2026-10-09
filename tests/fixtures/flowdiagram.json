@@ -1,0 +1,25 @@
+{
+  "title": "FlowDiagram fixture (must pass layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "neutral",
+  "scenes": [
+    {
+      "id": "pipeline",
+      "component": "FlowDiagram",
+      "props": {
+        "nodes": ["Prompt", "Storyboard", "Render", "Video"],
+        "caption": "From idea to finished video"
+      },
+      "narration": "You write a prompt, the agent plans a storyboard, renders every frame, and you get a video."
+    },
+    {
+      "id": "two-step",
+      "component": "FlowDiagram",
+      "props": {
+        "nodes": ["Draft", "Review"]
+      },
+      "durationMs": 4000
+    }
+  ]
+}
