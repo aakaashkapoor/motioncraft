@@ -198,8 +198,11 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     table D), each with an `ms` duration and a `curve`: `fx.fast`, `fx`,
     `text.in`, `text.out`, `enter` (cards, windows, chips; with `staggerMs`),
     `enter.hero`, `pop`, `count`, `mark`, `shot`, `beat`; `exit` takes a
-    `share` of the entry within `minMs`-`maxMs`. A `curve` is a name
-    (`"linear"`, `"expoOut"`, `"expoIn"`, `"sineInOut"`, `"power4InOut"`), a
+    `share` of the entry within `minMs`-`maxMs`; `flow` is the dot that runs
+    along a drawn connector (one trip per `ms`, a `dotPx` dot, and a
+    `glowPx` ring of the accent at `glowOpacity` on the node it reaches;
+    `"ms": 0` turns it off). A `curve` is a name (`"linear"`, `"expoOut"`,
+    `"expoIn"`, `"expoInOut"`, `"sineInOut"`, `"power4InOut"`), a
     cubic bezier `[x1, y1, x2, y2]`, or a spring `{ "stiffness": 170,
     "damping": 18 }`. Position and scale may overshoot; opacity and color
     never do.
@@ -376,6 +379,8 @@ in the accent, and `marker` `"number"` (default) or `"dot"`.
 #### `FlowDiagram`
 
 2-4 labels joined by arrows, in flow order, with an optional `caption`.
+Once it has built, a dot runs down each arrow in turn and the node it reaches
+lights up, one node at a time, for as long as the scene holds.
 
 ```json
 {
@@ -546,6 +551,7 @@ might be rendered in both) or `{ "anchor": "<shareId>" }` for an element in the
 same scene. `curve` bends it, `color` is a theme role (default `"accent"`),
 `label` sits at the middle. It sweeps in from the scene's lead; `window`
 (`[start, end]` as fractions of the scene) draws it later, for a v2 storyboard.
+Once drawn, an accent dot flows along it every 1.4 s.
 
 ```json
 {

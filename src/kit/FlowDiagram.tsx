@@ -3,7 +3,9 @@
 // otherwise (9:16, or a narrow Section slot), with an optional caption under it.
 // It builds up in order from the scene's lead: the nodes spring in as an
 // `enter` cascade, each arrow sweeping into its node (`mark`) as that node
-// arrives, then the caption; it holds, then exits fast at the end.
+// arrives, then the caption. Once built it flows (design v3, life #11): an
+// accent dot runs down each arrow in turn, and the node it reaches lights up
+// with an accent edge and glow, one node at a time. It exits fast at the end.
 
 import { interpolate } from "../engine/easing";
 import { blockCenterY, placeBlock } from "../layout/block";
@@ -14,7 +16,10 @@ import { charsPerLine, estimateTextHeight } from "../layout/textFit";
 import { fontSize, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole } from "../theme/types";
+import { withAlpha } from "../theme/color";
 import { cardColors } from "../theme/roles";
+import { arrowGeometry, pointAlong } from "./arrowGeometry";
+import { FlowDotMark, flowDot, flowGlow } from "./flow";
 import { useSceneTime } from "./frameContext";
 import { arrive, cascadeStep, exitOpacity, fade, tween } from "./motion";
 import type { KitProps } from "./types";
@@ -153,13 +158,23 @@ export interface FlowDiagramTiming {
   arrows: number[];
   /** When the caption fades in, after the last node: the cascade's next step. */
   caption: number;
+  /** When the dot sets off from the first node: once everything has landed. */
+  flow: number;
 }
 
-/** The build, in ms: the nodes and then the caption as one `enter` cascade from the lead; arrow `i` draws into node `i + 1` as it arrives. */
+/**
+ * The build, in ms: the nodes and then the caption as one `enter` cascade from
+ * the lead; arrow `i` draws into node `i + 1` as it arrives. The flow starts
+ * once the last of them has landed.
+ */
 export function flowDiagramTiming(theme: Theme, nodeCount: number): FlowDiagramTiming {
+  const { leadMs, enter, mark, fx } = theme.motion;
   const step = cascadeStep(theme, nodeCount + 1);
-  const nodes = Array.from({ length: nodeCount }, (_, i) => theme.motion.leadMs + i * step);
-  return { nodes, arrows: nodes.slice(1), caption: theme.motion.leadMs + nodeCount * step };
+  const nodes = Array.from({ length: nodeCount }, (_, i) => leadMs + i * step);
+  const arrows = nodes.slice(1);
+  const caption = leadMs + nodeCount * step;
+  const flow = Math.max(nodes.at(-1)! + enter.ms, arrows.at(-1)! + mark.ms, caption + fx.ms);
+  return { nodes, arrows, caption, flow };
 }
 
 const round = (n: number) => Math.round(n * 100) / 100;
@@ -167,17 +182,22 @@ const round = (n: number) => Math.round(n * 100) / 100;
 export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, caption }: FlowDiagramProps) {
   const area = slot ?? contentArea(theme, aspect);
   const layout = flowDiagramLayout(theme, aspect, nodes, caption, slot);
-  const { colors, fonts, spacing, radius } = theme;
+  const { colors, fonts, spacing, radius, cardShadow } = theme;
   const card = cardColors(theme);
   const { padding, border } = cardInsets(theme);
   const time = useSceneTime(progress);
   const { ms } = time;
-  const { enter, mark, fx } = theme.motion;
+  const { enter, mark, fx, flow } = theme.motion;
   const opacity = exitOpacity(theme, time, enter.ms);
   const timing = flowDiagramTiming(theme, nodes.length);
   const arrowIn = (i: number) => tween(mark, ms - timing.arrows[i]!);
   const stroke = spacing.xxs;
   const head = spacing.md * 0.75;
+  // One dot runs the arrows in turn; the node it reaches is lit.
+  const dot = flowDot(theme, ms - timing.flow);
+  const glow = flowGlow(theme, nodes.length, ms - timing.flow);
+  const dotArrow = dot === undefined ? undefined : layout.arrows[dot.trip % layout.arrows.length]!;
+  const shadow = `0 ${cardShadow.y}px ${cardShadow.blur}px ${withAlpha(colors.shadow, cardShadow.opacity)}`;
 
   return (
     <div
@@ -223,6 +243,13 @@ export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, captio
             </g>
           );
         })}
+        {dot !== undefined && dotArrow !== undefined && (
+          <FlowDotMark
+            theme={theme}
+            at={pointAlong(arrowGeometry({ x: dotArrow.x1, y: dotArrow.y1 }, { x: dotArrow.x2, y: dotArrow.y2 }, 0, head), dot.along)}
+            opacity={dot.opacity}
+          />
+        )}
       </svg>
       {nodes.map((label, i) => {
         const rect = layout.nodes[i]!;
@@ -247,10 +274,23 @@ export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, captio
               justifyContent: "center",
               textAlign: "center",
               backgroundColor: card.fill,
-              border: `${border}px solid ${card.border}`,
+              // Quiet until lit: only the node the dot has reached carries the accent.
+              border: `${border}px solid ${colors.border}`,
               borderRadius: radius.md,
+              boxShadow: shadow,
             }}
           >
+            <div
+              data-flow-glow=""
+              style={{
+                position: "absolute",
+                inset: -border,
+                border: `${border}px solid ${card.border}`,
+                borderRadius: radius.md,
+                boxShadow: `0 0 0 ${flow.glowPx}px ${withAlpha(colors.accent, flow.glowOpacity)}`,
+                opacity: round(glow[i]!),
+              }}
+            />
             <span
               style={{
                 fontFamily: fonts.display,

@@ -177,6 +177,9 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
     within(m.breathe.scale, 1, 1.04);
     within(m.transitionMs, 500, 600);
     within(m.beat.ms, 300, 750);
+    // Life #11: a 10-14 px dot travels each drawn connector every 1.4 s, expo in-out; the node it reaches glows.
+    expect(m.flow).toMatchObject({ ms: 1400, curve: "expoInOut", glowPx: 6, glowOpacity: 0.25 });
+    within(m.flow.dotPx, 10, 14);
     // First motion of a scene at 100-200 ms; cascades done in about the first 1.2 s.
     within(m.leadMs, 100, 200);
     within(m.cascadeMs, 1000, 1400);

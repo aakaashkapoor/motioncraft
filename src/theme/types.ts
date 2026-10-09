@@ -125,8 +125,8 @@ export interface ThemeShadow {
   opacity: number;
 }
 
-/** Named curves: `expoOut` is `1 - 2^(-10t)`, `expoIn` its mirror, `power4InOut` the quartic in-out. */
-export const CURVE_NAMES = ["linear", "expoOut", "expoIn", "sineInOut", "power4InOut"] as const;
+/** Named curves: `expoOut` is `1 - 2^(-10t)`, `expoIn` its mirror, `expoInOut` the two joined, `power4InOut` the quartic in-out. */
+export const CURVE_NAMES = ["linear", "expoOut", "expoIn", "expoInOut", "sineInOut", "power4InOut"] as const;
 export type CurveName = (typeof CURVE_NAMES)[number];
 
 /** CSS `cubic-bezier(x1, y1, x2, y2)`: x1 and x2 in 0..1; y may leave 0..1 to overshoot. */
@@ -185,6 +185,19 @@ export interface BeatToken {
 }
 
 /**
+ * A flowing connector (design v3, life #11): once a connector has drawn, a dot
+ * travels it, one trip per `ms`, and the node it reaches glows.
+ */
+export interface FlowToken extends MotionToken {
+  /** The dot's diameter in px (10-14). */
+  dotPx: number;
+  /** Width of the glow ring around the dot and the lit node, in px. */
+  glowPx: number;
+  /** Opacity of the accent in the glow ring, 0..1. */
+  glowOpacity: number;
+}
+
+/**
  * Motion by use (design v3, table D). Every kit timing is milliseconds from
  * the scene clock; a scene's length decides only how long the hold lasts.
  * Position and scale may overshoot (springs, `enter`'s bezier); opacity and
@@ -228,6 +241,8 @@ export interface ThemeMotion {
   breathe: BreatheToken;
   /** A hold before a payoff. */
   beat: BeatToken;
+  /** A dot flowing along a drawn connector, lighting the node it reaches. */
+  flow: FlowToken;
 }
 
 export interface Theme {

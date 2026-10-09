@@ -234,7 +234,7 @@ describe("validateStoryboard: theme overrides", () => {
       "themeOverrides.type.headline.9:16.size must be a positive number (got -4)",
       'themeOverrides.accentIntensity must be "subtle", "bold" or "full" (got "max")',
       'themeOverrides: unknown field "name"',
-      'themeOverrides.motion.enter.curve must be "linear", "expoOut", "expoIn", "sineInOut" or "power4InOut", a cubic bezier [x1, y1, x2, y2] with x1 and x2 in 0..1, or a spring { "stiffness": ..., "damping": ... } (got "wobbly")',
+      'themeOverrides.motion.enter.curve must be "linear", "expoOut", "expoIn", "expoInOut", "sineInOut" or "power4InOut", a cubic bezier [x1, y1, x2, y2] with x1 and x2 in 0..1, or a spring { "stiffness": ..., "damping": ... } (got "wobbly")',
       "themeOverrides.fonts must be an object (got 3)",
     ]);
   });

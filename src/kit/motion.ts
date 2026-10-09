@@ -31,6 +31,7 @@ const NAMED: Record<CurveName, Easing> = {
   linear,
   expoOut,
   expoIn,
+  expoInOut: (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t < 0.5 ? 2 ** (20 * t - 10) / 2 : 1 - 2 ** (10 - 20 * t) / 2),
   sineInOut: (t) => (1 - Math.cos(Math.PI * t)) / 2,
   power4InOut: (t) => (t < 0.5 ? 8 * t ** 4 : 1 - (-2 * t + 2) ** 4 / 2),
 };

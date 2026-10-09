@@ -73,8 +73,15 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
 /** Media fill the frame from the first frame: no entrance, no exit. */
 const STILL = new Set(["VideoClip", "Image"]);
 
-/** The idle caret blinks for as long as the terminal is on screen: life, not entrance. */
-const normalize = (html: string) => html.replace(/(data-terminal-caret="\d+" style="[^"]*?)opacity:[^;"]*;?/g, "$1");
+/**
+ * Life, not entrance: the idle caret blinks for as long as the terminal is on
+ * screen, and a drawn connector's dot flows, lighting nodes, until the exit.
+ */
+const normalize = (html: string) =>
+  html
+    .replace(/(data-terminal-caret="\d+" style="[^"]*?)opacity:[^;"]*;?/g, "$1")
+    .replace(/(<g data-flow-dot="")[^>]*>/g, "$1>")
+    .replace(/(data-flow-glow="" style="[^"]*?)opacity:[^;"]*;?/g, "$1");
 
 function draw(name: string, aspect: Aspect, frames: number, frame: number): string {
   const Component = kit[name]!;

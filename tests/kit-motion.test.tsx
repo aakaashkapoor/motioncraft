@@ -27,7 +27,7 @@ const samples = (n: number) => Array.from({ length: n + 1 }, (_, i) => i / n);
 
 describe("curveEasing", () => {
   it("maps 0 to 0 and 1 to 1 for every kind of curve", () => {
-    for (const curve of ["linear", "expoOut", "expoIn", "sineInOut", "power4InOut", [0.2, 0, 0, 1], { stiffness: 170, damping: 18 }] as const) {
+    for (const curve of ["linear", "expoOut", "expoIn", "expoInOut", "sineInOut", "power4InOut", [0.2, 0, 0, 1], { stiffness: 170, damping: 18 }] as const) {
       const ease = curveEasing(curve);
       expect(ease(0)).toBeCloseTo(0, 6);
       expect(ease(1)).toBe(1);
@@ -39,6 +39,10 @@ describe("curveEasing", () => {
     expect(curveEasing("power4InOut")(0.5)).toBeCloseTo(0.5, 9);
     expect(curveEasing("power4InOut")(0.25)).toBeCloseTo(8 * 0.25 ** 4, 9);
     expect(curveEasing("expoOut")(0.5)).toBeCloseTo(1 - 2 ** -5, 9);
+    // Expo in, then out: slow away, a rush through the middle, a soft landing.
+    expect(curveEasing("expoInOut")(0.5)).toBeCloseTo(0.5, 9);
+    expect(curveEasing("expoInOut")(0.25)).toBeCloseTo(2 ** -5 / 2, 9);
+    expect(curveEasing("expoInOut")(0.75)).toBeCloseTo(1 - 2 ** -5 / 2, 9);
   });
 
   it("plays a cubic bezier like CSS", () => {

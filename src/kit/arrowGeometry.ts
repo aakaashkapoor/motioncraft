@@ -150,3 +150,25 @@ export function arrowGeometry(start: Point, end: Point, curve: number, headSize:
   const d = `M ${round(start.x)} ${round(start.y)} Q ${round(control.x)} ${round(control.y)} ${round(end.x)} ${round(end.y)}`;
   return { d, length, start, end, control, mid: quadAt(start, control, end, 0.5), head: [wing(-1), end, wing(1)] };
 }
+
+/**
+ * The point `fraction` of the way along the curve by arc length (0 the start,
+ * 1 the end; clamped), so a dot moved by equal fractions moves at an even
+ * speed even where the curve bends. Measured on the same segments as `length`.
+ */
+export function pointAlong({ start, control, end, length }: ArrowGeometry, fraction: number): Point {
+  const target = Math.min(1, Math.max(0, fraction)) * length;
+  let walked = 0;
+  let previous = start;
+  for (let i = 1; i <= LENGTH_SEGMENTS; i++) {
+    const next = quadAt(start, control, end, i / LENGTH_SEGMENTS);
+    const step = Math.hypot(next.x - previous.x, next.y - previous.y);
+    if (walked + step >= target) {
+      const t = step === 0 ? 0 : (target - walked) / step;
+      return { x: previous.x + (next.x - previous.x) * t, y: previous.y + (next.y - previous.y) * t };
+    }
+    walked += step;
+    previous = next;
+  }
+  return end;
+}
