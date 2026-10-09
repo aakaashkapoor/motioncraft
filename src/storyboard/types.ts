@@ -16,6 +16,15 @@ export const SAFE_PROFILES = ["shorts", "crosspost"] as const;
 export type SafeProfile = (typeof SAFE_PROFILES)[number];
 export const DEFAULT_SAFE_PROFILE: SafeProfile = "shorts";
 
+/**
+ * How narration is captioned (design v3, life #4): `standard` pages of 3-6
+ * words on a plate, `punch` 1-3 big uppercase words in a dark outline, or
+ * `off`. Either way the word being spoken lights up in the accent.
+ */
+export const CAPTION_STYLES = ["standard", "punch", "off"] as const;
+export type CaptionStyle = (typeof CAPTION_STYLES)[number];
+export const DEFAULT_CAPTION_STYLE: CaptionStyle = "standard";
+
 export const DEFAULT_FPS = 30;
 export const DEFAULT_THEME = "light";
 
@@ -95,6 +104,8 @@ export interface Storyboard {
   accentIntensity?: AccentIntensity;
   /** The 9:16 safe profile. Defaults to the theme's (`shorts` in every built-in theme). */
   safe?: SafeProfile;
+  /** How narration is captioned. Defaults to `standard`. */
+  captionStyle?: CaptionStyle;
   scenes: StoryboardScene[];
 }
 

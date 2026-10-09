@@ -15,6 +15,9 @@ export type {
   ThemeMotion,
   BeatToken,
   BreatheToken,
+  CountToken,
+  CaptionHighlight,
+  CaptionMotionToken,
   DriftToken,
   GridBreatheToken,
   MeshSpec,
@@ -25,10 +28,13 @@ export type {
   MarkToken,
   MotionCurve,
   MotionToken,
+  PopToken,
+  ShineToken,
   ShotToken,
   SpringCurve,
   StaggeredToken,
   TextInToken,
+  ThemeCaption,
   ThemeOverrides,
   ThemeRadius,
   ThemeShadow,
@@ -37,8 +43,9 @@ export type {
   TypeRamp,
   TypeRole,
   TypeSpec,
+  TypingToken,
 } from "./theme/types";
-export { ACCENT_INTENSITIES, CURVE_NAMES, GROUND_STYLES, TYPE_ROLES } from "./theme/types";
+export { ACCENT_INTENSITIES, CAPTION_HIGHLIGHTS, CURVE_NAMES, GROUND_STYLES, TYPE_ROLES } from "./theme/types";
 export { neutralTheme } from "./theme/neutral";
 export { lightTheme } from "./theme/light";
 export { darkTheme } from "./theme/dark";
@@ -53,7 +60,7 @@ export { clearOfKeepOuts, safeArea, safeZones, type SafeZones } from "./layout/s
 export { blockCenterY, placeBlock } from "./layout/block";
 export type { Rect, Size } from "./layout/frame";
 export { fontSize, rampSizes, rampSteps, TYPE_FIT_ATTRIBUTE, typeCss, typeSpec, type TypeCss } from "./layout/type";
-export { CAPTION_MAX_LINES, captionBand, captionBandHeight, contentArea, textColumn } from "./layout/caption";
+export { CAPTION_MAX_LINES, CAPTION_PAGE_WORDS, captionBand, captionBandHeight, captionType, contentArea, textColumn, type ShownCaptionStyle } from "./layout/caption";
 export { AVG_CHAR_EM, charsPerLine, estimateLines, estimateTextHeight } from "./layout/textFit";
 export type { TextStyle } from "./layout/textFit";
 
@@ -80,12 +87,15 @@ export {
   kit,
   pageAt,
   pageCaption,
+  pageRanges,
   presence,
   themeEasing,
   titleCardStep,
 } from "./kit";
-export type { CaptionLimits, CaptionProps, KitComponent, KitProps, TitleCardProps } from "./kit";
-export { BigNumber, bigNumberStep, countedValue, formatBigNumber, type BigNumberProps } from "./kit/BigNumber";
+export type { CaptionLimits, CaptionProps, KitComponent, KitProps, PageRange, TitleCardProps } from "./kit";
+export { BigNumber, bigNumberStep, bigNumberTiming, formatBigNumber, odometerColumns, odometerText, type BigNumberProps, type BigNumberTiming, type OdometerColumn } from "./kit/BigNumber";
+export { captionColors, captionTrack, type CaptionColors } from "./kit/Caption";
+export { activeWordAt, evenWordTimes, pageIndexAt, timedPages, wordLight, type TimedPage, type TimedWord } from "./kit/captionWords";
 export { FlowDiagram, flowDiagramLayout, flowDiagramTiming, type FlowArrow, type FlowDiagramLayout, type FlowDiagramProps, type FlowDiagramTiming } from "./kit";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./kit";
 export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./icons";
@@ -97,6 +107,7 @@ export * from "./kit/windows";
 export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMessage, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";
 export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, pointAlong, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps, type Point } from "./kit/Arrow";
 export { FlowDotMark, flowDot, flowGlow, type FlowDot } from "./kit/flow";
+export { Shine, shineBand, shineGradient, shineText, type ShineBand, type ShineProps } from "./kit/shine";
 export { Card, CardFace, cardHeight, cardMetrics, type CardData, type CardProps } from "./kit/Card";
 export { CardRow, cardRowLayout, cardRowTiming, type CardRowLayout, type CardRowProps } from "./kit/CardRow";
 export { FeatureList, featureListTiming, type FeatureItem, type FeatureListProps } from "./kit/FeatureList";
@@ -106,5 +117,6 @@ export { Handoff, handoffLayout, type HandoffLayout, type HandoffProps } from ".
 export { HEADLINE_MOTIONS, HEADLINE_ROLES, Headline, HeadlineText, MARK_STYLES, headlineBox, headlineMarks, headlineTiming, headlineWords, markSweep, wordLeaving, type HeadlineMarks, type HeadlineMotion, type HeadlineProps, type HeadlineRole, type HeadlineTextProps, type HeadlineTiming, type MarkStyle } from "./kit/Headline";
 export { SceneFrame, frameLineSpec, sceneFrameLayout, sceneFrameTiming, type SceneFrameLayout, type SceneFrameProps, type SceneFrameText, type SceneFrameTiming } from "./kit/SceneFrame";
 export { MotionDelay, NOMINAL_SCENE_MS, SceneClockContext, useSceneMs, useSceneTime, type SceneClock, type SceneTime } from "./kit/frameContext";
-export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, tween, type Timed } from "./kit/motion";
+export { caretBlink, typedCount, typedText, typingPauseMs, typingSpan, typingTimes, type TypingSpan } from "./kit/typing";
+export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, pulse, tween, type Timed } from "./kit/motion";
 export * from "./camera";

@@ -1,7 +1,7 @@
 // Tokens the built-in themes share: the type ramp, named weights, spacing,
-// radii and motion. Each theme spreads these and sets its own colors and ground.
+// radii, motion and the caption look. Each theme spreads these and sets its own colors and ground.
 
-import type { CubicBezier, MeshSpec, ThemeMotion, ThemeRadius, ThemeSpacing, ThemeWeights, TypeRamp, TypeSpec } from "./types";
+import type { CubicBezier, MeshSpec, ThemeCaption, ThemeMotion, ThemeRadius, ThemeSpacing, ThemeWeights, TypeRamp, TypeSpec } from "./types";
 
 export const SYSTEM_SANS =
   'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
@@ -77,10 +77,13 @@ export const baseMesh: MeshSpec = {
 
 /** Material 3's emphasized accelerate: the curve of everything leaving. */
 const EXIT_CURVE: CubicBezier = [0.3, 0, 0.8, 0.15];
+/** Material 3's effects default: fades and blur clearing. */
+const FX_CURVE: CubicBezier = [0.34, 0.8, 0.34, 1];
 
 /**
  * Design v3, table D. Springs land on their target at the token's duration;
- * `enter` overshoots about 5%, `enter.hero` barely, `pop` about 15%.
+ * `enter` overshoots about 5%, `enter.hero` barely, `pop` about 15%. `count`
+ * and `shine` carry the odometer and the shine sweep (life #7 and #9).
  */
 export const baseMotion: ThemeMotion = {
   easing: "expoOut",
@@ -89,15 +92,15 @@ export const baseMotion: ThemeMotion = {
   leadMs: 150,
   cascadeMs: 1200,
   "fx.fast": { ms: 150, curve: [0.31, 0.94, 0.34, 1] },
-  fx: { ms: 250, curve: [0.34, 0.8, 0.34, 1] },
+  fx: { ms: 250, curve: FX_CURVE },
   "text.in": { ms: 550, curve: "expoOut", staggerMs: 55, charStaggerMs: 30, lineStaggerMs: 70 },
   "text.char": { ms: 550, curve: "expoOut", staggerMs: 24 },
   "text.out": { ms: 300, curve: EXIT_CURVE, staggerMs: 20 },
   enter: { ms: 650, curve: { stiffness: 170, damping: 18 }, staggerMs: 90 },
   "enter.hero": { ms: 900, curve: { stiffness: 120, damping: 20 } },
-  pop: { ms: 400, curve: { stiffness: 200, damping: 14 } },
+  pop: { ms: 400, curve: { stiffness: 200, damping: 14 }, scale: 1.04 },
   exit: { share: 0.65, minMs: 300, maxMs: 450, curve: EXIT_CURVE },
-  count: { ms: 1000, curve: "expoOut" },
+  count: { ms: 1000, curve: "expoOut", staggerMs: 40, blurMinPx: 2, blurMaxPx: 6, unitDelayMs: 150 },
   mark: { ms: 450, curve: [0.33, 1, 0.68, 1], delayMs: 500, tiltDeg: 1.5, opacity: 0.55, underlinePx: 8 },
   shot: { ms: 750, curve: [0.65, 0, 0.35, 1], fill: 0.75 },
   // The owner's reference keeps the camera calm: subtle breathing, and only when a storyboard asks for it.
@@ -107,4 +110,16 @@ export const baseMotion: ThemeMotion = {
   grainFps: 12,
   beat: { ms: 400 },
   flow: { ms: 1400, curve: "expoInOut", dotPx: 14, glowPx: 6, glowOpacity: 0.25 },
+  typing: { ms: 120, curve: FX_CURVE, cps: 38, jitter: 0.3, pauseMinMs: 200, pauseMaxMs: 400, blinkMs: 1060 },
+  shine: { ms: 800, curve: [0.6, 0.6, 0, 1], widthShare: 0.3, skewDeg: 20, opacity: 0.35 },
+  // Life #4: a page settles in over 5 frames without overshoot; the spoken word pops over 4.
+  caption: { ms: 170, curve: [0.34, 0.8, 0.34, 1], fromScale: 0.9, risePx: 24, wordMs: 133, wordScale: 1.04 },
+};
+
+/** Design v3, life #4: the spoken word in the accent colour; a 16 px outline on punch captions. */
+export const baseCaption: ThemeCaption = {
+  highlight: "color",
+  platePadY: 6,
+  platePadX: 12,
+  strokePx: 16,
 };

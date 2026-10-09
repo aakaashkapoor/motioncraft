@@ -1,11 +1,13 @@
 import {
   ASPECTS,
+  CAPTION_STYLES,
   DEFAULT_FPS,
   DEFAULT_THEME,
   SAFE_PROFILES,
   SLIDE_DIRECTIONS,
   TRANSITION_TYPES,
   type Aspect,
+  type CaptionStyle,
   type SafeProfile,
   type SceneShot,
   type SceneTransition,
@@ -18,7 +20,7 @@ import { shotsErrors } from "./shots";
 import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "scenes"]);
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "scenes"]);
 const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition", "shots"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
 
@@ -163,6 +165,10 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (safe !== undefined && !SAFE_PROFILES.includes(safe as SafeProfile)) {
     errors.push(`safe must be ${oneOf(SAFE_PROFILES)} (got ${describe(safe)})`);
   }
+  const { captionStyle } = input;
+  if (captionStyle !== undefined && !CAPTION_STYLES.includes(captionStyle as CaptionStyle)) {
+    errors.push(`captionStyle must be ${oneOf(CAPTION_STYLES)} (got ${describe(captionStyle)})`);
+  }
 
   const scenes = validateScenes(input.scenes, errors);
 
@@ -172,5 +178,6 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (accent !== undefined) storyboard.accent = accent as string;
   if (accentIntensity !== undefined) storyboard.accentIntensity = accentIntensity as AccentIntensity;
   if (safe !== undefined) storyboard.safe = safe as SafeProfile;
+  if (captionStyle !== undefined) storyboard.captionStyle = captionStyle as CaptionStyle;
   return { ok: true, storyboard };
 }

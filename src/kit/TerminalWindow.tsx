@@ -1,29 +1,24 @@
-// A terminal in the shared window chrome. Once the window has faded in, prompt
-// lines are typed character by character (`text.in`'s per-character step)
-// behind a prompt marker with a caret; output lines appear the instant the
-// command before them has been typed. Once everything has run, a fresh prompt
-// waits with a smoothly blinking caret. The window keeps its final size
-// throughout, so lines appear without anything moving.
+// A terminal in the shared window chrome (design v3, life #10). Once the window
+// has faded in, each command waits on its prompt with a blinking caret, then
+// types with jittered keystrokes behind a solid one; its output fades and rises
+// in the moment it has been typed. Once everything has run, a fresh prompt
+// waits with a blinking caret. Text stays at the mono step: when the lines
+// outgrow the window it scrolls with the `enter` spring (see `terminalSchedule`).
+// The same `seed` types the same way on every render.
 
-import { interpolate } from "../engine/easing";
-import { contentArea } from "../layout/caption";
-import type { Rect } from "../layout/frame";
-import { estimateLines } from "../layout/textFit";
-import { TYPE_FIT_ATTRIBUTE, typeCss } from "../layout/type";
-import type { Aspect } from "../storyboard/types";
-import type { Theme } from "../theme/types";
-import { useSceneTime, type SceneTime } from "./frameContext";
-import { fitSequence } from "./motion";
+import type { Seed } from "../engine/random";
+import { typeCss } from "../layout/type";
+import { useSceneTime } from "./frameContext";
 import { syntaxColors } from "./syntaxColors";
+import { terminalFrame, terminalSchedule, PROMPT_MARKER, type TerminalLine } from "./terminalSchedule";
 import type { KitProps } from "./types";
+import { Caret } from "./Caret";
+import { caretBlink, typedText } from "./typing";
 import { TitleBar, WindowShell, type WindowChromeStyle } from "./AppWindow";
-import { fitMonoSize, MONO_ADVANCE, maxInnerHeight, windowBox, windowWidth } from "./windowLayout";
+import { windowBox } from "./windowLayout";
 
-export interface TerminalLine {
-  /** A typed command (true) or program output (default). */
-  prompt?: boolean;
-  text: string;
-}
+export { terminalFrame, terminalSchedule, terminalTiming } from "./terminalSchedule";
+export type { TerminalEntry, TerminalEntryFrame, TerminalFrame, TerminalLine, TerminalLineTiming, TerminalSchedule, TerminalScheduleOptions, TerminalScroll } from "./terminalSchedule";
 
 export interface TerminalWindowProps extends KitProps {
   lines: TerminalLine[];
@@ -32,112 +27,57 @@ export interface TerminalWindowProps extends KitProps {
   /** Element id for shared-element transitions. */
   shareId?: string;
   chrome?: WindowChromeStyle;
+  /** Varies the typing rhythm; the same seed types the same way every time. Default 0. */
+  seed?: Seed;
 }
 
-/** When a line appears and, for prompt lines, when typing starts and ends, in ms from the scene's start. */
-export interface TerminalLineTiming {
-  start: number;
-  typeStart: number;
-  end: number;
-}
+/** Rounds a px value for the markup. */
+const px = (value: number) => Math.round(value * 100) / 100;
 
-/** Pause on an empty prompt before typing starts, in characters' worth of time. */
-const PAUSE_CHARS = 6;
-/** The idle caret's blink period: on for half of it (design v3, life #10). */
-const CARET_BLINK_MS = 1060;
-const PROMPT_MARKER = "$";
-/** Stands in for the caret when counting a line's characters: one more, on the last word. */
-const CARET_ROOM = "_";
-
-/**
- * Every line's timing, in ms. The first line appears once the window has
- * faded in; each line after appears when the one before it ends; a prompt
- * line then pauses and types its text at `text.in`'s per-character step, and
- * an output line ends as it appears. Given the scene's time, typing that would
- * run into the exit speeds up to finish before it.
- */
-export function terminalTiming(theme: Theme, lines: readonly TerminalLine[], time?: SceneTime): TerminalLineTiming[] {
-  const { leadMs, fx, enter } = theme.motion;
-  const typeStart = leadMs + fx.ms;
-  const units = lines.reduce((sum, line) => sum + (line.prompt ? PAUSE_CHARS + line.text.length : 0), 0);
-  const natural = theme.motion["text.in"].charStaggerMs;
-  const unit = time === undefined ? natural : natural * fitSequence(theme, time, typeStart, typeStart + units * natural, enter.ms);
-  let at = typeStart;
-  return lines.map((line) => {
-    const start = at;
-    if (!line.prompt) return { start, typeStart: start, end: start };
-    const typeStart = start + PAUSE_CHARS * unit;
-    at = typeStart + line.text.length * unit;
-    return { start, typeStart, end: at };
-  });
-}
-
-/** Caret opacity `ms` into idling: a smooth blink, fully on as it starts. */
-function blink(ms: number): number {
-  return 0.5 + 0.5 * Math.cos((2 * Math.PI * ms) / CARET_BLINK_MS);
-}
-
-
-function terminalLayout(theme: Theme, aspect: Aspect, lines: readonly TerminalLine[], slot: Rect | undefined) {
-  const area = slot ?? contentArea(theme, aspect);
-  const { inner } = windowWidth(theme, aspect, area);
-  const { lineHeight } = theme.type.mono[aspect];
-  // Every line plus the fresh prompt at the end; prompt lines carry the marker and leave room for
-  // the caret. Lines wrap at their spaces (`pre-wrap`), breaking a word only when it is too long.
-  const texts = [...lines.map((line) => (line.prompt ? `${PROMPT_MARKER} ${line.text}${CARET_ROOM}` : line.text)), `${PROMPT_MARKER} ${CARET_ROOM}`];
-  const heightAt = (size: number) =>
-    texts.reduce((sum, text) => sum + Math.max(1, estimateLines(text, inner, size, MONO_ADVANCE)), 0) * size * lineHeight;
-  const size = fitMonoSize(theme, aspect, (s) => heightAt(s) <= maxInnerHeight(theme, aspect, area));
-  return { size, box: windowBox(theme, aspect, heightAt(size), slot) };
-}
-
-export function TerminalWindow({ progress, theme, aspect, area, lines, title = "Terminal", shareId, chrome = "traffic" }: TerminalWindowProps) {
-  const { size, box } = terminalLayout(theme, aspect, lines, area);
+export function TerminalWindow({ progress, theme, aspect, area, lines, title = "Terminal", shareId, chrome = "traffic", seed = 0 }: TerminalWindowProps) {
   const time = useSceneTime(progress);
   const { ms } = time;
-  const timing = terminalTiming(theme, lines, time);
+  const schedule = terminalSchedule(theme, aspect, lines, { area, time, seed });
+  const box = windowBox(theme, aspect, schedule.visibleRows * schedule.rowHeight, area);
+  const frame = terminalFrame(theme, schedule, ms);
   const colors = syntaxColors(theme);
-  const mono = theme.type.mono[aspect];
-  const idleFrom = timing.at(-1)?.end ?? theme.motion.leadMs + theme.motion.fx.ms;
-  const finished = ms >= idleFrom;
-  // The line that has appeared most recently holds the caret.
+  // The entry that has appeared most recently holds the caret.
   let active = -1;
-  timing.forEach((t, i) => {
-    if (t.start <= ms) active = i;
+  frame.entries.forEach((entry, i) => {
+    if (entry.shown) active = i;
   });
 
-  const caret = (line: number, solid: boolean) => (
-    <span
-      data-terminal-caret={line}
-      style={{
-        display: "inline-block",
-        width: "0.6em",
-        height: "1.15em",
-        marginLeft: "0.08em",
-        verticalAlign: "text-bottom",
-        backgroundColor: theme.colors.accent,
-        opacity: solid ? 1 : blink(ms - idleFrom),
-      }}
-    />
-  );
   const marker = (
     <span data-terminal-prompt="" style={{ color: colors.keyword, fontWeight: theme.weights.semibold }}>
       {`${PROMPT_MARKER} `}
     </span>
   );
 
-  const rendered = lines.map((line, i) => {
-    const t = timing[i]!;
-    if (t.start > ms) return null;
-    const typed = line.prompt ? line.text.slice(0, Math.floor(interpolate(ms, [t.typeStart, t.end], [0, line.text.length]))) : line.text;
-    const holdsCaret = line.prompt === true && i === active && ms < t.end;
+  const rendered = schedule.entries.map((entry, i) => {
+    const state = frame.entries[i]!;
+    if (!state.shown) return null;
+    const line: TerminalLine | undefined = lines[i];
+    const prompt = line === undefined || line.prompt === true;
+    // A command's caret blinks on the empty prompt and goes solid as it types; the fresh prompt's blinks for good.
+    const holdsCaret = i === active && prompt && (line === undefined || ms < entry.end);
+    const caretOpacity = line !== undefined && ms >= entry.typeStart ? 1 : caretBlink(theme, ms - entry.start);
     return (
-      <div key={i} data-terminal-line={i}>
-        {line.prompt && marker}
-        <span data-terminal-text={i} style={{ color: line.prompt ? colors.plain : colors.comment }}>
-          {typed}
-        </span>
-        {holdsCaret && caret(i, ms >= t.typeStart)}
+      <div
+        key={i}
+        data-terminal-line={i}
+        style={{
+          minHeight: px(schedule.rows[i]! * schedule.rowHeight),
+          opacity: state.opacity,
+          ...(state.rise > 0 ? { transform: `translateY(${px(state.rise)}px)` } : {}),
+        }}
+      >
+        {prompt && marker}
+        {line !== undefined && (
+          <span data-terminal-text={i} style={{ color: line.prompt ? colors.plain : colors.comment }}>
+            {line.prompt ? typedText(line.text, entry, ms) : line.text}
+          </span>
+        )}
+        {holdsCaret && <Caret theme={theme} shape="block" opacity={caretOpacity} marker={{ "data-terminal-caret": i }} />}
       </div>
     );
   });
@@ -153,22 +93,15 @@ export function TerminalWindow({ progress, theme, aspect, area, lines, title = "
       titleBar={<TitleBar theme={theme} aspect={aspect} title={title} chrome={chrome} />}
     >
       <div
-        // The mono step, shrunk to fit when the lines need it.
-        {...(size < mono.size ? { [TYPE_FIT_ATTRIBUTE]: "" } : {})}
         style={{
           fontFamily: theme.fonts.mono,
-          ...typeCss({ ...mono, size }),
+          ...typeCss({ ...theme.type.mono[aspect], size: schedule.size }),
           whiteSpace: "pre-wrap",
           overflowWrap: "anywhere",
+          ...(frame.offset !== 0 ? { transform: `translateY(${px(frame.offset)}px)` } : {}),
         }}
       >
         {rendered}
-        {finished && (
-          <div data-terminal-line={lines.length}>
-            {marker}
-            {caret(lines.length, false)}
-          </div>
-        )}
       </div>
     </WindowShell>
   );

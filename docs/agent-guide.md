@@ -137,10 +137,10 @@ of the frame than a shot may.
 
 A storyboard is one JSON document. Top-level fields: `title`, `aspect`
 (`"9:16"`, the primary format, or `"16:9"`), `fps` (default 30), `theme`
-(default `"light"`), the theme fields in section 3, `safe` (below), and
-`scenes`. Each scene has an `id` (unique), a `component` (a kit name from
-section 5), `props`, and optionally `narration`, `durationMs`, `transition`
-and camera `shots` (section 1).
+(default `"light"`), the theme fields in section 3, `safe` and
+`captionStyle` (below), and `scenes`. Each scene has an `id` (unique), a
+`component` (a kit name from section 5), `props`, and optionally `narration`,
+`durationMs`, `transition` and camera `shots` (section 1).
 
 ```json
 {
@@ -208,6 +208,25 @@ buttons. In 9:16, `safe` picks which platform UI the frame keeps clear of:
 { "safe": "crosspost" }
 ```
 
+### Captions
+
+Narration is burned in as a caption, a page of a few words at a time, centered
+in the caption band. The word being spoken lights up in the accent and scales
+up a touch, and each page pops in (scale 0.9 to 1, rising 24 px, in 170 ms).
+Until there is a voice track, the words are spread evenly over the scene, each
+taking time in proportion to its length. `captionStyle` picks the look:
+
+- `"standard"` (the default): pages of 3-6 words, one or two lines, in the
+  ramp's `subtitle` at bold, on a plate of the ground color. For explainers.
+- `"punch"`: pages of 1-3 big uppercase words on one line, in the ramp's
+  `headline` at heavy, white letters on a dark outline. For high-energy hooks.
+  A word too long for the line shrinks to fit.
+- `"off"`: no caption; the narration is still the scene's length.
+
+```json
+{ "captionStyle": "punch" }
+```
+
 ## 3. Theme and overrides
 
 Themes are defaults, not rules. Anything the user asks for must be possible;
@@ -269,20 +288,35 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     table D), each with an `ms` duration and a `curve`: `fx.fast`, `fx`,
     `text.in`, `text.char` (a headline's characters, with `staggerMs`),
     `text.out`, `enter` (cards, windows, chips; with `staggerMs`),
-    `enter.hero`, `pop`, `count`, `mark` (the marker sweep: `delayMs` after
-    the text lands, a bar at `opacity` tilted `tiltDeg`, or an underline
-    `underlinePx` thick), `shot` (with the default `fill`), `beat`; `breathe`
-    is the camera's drift (`on`, `scale`, `curve`, `driftPx`; off unless `on`
-    is true); `exit` takes a `share` of the entry within `minMs`-`maxMs`;
-    `flow` is the dot that runs along a drawn connector (one trip per `ms`, a
-    `dotPx` dot, and a `glowPx` ring of the accent at `glowOpacity` on the
-    node it reaches; `"ms": 0` turns it off); `drift` moves the mesh blobs (up
-    to `px` from home, each looping in `minMs`-`maxMs`), `grid.breathe` the
-    grid (`ms`, `scale`, `curve`) and `grainFps` the grain. A `curve` is a name (`"linear"`, `"expoOut"`,
+    `enter.hero`, `pop` (to `scale`, 1.04), `count` (each digit's roll, the
+    next digit `staggerMs` later, blurred `blurMinPx`-`blurMaxPx` while it
+    moves, the unit `unitDelayMs` after the landing), `mark` (the marker
+    sweep: `delayMs` after the text lands, a bar at `opacity` tilted
+    `tiltDeg`, or an underline `underlinePx` thick), `shot` (with the default
+    `fill`), `beat`; `breathe` is the camera's drift (`on`, `scale`, `curve`,
+    `driftPx`; off unless `on` is true); `exit` takes a `share` of the entry
+    within `minMs`-`maxMs`; `shine` is the band of light that crosses an
+    element once (`widthShare` of its width, leaning `skewDeg`, white at
+    `opacity`; `"ms": 0` turns it off); `flow` is the dot that runs along a
+    drawn connector (one trip per `ms`, a `dotPx` dot, and a `glowPx` ring of
+    the accent at `glowOpacity` on the node it reaches; `"ms": 0` turns it
+    off); `typing` is text typed with a caret (`cps` keystrokes a second on
+    average, each gap varied by up to `jitter` of itself, a
+    `pauseMinMs`-`pauseMaxMs` pause after a comma or full stop, a caret that
+    blinks every `blinkMs`, and a printed line that fades in over its `ms`);
+    `drift` moves the mesh blobs (up to `px` from home, each looping in
+    `minMs`-`maxMs`), `grid.breathe` the grid (`ms`, `scale`, `curve`) and
+    `grainFps` the grain. A `curve` is a name (`"linear"`, `"expoOut"`,
     `"expoIn"`, `"expoInOut"`, `"sineInOut"`, `"power4InOut"`), a
     cubic bezier `[x1, y1, x2, y2]`, or a spring `{ "stiffness": 170,
     "damping": 18 }`. Position and scale may overshoot; opacity and color
-    never do.
+    never do. `caption` moves the captions: a page enters over `ms` from
+    `fromScale` and `risePx` below its place, and the spoken word scales to
+    `wordScale` over `wordMs` (or half the word, if shorter).
+  - `caption`: how the spoken word stands out, `highlight` `"color"` (the
+    default: the accent color) or `"plate"` (a rounded accent plate behind it,
+    reaching `platePadY` and `platePadX` px past the word); `strokePx`, the
+    punch style's outline (16).
 
 ### The type ramp
 
@@ -443,8 +477,10 @@ fits (`role` starts it lower: `display`, `headline` or `title`).
 
 #### `Caption`
 
-One line of large text, paged when long. Narration is captioned
-automatically; use `Caption` only for a text-only beat.
+Text a page of a few words at a time, the word being spoken lit in the accent
+(see "Captions" in section 2), with an optional `captionStyle` (`"standard"`
+or `"punch"`). Narration is captioned automatically; use `Caption` only for a
+text-only beat.
 
 ```json
 {
@@ -457,7 +493,10 @@ automatically; use `Caption` only for a text-only beat.
 
 #### `BigNumber`
 
-A number that counts up, with `prefix`, `suffix`, `decimals` and a `label`.
+A number that rolls into place like an odometer, with `prefix`, `suffix`,
+`decimals` and a `label`. Its digits roll in from the right, an accent bar
+fills under it, and as it lands it pops, a shine crosses it and the `suffix`
+(the unit) fades in.
 
 ```json
 {
@@ -603,7 +642,9 @@ component as `content`.
 #### `BrowserWindow`
 
 An address bar with a `url`, optional `tabs` and `activeTab`, and any `content`
-in the page area.
+in the page area. With `"typeUrl": true` the address bar types the url once the
+window has arrived, and the page loads when it is entered (`seed` changes the
+typing rhythm).
 
 ```json
 {
@@ -611,6 +652,7 @@ in the page area.
   "component": "BrowserWindow",
   "props": {
     "url": "example.com/pricing",
+    "typeUrl": true,
     "content": { "component": "TitleCard", "props": { "title": "Simple pricing", "subtitle": "One plan" } }
   },
   "narration": "Pricing is one simple plan."
@@ -619,7 +661,12 @@ in the page area.
 
 #### `TerminalWindow`
 
-Typed commands (`"prompt": true`) and program output, line by line.
+Typed commands (`"prompt": true`) and program output, line by line. Each
+command types behind a live caret at a human pace (a little uneven, pausing
+after punctuation), and its output fades in once it has been typed. Text stays
+at the mono size: a long session scrolls the window rather than shrinking it.
+`seed` (a number or string) changes the typing rhythm; the same seed types the
+same way on every render.
 
 ```json
 {
@@ -660,9 +707,12 @@ by one) and `lineNumbers` (default true).
 #### `ChatWindow`
 
 A team chat: a `channel`, `messages` that arrive one by one (`author`, `time`,
-`text`, optional `badge`, `reactions`, `highlight`, `avatar`), an optional
-`sidebar` (shown in 16:9) and floating `cards` that slide in afterwards.
-Avatars get theme colors by author; leave `avatar.color` out.
+`text`, optional `badge`, `reactions`, `highlight`, `avatar`, `typed`), an
+optional `sidebar` (shown in 16:9) and floating `cards` that slide in
+afterwards. Avatars get theme colors by author; leave `avatar.color` out. A
+message normally arrives after a typing indicator; a `"typed": true` one (the
+viewer's own) types into the composer first, then is sent. `seed` changes the
+typing rhythm.
 
 ```json
 {
@@ -672,7 +722,7 @@ Avatars get theme colors by author; leave `avatar.color` out.
     "channel": "#releases",
     "sidebar": { "workspace": "Acme", "channels": ["#general", "#releases"] },
     "messages": [
-      { "author": "Dana", "time": "4:58 PM", "text": "Friday deploy?" },
+      { "author": "Dana", "time": "4:58 PM", "text": "Friday deploy?", "typed": true },
       { "author": "Deploy Bot", "badge": "APP", "time": "5:01 PM", "text": "v2.4 is live", "reactions": [{ "emoji": "🎉", "count": 3 }], "highlight": true }
     ]
   },

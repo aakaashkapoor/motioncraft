@@ -27,8 +27,8 @@ export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
 export { FlowDiagram, flowDiagramLayout, flowDiagramTiming } from "./FlowDiagram";
 export type { FlowArrow, FlowDiagramLayout, FlowDiagramProps, FlowDiagramTiming } from "./FlowDiagram";
-export { pageAt, pageCaption } from "./captionPages";
-export type { CaptionLimits } from "./captionPages";
+export { pageAt, pageCaption, pageRanges } from "./captionPages";
+export type { CaptionLimits, PageRange } from "./captionPages";
 export type { CaptionProps } from "./Caption";
 export type { TitleCardProps } from "./TitleCard";
 export type { KitComponent, KitProps } from "./types";
@@ -37,6 +37,7 @@ export { asKitComponent } from "./types";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./StepList";
 export { Ground, groundStyle, type GroundProps } from "./Ground";
 export { grainSeed, gridBreath, meshBlobs, type MeshBlob } from "./groundMotion";
+export { Shine, shineBand, shineGradient, shineText, type ShineBand, type ShineProps } from "./shine";
 export { AppWindow, BrowserWindow, slotTransform, windowLayout, type AppWindowProps, type BrowserWindowProps, type SlotContent } from "./windows";
 
 export const kit: Record<string, KitComponent> = {

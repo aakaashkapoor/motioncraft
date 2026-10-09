@@ -121,8 +121,9 @@ describe("caption band", () => {
       const theme = withSafe(profile);
       const band = captionBand(theme, "9:16");
       const spec = theme.type.subtitle["9:16"];
-      // The plate sits on the band's bottom; its last line's baseline is above the padding and descent.
-      const baseline = band.y + band.height - theme.spacing.xs - ((spec.lineHeight - 1) / 2) * spec.size - 0.25 * spec.size;
+      // The plate rests a rise above the band's bottom (it enters from there); its last line's baseline is above the padding and descent.
+      const plateBottom = band.y + band.height - theme.motion.caption.risePx;
+      const baseline = plateBottom - theme.spacing.xs - ((spec.lineHeight - 1) / 2) * spec.size - 0.25 * spec.size;
       expect(baseline).toBeGreaterThanOrEqual(top);
       expect(baseline).toBeLessThanOrEqual(bottom);
     }

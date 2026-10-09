@@ -243,6 +243,39 @@ export interface BeatToken {
   ms: number;
 }
 
+/** Emphasis (design v3, table D): a spring to `scale`. A highlight stays there; a landing number comes back (`pulse`). */
+export interface PopToken extends MotionToken {
+  /** The scale an emphasised element pops to, e.g. 1.04. */
+  scale: number;
+}
+
+/**
+ * A number rolling to its value (design v3, life #7): each digit column rolls
+ * over `ms`, the next one to its left `staggerMs` later, and the unit follows
+ * `unitDelayMs` after the last digit lands.
+ */
+export interface CountToken extends StaggeredToken {
+  /** Vertical blur on a moving digit as it slows to a stop, in px. */
+  blurMinPx: number;
+  /** Vertical blur on a digit at full speed, in px. */
+  blurMaxPx: number;
+  /** From the number landing to its unit (the suffix) fading in, in ms. */
+  unitDelayMs: number;
+}
+
+/**
+ * A shine (design v3, life #9): a diagonal band of white crossing an element
+ * once, over `ms`. Never looped.
+ */
+export interface ShineToken extends MotionToken {
+  /** The band's width, as a share of the element's width. */
+  widthShare: number;
+  /** How far the band leans from vertical, top to the right, in degrees (a CSS `skewX` of minus this). */
+  skewDeg: number;
+  /** Opacity of the white at the band's middle, 0..1. */
+  opacity: number;
+}
+
 /**
  * A flowing connector (design v3, life #11): once a connector has drawn, a dot
  * travels it, one trip per `ms`, and the node it reaches glows.
@@ -254,6 +287,37 @@ export interface FlowToken extends MotionToken {
   glowPx: number;
   /** Opacity of the accent in the glow ring, 0..1. */
   glowOpacity: number;
+}
+
+/**
+ * Typing with a live caret (design v3, life #10): keystrokes land `cps` per
+ * second on average, each gap varied by up to `jitter` of itself either way
+ * (seeded, so every render types the same), with a pause of `pauseMinMs`-
+ * `pauseMaxMs` after punctuation that ends a clause. `ms` and `curve` are a
+ * printed line fading in.
+ */
+export interface TypingToken extends MotionToken {
+  /** Characters per second, on average (30-45). */
+  cps: number;
+  /** Largest share of a keystroke's gap it may vary by, either way (0.3 = +-30%). */
+  jitter: number;
+  pauseMinMs: number;
+  pauseMaxMs: number;
+  /** The caret's blink period, in ms: on for half of it. */
+  blinkMs: number;
+}
+
+/**
+ * Word-highlight captions (design v3, life #4): each page enters over `ms`
+ * from `fromScale` and `risePx` below its place; the word being spoken turns
+ * accent and scales to `wordScale` over `wordMs` (4 frames at 30 fps), or over
+ * half the word when that is shorter, on `fx.fast`'s curve.
+ */
+export interface CaptionMotionToken extends MotionToken {
+  fromScale: number;
+  risePx: number;
+  wordMs: number;
+  wordScale: number;
 }
 
 /**
@@ -288,12 +352,12 @@ export interface ThemeMotion {
   enter: StaggeredToken;
   /** The one big element of a scene arriving. */
   "enter.hero": MotionToken;
-  /** Emphasis: a highlighted card, an active badge. */
-  pop: MotionToken;
+  /** Emphasis: a highlighted card, an active badge, a number landing. */
+  pop: PopToken;
   /** Anything leaving. */
   exit: ExitToken;
-  /** A number rolling to its value. */
-  count: MotionToken;
+  /** A number rolling to its value, digit by digit. */
+  count: CountToken;
   /** A marker or underline sweeping in. */
   mark: MarkToken;
   /** The camera moving to a new framing. */
@@ -310,6 +374,26 @@ export interface ThemeMotion {
   beat: BeatToken;
   /** A dot flowing along a drawn connector, lighting the node it reaches. */
   flow: FlowToken;
+  /** Text typed with a caret: terminal commands, a chat composer, an address bar. */
+  typing: TypingToken;
+  /** A band of light crossing an element once: a card lighting up, a number landing. */
+  shine: ShineToken;
+  /** A caption page entering and the spoken word lighting up. */
+  caption: CaptionMotionToken;
+}
+
+export const CAPTION_HIGHLIGHTS = ["color", "plate"] as const;
+/** How the word being spoken stands out: in the accent colour, or on a rounded accent plate. */
+export type CaptionHighlight = (typeof CAPTION_HIGHLIGHTS)[number];
+
+/** How word-highlight captions look (design v3, life #4); `motion.caption` moves them. */
+export interface ThemeCaption {
+  highlight: CaptionHighlight;
+  /** The plate behind the spoken word reaches this far past it, in px; its corners are `radius.sm`. */
+  platePadY: number;
+  platePadX: number;
+  /** The punch style's dark outline, in px (14-20), painted under the letters. */
+  strokePx: number;
 }
 
 export interface Theme {
@@ -326,6 +410,7 @@ export interface Theme {
   /** Width of hairline borders, in px. */
   hairline: number;
   motion: ThemeMotion;
+  caption: ThemeCaption;
   /** The 9:16 safe profile layout keeps clear of (design v3, section C). Set by the storyboard's `safe`. */
   safe: SafeProfile;
 }

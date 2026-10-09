@@ -36,7 +36,7 @@ export interface MeasuredText {
   opacity: number;
   /** Computed CSS text color. */
   color: string;
-  /** Computed CSS background colors under the text, topmost first. */
+  /** Computed CSS background colors under the text, topmost first; an outline the letters sit on comes first. */
   backgrounds: string[];
   /** Part of the burned-in narration caption rather than the scene itself. */
   caption: boolean;

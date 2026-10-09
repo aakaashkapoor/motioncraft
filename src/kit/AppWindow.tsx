@@ -12,7 +12,7 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
 import type { Theme } from "../theme/types";
-import { useSceneTime, type SceneTime } from "./frameContext";
+import { MotionDelay, useSceneTime, type SceneTime } from "./frameContext";
 import { arrive, exitOpacity } from "./motion";
 import { Slot, type SlotContent } from "./Slot";
 import type { KitProps } from "./types";
@@ -122,10 +122,12 @@ export interface WindowShellProps extends KitProps {
   titleBar: ReactNode;
   /** The toolbar's contents; no toolbar when undefined. */
   toolbar?: ReactNode;
+  /** Holds back the motion of `content` by this many ms, e.g. until a page has loaded. */
+  contentDelayMs?: number;
 }
 
 /** The window chrome: frame, motion, title bar, optional toolbar and the content slot. */
-export function WindowShell({ progress, theme, aspect, area, kind, shareId, content, children, titleBar, toolbar }: WindowShellProps) {
+export function WindowShell({ progress, theme, aspect, area, kind, shareId, content, children, titleBar, toolbar, contentDelayMs = 0 }: WindowShellProps) {
   const layout = windowLayout(theme, aspect, toolbar !== undefined, area);
   const { opacity, rise, scale } = windowMotion(theme, useSceneTime(progress));
   const { colors, spacing, hairline, cardShadow } = theme;
@@ -162,15 +164,17 @@ export function WindowShell({ progress, theme, aspect, area, kind, shareId, cont
         </div>
       )}
       {children === undefined ? (
-        <Slot
-          progress={progress}
-          theme={theme}
-          aspect={aspect}
-          box={layout.content}
-          content={content}
-          backgroundColor={colors.surface}
-          attribute="data-window-content"
-        />
+        <MotionDelay ms={contentDelayMs}>
+          <Slot
+            progress={progress}
+            theme={theme}
+            aspect={aspect}
+            box={layout.content}
+            content={content}
+            backgroundColor={colors.surface}
+            attribute="data-window-content"
+          />
+        </MotionDelay>
       ) : (
         <div
           data-window-content=""

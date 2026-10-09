@@ -97,9 +97,9 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
       <CameraWorld view={view} aspect={aspect}>
         <Component {...scene.props} {...common} />
       </CameraWorld>
-      {scene.narration !== undefined && (
+      {scene.narration !== undefined && storyboard.captionStyle !== "off" && (
         <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
-          <Caption {...common} text={scene.narration} />
+          <Caption {...common} text={scene.narration} captionStyle={storyboard.captionStyle} />
         </div>
       )}
     </SceneClockContext.Provider>

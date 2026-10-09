@@ -95,6 +95,20 @@ function backgroundsUnder(el: Element, rect: Rect, origin: DOMRect, chain: reado
     .filter((css) => !isTransparent(css));
 }
 
+/**
+ * An outline at least this thick, in em, painted under the letters
+ * (`paint-order: stroke`), rings every glyph: the letters read against it.
+ */
+const OUTLINE_MIN_EM = 0.1;
+
+/** The color of the outline the letters of `el` sit on, if they have one. */
+function outlineUnder(el: Element): string | undefined {
+  const style = getComputedStyle(el);
+  const width = parseFloat(style.webkitTextStrokeWidth);
+  if (!(width >= OUTLINE_MIN_EM * parseFloat(style.fontSize)) || !style.paintOrder.startsWith("stroke")) return undefined;
+  return style.webkitTextStrokeColor;
+}
+
 /** Box around a text node's rendered lines, or undefined if it is not laid out. */
 function textRect(node: Text, origin: DOMRect): Rect | undefined {
   const range = document.createRange();
@@ -123,13 +137,15 @@ function measureText(el: Element, root: Element, origin: DOMRect): MeasuredText 
   const chain = lineage(el, root);
   // A whole of pieces is only as visible as its faintest piece.
   const opacity = pieces ? Math.min(...nodes.map((node) => effectiveOpacity(lineage(node.parentElement!, root)))) : effectiveOpacity(chain);
+  const outline = outlineUnder(el);
+  const backgrounds = backgroundsUnder(el, rect, origin, chain, root);
   return {
     text: nodes.map((node) => node.data).join(pieces ? "" : " ").replace(/\s+/g, " ").trim(),
     rect,
     clips: chain.filter(clipsContent).map((node) => paddingBox(node, origin)),
     opacity,
     color: getComputedStyle(el).color,
-    backgrounds: backgroundsUnder(el, rect, origin, chain, root),
+    backgrounds: outline === undefined ? backgrounds : [outline, ...backgrounds],
     caption: el.closest(`[${CAPTION_ATTRIBUTE}]`) !== null,
     fontSize: parseFloat(getComputedStyle(el).fontSize),
     fitted: el.closest(`[${TYPE_FIT_ATTRIBUTE}]`) !== null,
