@@ -1,0 +1,47 @@
+{
+  "title": "Shared elements: the hero window docks in the corner",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "hero",
+      "component": "AppWindow",
+      "props": {
+        "title": "Weekly report",
+        "shareId": "window",
+        "content": { "component": "BigNumber", "props": { "value": 42, "suffix": "%", "label": "faster renders" } }
+      },
+      "narration": "Renders got forty-two percent faster this week.",
+      "durationMs": 4000,
+      "transition": { "type": "fade", "durationMs": 900 }
+    },
+    {
+      "id": "why",
+      "component": "Pinned",
+      "props": {
+        "pinned": {
+          "component": "AppWindow",
+          "props": {
+            "title": "Weekly report",
+            "shareId": "window",
+            "content": { "component": "BigNumber", "props": { "value": 42, "suffix": "%", "label": "faster renders" } }
+          }
+        },
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              { "icon": "zap", "title": "Cached fonts", "subtitle": "Loaded once" },
+              { "icon": "box", "title": "Smaller bundle", "subtitle": "Half the size" },
+              { "icon": "clock", "title": "Fewer waits", "subtitle": "Ready sooner" }
+            ],
+            "highlight": 0
+          }
+        }
+      },
+      "narration": "Three changes made the difference.",
+      "durationMs": 6500
+    }
+  ]
+}
