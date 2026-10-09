@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, contentArea, fontSize, neutralTheme, type Aspect } from "../src/index";
+import { ASPECTS, NOMINAL_SCENE_MS, contentArea, fontSize, neutralTheme, type Aspect } from "../src/index";
 import { kit } from "../src/kit";
 import { BigNumber, bigNumberStep, countedValue, formatBigNumber } from "../src/kit/BigNumber";
 
@@ -25,6 +25,9 @@ const underlineWidth = (html: string) => {
 };
 
 const PROGRESSES = [0, 0.5, 1] as const;
+/** Progress a quarter of the way through the count, and once it has landed (drawn without a clock). */
+const COUNT_QUARTER = (neutralTheme.motion.leadMs + neutralTheme.motion.count.ms / 4) / NOMINAL_SCENE_MS;
+const COUNTED = (neutralTheme.motion.leadMs + neutralTheme.motion.count.ms) / NOMINAL_SCENE_MS;
 const cases = ASPECTS.flatMap((aspect) => PROGRESSES.map((progress) => [aspect, progress] as const));
 
 const render = (aspect: Aspect, progress: number, extra: { prefix?: string; suffix?: string; decimals?: number; value?: number } = {}) =>
@@ -49,11 +52,12 @@ describe("BigNumber", () => {
     expect(box.y + box.height).toBeLessThanOrEqual(area.y + area.height);
   });
 
-  it.each(ASPECTS)("counts up from 0 by mid-scene, then holds (%s)", (aspect) => {
+  it.each(ASPECTS)("counts up from 0 over the count token, then holds (%s)", (aspect) => {
     expect(shownNumber(render(aspect, 0))).toBe("0");
-    const quarter = Number(shownNumber(render(aspect, 0.25)).replace(/,/g, ""));
+    const quarter = Number(shownNumber(render(aspect, COUNT_QUARTER)).replace(/,/g, ""));
     expect(quarter).toBeGreaterThan(0);
     expect(quarter).toBeLessThan(12500);
+    expect(shownNumber(render(aspect, COUNTED))).toBe("12,500");
     expect(shownNumber(render(aspect, 0.5))).toBe("12,500");
     expect(shownNumber(render(aspect, 1))).toBe("12,500");
   });
@@ -68,8 +72,8 @@ describe("BigNumber", () => {
 
   it.each(ASPECTS)("grows the accent underline as it counts (%s)", (aspect) => {
     const start = underlineWidth(render(aspect, 0));
-    const quarter = underlineWidth(render(aspect, 0.25));
-    const full = underlineWidth(render(aspect, 0.5));
+    const quarter = underlineWidth(render(aspect, COUNT_QUARTER));
+    const full = underlineWidth(render(aspect, COUNTED));
     expect(start).toBe(0);
     expect(quarter).toBeGreaterThan(0);
     expect(quarter).toBeLessThan(full);
@@ -79,10 +83,12 @@ describe("BigNumber", () => {
   });
 
   it("counts with an ease-out: past halfway by a quarter of the count", () => {
-    expect(countedValue(0.125, 100)).toBeGreaterThan(50);
-    expect(countedValue(0, 100)).toBe(0);
-    expect(countedValue(0.5, 100)).toBe(100);
-    expect(countedValue(0.8, -40)).toBe(-40);
+    const { leadMs, count } = neutralTheme.motion;
+    expect(countedValue(neutralTheme, leadMs + count.ms / 4, 100)).toBeGreaterThan(50);
+    expect(countedValue(neutralTheme, 0, 100)).toBe(0);
+    expect(countedValue(neutralTheme, leadMs, 100)).toBe(0);
+    expect(countedValue(neutralTheme, leadMs + count.ms, 100)).toBe(100);
+    expect(countedValue(neutralTheme, 4000, -40)).toBe(-40);
   });
 
   it("formats with thousands separators and fixed decimals", () => {

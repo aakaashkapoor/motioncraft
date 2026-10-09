@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, drawPath, frameSize, lightTheme, neutralTheme, type Aspect, type Rect } from "../src/index";
+import { ASPECTS, NOMINAL_SCENE_MS, curveEasing, drawPath, frameSize, lightTheme, neutralTheme, type Aspect, type Rect } from "../src/index";
 import { kit } from "../src/kit";
 import {
   AnchorProvider,
@@ -11,10 +11,10 @@ import {
   resolveArrowEnds,
   type ArrowProps,
 } from "../src/kit/Arrow";
-import { themeEasing } from "../src/kit/motion";
 
 const theme = lightTheme;
-const easing = themeEasing(theme);
+/** The line sweeps in on the `mark` token's curve. */
+const easing = curveEasing(theme.motion.mark.curve);
 
 type Extra = Omit<ArrowProps, "progress" | "theme" | "aspect">;
 const render = (props: Extra, progress: number, aspect: Aspect = "9:16") =>
@@ -143,11 +143,21 @@ describe("Arrow drawing", () => {
     expect(kit.Arrow).toBe(Arrow);
   });
 
-  it("maps scene progress into its window, eased", () => {
-    expect(arrowTiming(0.1, [0.2, 0.6], easing).drawn).toBe(0);
-    expect(arrowTiming(0.4, [0.2, 0.6], easing).drawn).toBeCloseTo(easing(0.5), 9);
-    expect(arrowTiming(0.6, [0.2, 0.6], easing).drawn).toBe(1);
-    expect(arrowTiming(0.8, [0.2, 0.6], easing).drawn).toBe(1);
+  it("sweeps in with the mark token once it starts", () => {
+    const { mark } = theme.motion;
+    expect(arrowTiming(theme, -10).drawn).toBe(0);
+    expect(arrowTiming(theme, mark.ms / 2).drawn).toBeCloseTo(easing(0.5), 9);
+    expect(arrowTiming(theme, mark.ms).drawn).toBe(1);
+    expect(arrowTiming(theme, mark.ms + 1000).drawn).toBe(1);
+    // Over a given duration, from a v2 window.
+    expect(arrowTiming(theme, 1000, 2000).drawn).toBeCloseTo(easing(0.5), 9);
+  });
+
+  it("starts drawing on the scene's lead, the same in any scene", () => {
+    const at = (ms: number) => line(render({ from, to }, ms / NOMINAL_SCENE_MS)).dashoffset;
+    expect(at(theme.motion.leadMs)).toBe(1000);
+    expect(at(theme.motion.leadMs + theme.motion.mark.ms / 2)).toBeLessThan(1000);
+    expect(at(theme.motion.leadMs + theme.motion.mark.ms)).toBe(0);
   });
 
   it("uses drawPath's dash values: hidden at 0, half drawn at 0.5, whole at 1", () => {
@@ -163,10 +173,7 @@ describe("Arrow drawing", () => {
     const window: [number, number] = [0, 0.8];
     expect(headOpacity(render({ from, to, window }, 0))).toBe(0);
     expect(headOpacity(render({ from, to, window }, 0.4))).toBe(0);
-    // Linear easing so mid-draw is exactly mid-window.
-    const linearTheme = { ...theme, motion: { ...theme.motion, easing: "linear" } };
-    const mostly = renderToStaticMarkup(<Arrow progress={0.6} theme={linearTheme} aspect="9:16" from={from} to={to} window={window} />);
-    expect(headOpacity(mostly)).toBe(0);
+    expect(headOpacity(render({ from, to, window }, 0.6))).toBe(0);
     expect(headOpacity(render({ from, to, window }, 0.8))).toBe(1);
   });
 

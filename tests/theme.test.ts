@@ -148,11 +148,43 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
     expect(theme.cardShadow.opacity).toBeLessThanOrEqual(1);
   });
 
-  it("has sensible motion tokens", () => {
+  it("has the motion tokens of design v3, table D", () => {
     const m = theme.motion;
     expect(m.easing.length).toBeGreaterThan(0);
-    for (const ms of [m.enterMs, m.exitMs, m.transitionMs, m.staggerMs]) expect(ms).toBeGreaterThan(0);
-    for (const preset of Object.values(m.springs)) expect(["smooth", "snappy", "gentle", "bouncy"]).toContain(preset);
+    const within = (value: number, min: number, max: number) => {
+      expect(value).toBeGreaterThanOrEqual(min);
+      expect(value).toBeLessThanOrEqual(max);
+    };
+    expect(m["fx.fast"]).toEqual({ ms: 150, curve: [0.31, 0.94, 0.34, 1] });
+    within(m.fx.ms, 200, 300);
+    expect(m.fx.curve).toEqual([0.34, 0.8, 0.34, 1]);
+    expect(m["text.in"]).toEqual({ ms: 550, curve: "expoOut", staggerMs: 55, charStaggerMs: 30, lineStaggerMs: 70 });
+    expect(m["text.out"]).toEqual({ ms: 300, curve: [0.3, 0, 0.8, 0.15], staggerMs: 20 });
+    within(m.enter.ms, 600, 700);
+    expect(m.enter).toMatchObject({ curve: { stiffness: 170, damping: 18 }, staggerMs: 90 });
+    within(m["enter.hero"].ms, 800, 1000);
+    expect(m["enter.hero"].curve).toEqual({ stiffness: 120, damping: 20 });
+    expect(m.pop).toEqual({ ms: 400, curve: { stiffness: 200, damping: 14 } });
+    within(m.exit.share, 0.6, 0.75);
+    expect(m.exit).toMatchObject({ minMs: 300, maxMs: 450, curve: [0.3, 0, 0.8, 0.15] });
+    within(m.count.ms, 900, 1200);
+    expect(m.count.curve).toBe("expoOut");
+    expect(m.mark).toMatchObject({ ms: 450, curve: [0.33, 1, 0.68, 1] });
+    within(m.mark.delayMs, 400, 600);
+    within(m.shot.ms, 600, 900);
+    expect(m.shot.curve).toEqual([0.65, 0, 0.35, 1]);
+    expect(m.breathe.curve).toBe("sineInOut");
+    within(m.breathe.scale, 1, 1.04);
+    within(m.transitionMs, 500, 600);
+    within(m.beat.ms, 300, 750);
+    // First motion of a scene at 100-200 ms; cascades done in about the first 1.2 s.
+    within(m.leadMs, 100, 200);
+    within(m.cascadeMs, 1000, 1400);
+  });
+
+  it("never names the bouncy spring", () => {
+    expect(JSON.stringify(theme.motion)).not.toContain("bouncy");
+    expect(theme.motion).not.toHaveProperty("springs");
   });
 });
 
@@ -252,7 +284,7 @@ describe("resolveTheme", () => {
           ground: { style: "noise", seed: 42 },
           type: { headline: { "9:16": { weight: 900 } } },
           radius: { md: 12 },
-          motion: { enterMs: 250, springs: { emphasis: "snappy" } },
+          motion: { enter: { ms: 450, curve: { damping: 24 } }, pop: { curve: [0.34, 1.56, 0.64, 1] } },
         },
       }),
     );
@@ -264,7 +296,11 @@ describe("resolveTheme", () => {
     expect(theme.type.headline["9:16"]).toEqual({ ...darkTheme.type.headline["9:16"], weight: 900 });
     expect(theme.type.headline["16:9"]).toEqual(darkTheme.type.headline["16:9"]);
     expect(theme.radius).toEqual({ ...darkTheme.radius, md: 12 });
-    expect(theme.motion).toEqual({ ...darkTheme.motion, enterMs: 250, springs: { ...darkTheme.motion.springs, emphasis: "snappy" } });
+    expect(theme.motion).toEqual({
+      ...darkTheme.motion,
+      enter: { ...darkTheme.motion.enter, ms: 450, curve: { stiffness: 170, damping: 24 } },
+      pop: { ...darkTheme.motion.pop, curve: [0.34, 1.56, 0.64, 1] },
+    });
   });
 
   it("does not mutate the built-in themes", () => {

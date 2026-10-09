@@ -67,16 +67,14 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false 
   const { aspect } = storyboard;
   const common = { progress: active.progress, theme, aspect };
   const content = (
-    <>
-      <SceneClockContext.Provider value={{ fps, frame: active.localFrame }}>
-        <Component {...scene.props} {...common} />
-      </SceneClockContext.Provider>
+    <SceneClockContext.Provider value={{ fps, frame: active.localFrame, frames: active.sceneFrames }}>
+      <Component {...scene.props} {...common} />
       {scene.narration !== undefined && (
         <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
           <Caption {...common} text={scene.narration} />
         </div>
       )}
-    </>
+    </SceneClockContext.Provider>
   );
   if (active.transition === undefined) return content;
   const style = transitionStyle(active.transition, frameSize(aspect));

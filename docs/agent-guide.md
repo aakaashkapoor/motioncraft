@@ -31,8 +31,15 @@ to its line:
   scene text (captions are not counted). The readability check enforces it.
 - A scene without narration must set `durationMs`. A scene built around a
   `VideoClip` can use `"durationMs": "clip"` to last as long as the clip.
-- Components play their entrance over roughly the first 10-40% of the scene and
-  settle for the rest, so the point lands while the line is still being spoken.
+- Motion is timed in milliseconds from the scene's start, never as a share of
+  the scene: a component's first motion comes about 150 ms in, a cascade (cards,
+  list rows, headline words) lands in about the first 1.2 s, and a fast exit
+  (300-450 ms) lands on the scene's last frame. A longer scene only holds
+  longer, so the point lands while the line is still being spoken.
+- Things that play out keep their pace: a terminal types about 30 ms a
+  character, a chat message takes about 650 ms (typing, then arriving). Give
+  the scene that long plus a beat; if it is too short, they speed up to finish
+  before the exit.
 - A transition overlaps the two scenes it joins. Total length is the sum of the
   scenes minus the sum of the transitions, so a 600 ms transition takes 600 ms
   out of the scenes on both sides of it.
@@ -186,7 +193,16 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
   - `radius` (`sm`, `md`, `lg`, `pill`), `cardShadow` (`y`, `blur`, `opacity`),
     `hairline`.
   - `motion`: `transition` and `transitionMs` (the defaults for boundaries),
-    `enterMs`, `exitMs`, `staggerMs`, `easing`, `springs`.
+    `leadMs` (when a scene's first motion starts, 150), `cascadeMs` (when a
+    cascade has landed, 1200), and one token per kind of motion (design v3,
+    table D), each with an `ms` duration and a `curve`: `fx.fast`, `fx`,
+    `text.in`, `text.out`, `enter` (cards, windows, chips; with `staggerMs`),
+    `enter.hero`, `pop`, `count`, `mark`, `shot`, `beat`; `exit` takes a
+    `share` of the entry within `minMs`-`maxMs`. A `curve` is a name
+    (`"linear"`, `"expoOut"`, `"expoIn"`, `"sineInOut"`, `"power4InOut"`), a
+    cubic bezier `[x1, y1, x2, y2]`, or a spring `{ "stiffness": 170,
+    "damping": 18 }`. Position and scale may overshoot; opacity and color
+    never do.
 
 ### The type ramp
 
@@ -230,7 +246,7 @@ takes a color, pass a role name such as `"accent"`, or leave it out.
 | "lots of orange" | `"accent": "#ff6a00"`, `"accentIntensity": "bold"` |
 | "an orange background" | `"accent": "#ff6a00"`, `"accentIntensity": "full"` |
 | "our brand colors are navy and gold" | `"themeOverrides": { "colors": { "ground": "#14213d", ... } }` and `"accent": "#fca311"`, then let the contrast check confirm the text reads |
-| "snappier" | `"themeOverrides": { "motion": { "transitionMs": 400, "enterMs": 350 } }` |
+| "snappier" | `"themeOverrides": { "motion": { "transitionMs": 400, "enter": { "ms": 450 }, "fx": { "ms": 200 } } }` |
 | "rounder" / "sharper" | `"themeOverrides": { "radius": { "md": 40 } }` / `{ "radius": { "md": 8 } }` |
 | "use Geist" | `"themeOverrides": { "fonts": { "display": "mc-geist, sans-serif", "body": "mc-geist, sans-serif", "mono": "mc-geist-mono, monospace" } }` |
 | "bigger headlines" | `"themeOverrides": { "type": { "headline": { "9:16": { "size": 104 }, "16:9": { "size": 96 } } } }` |
@@ -527,8 +543,9 @@ Avatars get theme colors by author; leave `avatar.color` out.
 A line that draws itself from `from` to `to`: points in frame px
 (`{ "x": ..., "y": ... }`, keep them inside both frame shapes if the storyboard
 might be rendered in both) or `{ "anchor": "<shareId>" }` for an element in the
-same scene. `curve` bends it, `window` sets when it draws, `color` is a theme
-role (default `"accent"`), `label` sits at the middle.
+same scene. `curve` bends it, `color` is a theme role (default `"accent"`),
+`label` sits at the middle. It sweeps in from the scene's lead; `window`
+(`[start, end]` as fractions of the scene) draws it later, for a v2 storyboard.
 
 ```json
 {

@@ -1,8 +1,9 @@
 // A flow diagram: 2-4 short labels in rounded cards joined by arrows, left to
 // right when the area is wide enough (the 16:9 content area) and top to bottom
 // otherwise (9:16, or a narrow Section slot), with an optional caption under it.
-// It builds up in order (node 1, the arrow to node 2 drawing itself, node 2,
-// ...) over the scene's entrance, holds, then fades out.
+// It builds up in order from the scene's lead: the nodes spring in as an
+// `enter` cascade, each arrow sweeping into its node (`mark`) as that node
+// arrives, then the caption; it holds, then exits fast at the end.
 
 import { interpolate } from "../engine/easing";
 import { blockCenterY, placeBlock } from "../layout/block";
@@ -14,7 +15,8 @@ import { fontSize, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole } from "../theme/types";
 import { cardColors } from "../theme/roles";
-import { themeEasing } from "./motion";
+import { useSceneTime } from "./frameContext";
+import { arrive, cascadeStep, exitOpacity, fade, tween } from "./motion";
 import type { KitProps } from "./types";
 
 export interface FlowDiagramProps extends KitProps {
@@ -26,9 +28,6 @@ export interface FlowDiagramProps extends KitProps {
 
 export const MIN_FLOW_NODES = 2;
 export const MAX_FLOW_NODES = 4;
-
-const ENTER = 0.2;
-const EXIT = 0.1;
 
 /** Label steps to try, largest first. Labels are set in the `title` step's weight. */
 const LABEL_STEPS: readonly TypeRole[] = ["title", "subtitle", "body", "label"];
@@ -147,10 +146,20 @@ export function flowDiagramLayout(
   return layout;
 }
 
-/** Progress, 0..1, of build step `index` of `steps` across the entrance. */
-function buildStep(progress: number, index: number, steps: number): number {
-  const size = ENTER / steps;
-  return interpolate(progress, [index * size, (index + 1) * size], [0, 1]);
+export interface FlowDiagramTiming {
+  /** When each node starts to arrive, in ms from the scene's start. */
+  nodes: number[];
+  /** When each arrow starts to draw: with the node it leads into. */
+  arrows: number[];
+  /** When the caption fades in, after the last node: the cascade's next step. */
+  caption: number;
+}
+
+/** The build, in ms: the nodes and then the caption as one `enter` cascade from the lead; arrow `i` draws into node `i + 1` as it arrives. */
+export function flowDiagramTiming(theme: Theme, nodeCount: number): FlowDiagramTiming {
+  const step = cascadeStep(theme, nodeCount + 1);
+  const nodes = Array.from({ length: nodeCount }, (_, i) => theme.motion.leadMs + i * step);
+  return { nodes, arrows: nodes.slice(1), caption: theme.motion.leadMs + nodeCount * step };
 }
 
 const round = (n: number) => Math.round(n * 100) / 100;
@@ -158,16 +167,15 @@ const round = (n: number) => Math.round(n * 100) / 100;
 export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, caption }: FlowDiagramProps) {
   const area = slot ?? contentArea(theme, aspect);
   const layout = flowDiagramLayout(theme, aspect, nodes, caption, slot);
-  const easing = themeEasing(theme);
   const { colors, fonts, spacing, radius } = theme;
   const card = cardColors(theme);
   const { padding, border } = cardInsets(theme);
-  const opacity = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
-
-  // Build order: node 0, arrow 0, node 1, arrow 1, ..., node n-1, caption.
-  const steps = 2 * nodes.length - 1 + (caption === undefined ? 0 : 1);
-  const nodeIn = (i: number) => easing(buildStep(progress, 2 * i, steps));
-  const arrowIn = (i: number) => easing(buildStep(progress, 2 * i + 1, steps));
+  const time = useSceneTime(progress);
+  const { ms } = time;
+  const { enter, mark, fx } = theme.motion;
+  const opacity = exitOpacity(theme, time, enter.ms);
+  const timing = flowDiagramTiming(theme, nodes.length);
+  const arrowIn = (i: number) => tween(mark, ms - timing.arrows[i]!);
   const stroke = spacing.xxs;
   const head = spacing.md * 0.75;
 
@@ -218,7 +226,7 @@ export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, captio
       </svg>
       {nodes.map((label, i) => {
         const rect = layout.nodes[i]!;
-        const shown = nodeIn(i);
+        const shown = arrive(theme, ms, timing.nodes[i]!);
         return (
           <div
             key={i}
@@ -232,8 +240,8 @@ export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, captio
               height: rect.height,
               boxSizing: "border-box",
               padding,
-              opacity: shown,
-              transform: `scale(${round(interpolate(shown, [0, 1], [0.9, 1]))})`,
+              opacity: shown.opacity,
+              transform: `scale(${round(0.9 + 0.1 * shown.move)})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -267,7 +275,7 @@ export function FlowDiagram({ progress, theme, aspect, area: slot, nodes, captio
             top: layout.caption.y,
             width: layout.caption.width,
             margin: 0,
-            opacity: easing(buildStep(progress, steps - 1, steps)),
+            opacity: fade(fx, ms - timing.caption),
             fontFamily: fonts.body,
             ...typeCss(theme.type.body[aspect]),
             color: colors.textMuted,

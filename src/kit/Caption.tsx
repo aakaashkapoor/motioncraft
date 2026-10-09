@@ -1,23 +1,22 @@
 // A burned-in caption: up to two lines of text, set in the ramp's `subtitle`
 // step, on a solid plate centered in the caption band, low in the safe area
 // (see `layout/caption`). Longer text is split into pages shown one after
-// another, so every word is seen and nothing is cut off.
+// another, so every word is seen and nothing is cut off. Captions follow
+// speech: they fade in quickly on the scene's lead and leave fast at its end.
 
 import { CAPTION_MAX_LINES, captionBand } from "../layout/caption";
 import type { Aspect } from "../layout/frame";
 import { typeCss } from "../layout/type";
 import type { Theme } from "../theme/types";
 import { pageAt, pageCaption, type CaptionLimits } from "./captionPages";
-import { presence, themeEasing } from "./motion";
+import { useSceneTime } from "./frameContext";
+import { exitOpacity, fade } from "./motion";
 import type { KitProps } from "./types";
 
 export interface CaptionProps extends KitProps {
   text: string;
 }
 
-// Captions follow speech, so they appear and leave quickly.
-const ENTER = 0.05;
-const EXIT = 0.05;
 // Average glyph width as a fraction of font size. Generous for semibold sans
 // text, so estimated lines err short and never wrap past the band's lines.
 const CHAR_WIDTH = 0.6;
@@ -32,10 +31,12 @@ export function captionLimits(theme: Theme, aspect: Aspect): CaptionLimits {
 
 export function Caption({ progress, theme, aspect, text }: CaptionProps) {
   // Pages get equal shares of the scene; with narration timing they will follow the audio.
+  const time = useSceneTime(progress);
   const page = pageAt(pageCaption(text, captionLimits(theme, aspect)), progress);
   if (page === undefined) return null;
   const band = captionBand(theme, aspect);
-  const opacity = presence(progress, ENTER, EXIT, themeEasing(theme));
+  const { leadMs, fx } = theme.motion;
+  const opacity = Math.min(fade(fx, time.ms - leadMs), exitOpacity(theme, time, fx.ms));
   const spec = theme.type.subtitle[aspect];
   const padY = theme.spacing.xs;
   const padX = theme.spacing.md;

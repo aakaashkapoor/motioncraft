@@ -188,7 +188,7 @@ describe("validateStoryboard: scene rules", () => {
 
 describe("validateStoryboard: theme overrides", () => {
   it("keeps themeOverrides, accent and accentIntensity", () => {
-    const themeOverrides = { colors: { ground: "#fafafa" }, ground: { style: "grid" }, motion: { enterMs: 300 } };
+    const themeOverrides = { colors: { ground: "#fafafa" }, ground: { style: "grid" }, motion: { enter: { ms: 300 } } };
     const result = validateStoryboard(board({ themeOverrides, accent: "#FF6A00", accentIntensity: "bold" }));
     expect(result.ok && result.storyboard).toMatchObject({ themeOverrides, accent: "#FF6A00", accentIntensity: "bold" });
   });
@@ -220,7 +220,7 @@ describe("validateStoryboard: theme overrides", () => {
             type: { headline: { "9:16": { size: -4 } } },
             accentIntensity: "max",
             name: "mine",
-            motion: { springs: { enter: "wobbly" } },
+            motion: { enter: { curve: "wobbly" } },
             fonts: 3,
           },
         }),
@@ -234,8 +234,29 @@ describe("validateStoryboard: theme overrides", () => {
       "themeOverrides.type.headline.9:16.size must be a positive number (got -4)",
       'themeOverrides.accentIntensity must be "subtle", "bold" or "full" (got "max")',
       'themeOverrides: unknown field "name"',
-      'themeOverrides.motion.springs.enter must be "smooth", "snappy", "gentle" or "bouncy" (got "wobbly")',
+      'themeOverrides.motion.enter.curve must be "linear", "expoOut", "expoIn", "sineInOut" or "power4InOut", a cubic bezier [x1, y1, x2, y2] with x1 and x2 in 0..1, or a spring { "stiffness": ..., "damping": ... } (got "wobbly")',
       "themeOverrides.fonts must be an object (got 3)",
+    ]);
+  });
+
+  it("takes a motion token's curve as a name, a cubic bezier or a spring", () => {
+    const ok = (curve: unknown) => validateStoryboard(board({ themeOverrides: { motion: { fx: { curve } } } })).ok;
+    expect(ok("expoOut")).toBe(true);
+    expect(ok([0.2, 0, 0, 1])).toBe(true);
+    expect(ok([0.38, 1.21, 0.22, 1])).toBe(true);
+    expect(ok({ stiffness: 170, damping: 18 })).toBe(true);
+    expect(ok([1.2, 0, 0, 1])).toBe(false);
+    expect(ok([0.2, 0, 0])).toBe(false);
+    expect(ok({ stiffness: 170 })).toBe(false);
+    expect(ok({ stiffness: -1, damping: 18 })).toBe(false);
+    // A partial spring merges over a spring curve.
+    expect(validateStoryboard(board({ themeOverrides: { motion: { enter: { curve: { damping: 24 } } } } })).ok).toBe(true);
+  });
+
+  it("names the v3 token for a v2 motion field", () => {
+    expect(errorsOf(board({ themeOverrides: { motion: { enterMs: 300, springs: { emphasis: "snappy" } } } }))).toEqual([
+      'themeOverrides.motion: unknown field "enterMs" (motion tokens are named by design v3, table D: use "enter": { "ms": ... })',
+      'themeOverrides.motion: unknown field "springs" (motion tokens are named by design v3, table D: use "enter", "pop" and "exit" with a "curve")',
     ]);
   });
 });

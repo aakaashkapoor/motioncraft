@@ -1,9 +1,9 @@
 // 2-6 cards: in one row when the area is wide enough (the 16:9 content area);
 // otherwise a vertical stack (up to 3) or a 2-column grid (4-6), as in 9:16 or
-// a narrow Section slot. Cards spring in one after another; once they have all
-// landed, an optional `highlight` card lights up in the accent.
+// a narrow Section slot. Cards spring in one after another, the cascade done in
+// about the first 1.2 s; once they have all landed, an optional `highlight`
+// card pops in the accent.
 
-import { interpolate } from "../engine/easing";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
@@ -23,8 +23,8 @@ import {
   type CardMetrics,
   type CardOrientation,
 } from "./Card";
-import { themeEasing } from "./motion";
-import { springIn } from "./springIn";
+import { useSceneTime } from "./frameContext";
+import { arrive, cascadeStep, exitOpacity, tween } from "./motion";
 import type { KitProps } from "./types";
 
 export interface CardRowProps extends KitProps {
@@ -37,20 +37,14 @@ export interface CardRowProps extends KitProps {
 export const MIN_CARDS = 2;
 export const MAX_CARDS = 6;
 
-const EXIT = 0.1;
-/** How long one card's spring takes, as a fraction of the scene. */
-const CARD_ENTER = 0.25;
-/** By this point every card has landed. */
-const CARDS_DONE = 0.6;
-/** The highlight's spring, starting once the cards have landed. */
-const HIGHLIGHT_ENTER = 0.15;
 /** A row needs each card at least this wide, in em of the ramp's `subtitle` step. */
 const MIN_ROW_CARD_EM = 4.5;
 
-/** The [start, end] of each card's entrance, as fractions of the scene. */
-export function cardRowTiming(count: number): Array<[number, number]> {
-  const gap = count > 1 ? (CARDS_DONE - CARD_ENTER) / (count - 1) : 0;
-  return Array.from({ length: count }, (_, i) => [i * gap, i * gap + CARD_ENTER]);
+/** The [start, end] of each card's entrance, in ms from the scene's start: an `enter` cascade from the lead. */
+export function cardRowTiming(theme: Theme, count: number): Array<[number, number]> {
+  const { leadMs, enter } = theme.motion;
+  const step = cascadeStep(theme, count);
+  return Array.from({ length: count }, (_, i) => [leadMs + i * step, leadMs + i * step + enter.ms]);
 }
 
 export interface CardRowLayout {
@@ -118,17 +112,17 @@ export function cardRowLayout(theme: Theme, aspect: Aspect, cards: readonly Card
 export function CardRow({ progress, theme, aspect, area: slot, cards, highlight }: CardRowProps) {
   const area = slot ?? contentArea(theme, aspect);
   const layout = cardRowLayout(theme, aspect, cards, slot);
-  const timing = cardRowTiming(cards.length);
-  const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing: themeEasing(theme) });
+  const time = useSceneTime(progress);
+  const timing = cardRowTiming(theme, cards.length);
+  const exit = exitOpacity(theme, time, theme.motion.enter.ms);
   const landed = timing.at(-1)![1];
-  const lit = springIn(progress, landed, HIGHLIGHT_ENTER, theme.motion.springs.emphasis);
+  const lit = tween(theme.motion.pop, time.ms - landed);
 
   return (
     <div style={{ position: "absolute", left: area.x, top: area.y, width: area.width, height: area.height, opacity: exit }}>
       {cards.map((card, i) => {
         const cell = layout.cells[i]!;
-        const [start, end] = timing[i]!;
-        const entrance = cardEntrance(springIn(progress, start, end - start, theme.motion.springs.enter), theme);
+        const entrance = cardEntrance(arrive(theme, time.ms, timing[i]![0]), theme);
         return (
           <div
             key={i}

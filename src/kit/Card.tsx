@@ -11,7 +11,6 @@
 // `CardFace` draws one card into a given box (CardRow lays several out);
 // `Card` is the scene component: one card on the frame's optical center.
 
-import { interpolate } from "../engine/easing";
 import { Icon } from "../icons";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
@@ -22,8 +21,8 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { mixColors, withAlpha } from "../theme/color";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
-import { themeEasing } from "./motion";
-import { springIn } from "./springIn";
+import { useSceneTime } from "./frameContext";
+import { arrive, exitOpacity } from "./motion";
 import type { KitProps } from "./types";
 
 export interface CardData {
@@ -257,19 +256,19 @@ export function CardFace({ theme, metrics: m, icon, title, subtitle, step, highl
   );
 }
 
-/** Opacity and transform for a card entering with spring value `s` (0 -> 1, may overshoot). */
-export function cardEntrance(s: number, theme: Theme): { opacity: number; transform: string } {
-  const rise = Math.round((1 - s) * theme.spacing.lg * 100) / 100;
-  const scale = Math.round((0.94 + 0.06 * s) * 1000) / 1000;
-  return { opacity: Math.min(1, Math.max(0, s)), transform: `translateY(${rise}px) scale(${scale})` };
+/**
+ * Opacity and transform for a card arriving (see `arrive`): it rises and grows
+ * with `move` (0 -> 1, may overshoot) and fades in with `opacity`.
+ */
+export function cardEntrance({ move, opacity }: { move: number; opacity: number }, theme: Theme): { opacity: number; transform: string } {
+  const rise = Math.round((1 - move) * theme.spacing.lg * 100) / 100;
+  const scale = Math.round((0.94 + 0.06 * move) * 1000) / 1000;
+  return { opacity, transform: `translateY(${rise}px) scale(${scale})` };
 }
 
 export interface CardProps extends KitProps, CardData {
   highlighted?: boolean;
 }
-
-const ENTER = 0.25;
-const EXIT = 0.1;
 
 /** In 16:9 a lone card is at most this share of the content area's width. */
 const WIDE_CARD_SHARE = 0.4;
@@ -302,8 +301,10 @@ export function Card({ progress, theme, aspect, area: slot, highlighted = false,
   // Never shorter than its content: a card too tall for its area overflows it evenly.
   const height = cardHeight(theme, card, width, metrics);
   const box = placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot));
-  const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing: themeEasing(theme) });
-  const entrance = cardEntrance(springIn(progress, 0, ENTER, theme.motion.springs.enter), theme);
+  const time = useSceneTime(progress);
+  const { leadMs, enter } = theme.motion;
+  const exit = exitOpacity(theme, time, enter.ms);
+  const entrance = cardEntrance(arrive(theme, time.ms, leadMs), theme);
 
   return (
     <div style={{ position: "absolute", left: area.x, top: area.y, width: area.width, height: area.height, opacity: exit }}>

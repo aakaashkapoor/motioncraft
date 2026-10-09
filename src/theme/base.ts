@@ -1,7 +1,7 @@
 // Tokens the built-in themes share: the type ramp, named weights, spacing,
 // radii and motion. Each theme spreads these and sets its own colors and ground.
 
-import type { ThemeMotion, ThemeRadius, ThemeSpacing, ThemeWeights, TypeRamp, TypeSpec } from "./types";
+import type { CubicBezier, ThemeMotion, ThemeRadius, ThemeSpacing, ThemeWeights, TypeRamp, TypeSpec } from "./types";
 
 export const SYSTEM_SANS =
   'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
@@ -66,12 +66,30 @@ export const baseRadius: ThemeRadius = {
   pill: 999,
 };
 
+/** Material 3's emphasized accelerate: the curve of everything leaving. */
+const EXIT_CURVE: CubicBezier = [0.3, 0, 0.8, 0.15];
+
+/**
+ * Design v3, table D. Springs land on their target at the token's duration;
+ * `enter` overshoots about 5%, `enter.hero` barely, `pop` about 15%.
+ */
 export const baseMotion: ThemeMotion = {
   easing: "expoOut",
-  enterMs: 500,
-  exitMs: 300,
   transition: "slide",
   transitionMs: 600,
-  staggerMs: 80,
-  springs: { enter: "smooth", exit: "snappy", emphasis: "bouncy" },
+  leadMs: 150,
+  cascadeMs: 1200,
+  "fx.fast": { ms: 150, curve: [0.31, 0.94, 0.34, 1] },
+  fx: { ms: 250, curve: [0.34, 0.8, 0.34, 1] },
+  "text.in": { ms: 550, curve: "expoOut", staggerMs: 55, charStaggerMs: 30, lineStaggerMs: 70 },
+  "text.out": { ms: 300, curve: EXIT_CURVE, staggerMs: 20 },
+  enter: { ms: 650, curve: { stiffness: 170, damping: 18 }, staggerMs: 90 },
+  "enter.hero": { ms: 900, curve: { stiffness: 120, damping: 20 } },
+  pop: { ms: 400, curve: { stiffness: 200, damping: 14 } },
+  exit: { share: 0.65, minMs: 300, maxMs: 450, curve: EXIT_CURVE },
+  count: { ms: 1000, curve: "expoOut" },
+  mark: { ms: 450, curve: [0.33, 1, 0.68, 1], delayMs: 500 },
+  shot: { ms: 750, curve: [0.65, 0, 0.35, 1] },
+  breathe: { scale: 1.04, curve: "sineInOut" },
+  beat: { ms: 400 },
 };

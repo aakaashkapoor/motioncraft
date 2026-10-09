@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, charsPerLine, contentArea, fontSize, neutralTheme, type Aspect, type Rect } from "../src/index";
-import { FlowDiagram, flowDiagramLayout, kit } from "../src/kit";
+import { ASPECTS, NOMINAL_SCENE_MS, charsPerLine, contentArea, fontSize, neutralTheme, type Aspect, type Rect } from "../src/index";
+import { FlowDiagram, flowDiagramLayout, flowDiagramTiming, kit } from "../src/kit";
 
 const NODES = ["Prompt", "Storyboard", "Render", "Video"];
 const CAPTION = "From idea to video";
@@ -122,7 +122,7 @@ describe("FlowDiagram", () => {
     expect(rootBox(render(aspect, 1)).opacity).toBeCloseTo(0, 3);
   });
 
-  it("shows node 1, then draws the arrow, then shows node 2, in order", () => {
+  it("shows the nodes in order, each arrow drawing into its node as that node arrives", () => {
     let previous: number[] | undefined;
     const steps = 200;
     // Each element in build order: node 0, arrow 0, node 1, arrow 1, ...
@@ -133,18 +133,26 @@ describe("FlowDiagram", () => {
       return nodes.flatMap((n, k) => (k < arrows.length ? [n, arrows[k]!] : [n]));
     });
     for (const state of states) {
-      // A later element only starts once the one before it has finished.
-      for (let k = 1; k < state.length; k++) if (state[k]! > 0) expect(state[k - 1]).toBe(1);
+      // Nothing starts before the element before it has started.
+      for (let k = 1; k < state.length; k++) if (state[k]! > 0) expect(state[k - 1]).toBeGreaterThan(0);
       if (previous !== undefined) state.forEach((v, k) => expect(v).toBeGreaterThanOrEqual(previous![k]! - 1e-9));
       previous = state;
     }
-    // Partway through, the arrow is mid-draw.
+    // Partway through, an arrow is mid-draw while a later node is still arriving.
     expect(states.some((s) => s[1]! > 0 && s[1]! < 1)).toBe(true);
+    expect(states.some((s) => s.at(-1)! > 0 && s.at(-1)! < 1)).toBe(true);
     expect(states.at(-1)!.every((v) => v === 1)).toBe(true);
+    const timing = flowDiagramTiming(neutralTheme, NODES.length);
+    expect(timing.nodes[0]).toBe(neutralTheme.motion.leadMs);
+    expect(timing.arrows).toEqual(timing.nodes.slice(1));
+    expect(timing.caption).toBeGreaterThan(timing.nodes.at(-1)!);
   });
 
-  it("is fully built by about 20% and still shown at 90%", () => {
-    const built = render("16:9", 0.2);
+  it("is fully built in about the first 1.2 s and still shown at 90%", () => {
+    const { mark, fx, cascadeMs } = neutralTheme.motion;
+    const timing = flowDiagramTiming(neutralTheme, NODES.length);
+    expect(Math.max(timing.arrows.at(-1)! + mark.ms, timing.caption + fx.ms)).toBeLessThanOrEqual(cascadeMs);
+    const built = render("16:9", cascadeMs / NOMINAL_SCENE_MS);
     expect(nodeOpacities(built).every((o) => o === 1)).toBe(true);
     expect(arrowDrawn(built).every((d) => d === 1)).toBe(true);
     expect(rootBox(render("16:9", 0.9)).opacity).toBeCloseTo(1, 3);

@@ -1,9 +1,8 @@
-// A big stat: a number that counts up from 0 over the first half of the scene,
-// with an optional prefix/suffix and a label below, on the frame's optical
-// center. An accent underline grows with the count. Fades in with a slight
-// rise, holds, then fades out.
+// A big stat: a number that counts up from 0 (the `count` token, about a
+// second from the scene's lead), with an optional prefix/suffix and a label
+// below, on the frame's optical center. An accent underline grows with the
+// count. Arrives as the scene's hero (`enter.hero`), holds, then exits fast.
 
-import { interpolate, type Easing } from "../engine/easing";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
 import { AVG_CHAR_EM, estimateTextHeight } from "../layout/textFit";
@@ -11,7 +10,8 @@ import { fontSize, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole } from "../theme/types";
 import { headlineColor } from "../theme/roles";
-import { presence, themeEasing } from "./motion";
+import { useSceneTime } from "./frameContext";
+import { arrive, exitOpacity, tween } from "./motion";
 import type { KitProps } from "./types";
 
 export interface BigNumberProps extends KitProps {
@@ -26,11 +26,6 @@ export interface BigNumberProps extends KitProps {
   decimals?: number;
 }
 
-const ENTER = 0.2;
-const EXIT = 0.1;
-/** The count finishes at this fraction of the scene, then holds. */
-const COUNT_END = 0.5;
-
 /** Separators and the decimal point are narrow: about half a digit. */
 const NARROW_CHAR_EM = AVG_CHAR_EM / 2;
 const NARROW = new Set([",", ".", " ", "'", ":"]);
@@ -43,11 +38,9 @@ function textEm(text: string): number {
 /** Number steps to try, largest first: the ramp's `numeral`, then smaller steps for long numbers. */
 const NUMBER_STEPS: readonly TypeRole[] = ["numeral", "hero", "display", "headline"];
 
-const easeOutCubic: Easing = (t) => 1 - (1 - t) ** 3;
-
-/** The number shown at `progress`: eases out from 0 to `value` by mid-scene. */
-export function countedValue(progress: number, value: number): number {
-  return interpolate(progress, [0, COUNT_END], [0, value], { easing: easeOutCubic });
+/** The number shown `ms` into the scene: rolls from 0 to `value` over the `count` token, from the scene's lead. */
+export function countedValue(theme: Theme, ms: number, value: number): number {
+  return value * tween(theme.motion.count, ms - theme.motion.leadMs);
 }
 
 /** `value` with thousands separators and exactly `decimals` digits after the point. */
@@ -82,10 +75,12 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
   const height =
     size * spec.lineHeight + spacing.xs + spacing.xxs + (label === undefined ? 0 : spacing.md + estimateTextHeight(label, labelWidth, labelSpec));
   const box = placeBlock(area, { width: area.width, height }, blockCenterY(theme, aspect, slot));
-  const easing = themeEasing(theme);
-  const opacity = presence(progress, ENTER, EXIT, easing);
-  const rise = interpolate(progress, [0, ENTER], [theme.spacing.lg, 0], { easing });
-  const counted = countedValue(progress, value);
+  const time = useSceneTime(progress);
+  const hero = theme.motion["enter.hero"];
+  const { move, opacity: fadeIn } = arrive(theme, time.ms, theme.motion.leadMs, hero);
+  const opacity = Math.min(fadeIn, exitOpacity(theme, time, hero.ms));
+  const rise = Math.round((1 - move) * spacing.lg * 100) / 100;
+  const counted = countedValue(theme, time.ms, value);
   const fullUnderline = Math.min(area.width, textEm(finalText) * size);
   const underline = value === 0 ? fullUnderline : fullUnderline * (counted / value);
 

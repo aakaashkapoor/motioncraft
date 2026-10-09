@@ -1,12 +1,13 @@
 // A generic team-chat window (no real product's branding): an optional sidebar
 // with the workspace name and channels, a header with the channel name, and
-// messages that arrive one by one, each preceded by a typing indicator and
-// rising into place. Optional floating message cards slide in beside the
-// window afterwards. In 9:16 the sidebar collapses into the header; in a
-// narrow 16:9 area (a Section slot) the window stacks over its cards as in 9:16.
+// messages that arrive one by one, each preceded by a typing indicator (a
+// `beat`) and rising into place. Optional floating message cards slide in
+// beside the window afterwards. The window arrives on the scene's lead; the
+// conversation plays at the same pace in any scene, speeding up only when a
+// scene is too short to fit it. In 9:16 the sidebar collapses into the header;
+// in a narrow 16:9 area (a Section slot) the window stacks over its cards as in 9:16.
 
 import type { CSSProperties } from "react";
-import { interpolate, type Easing } from "../engine/easing";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
@@ -16,7 +17,8 @@ import type { Aspect } from "../storyboard/types";
 import { mixColors, withAlpha } from "../theme/color";
 import { contrastRatio } from "../theme/contrast";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
-import { themeEasing } from "./motion";
+import { useSceneTime, type SceneTime } from "./frameContext";
+import { arrive, exitOpacity, fade, fitSequence, tween, type Timed } from "./motion";
 import type { KitProps } from "./types";
 import { windowWidth } from "./windowLayout";
 
@@ -63,25 +65,11 @@ export interface ChatWindowProps extends KitProps {
 }
 
 export interface ChatTiming {
-  /** [start, end] of the typing indicator, as fractions of the scene. */
+  /** [start, end] of the typing indicator, in ms from the scene's start. */
   typing: [number, number];
   /** [start, end] of the message's rise. */
   appear: [number, number];
 }
-
-const WINDOW_ENTER = 0.12;
-const EXIT = 0.08;
-const MESSAGES_START = 0.1;
-/** Every message is in by here, or by `MESSAGES_DONE_WITH_CARDS` when cards follow. */
-const MESSAGES_DONE = 0.78;
-const MESSAGES_DONE_WITH_CARDS = 0.62;
-const CARDS_DONE = 0.82;
-/** Longest a message's typing-plus-appear slot may take. */
-const MAX_SLOT = 0.2;
-/** Share of a slot spent typing; the rest is the rise. */
-const TYPING_SHARE = 0.55;
-/** How long one card takes to slide in. */
-const CARD_ENTER = 0.1;
 
 /** Widest the window grows in 16:9 when it stands alone. */
 const MAX_WINDOW_WIDTH = 1500;
@@ -102,24 +90,43 @@ const CONTENT_SLACK = 1.1;
 /** Shortest the window gets, as a share of the room it has. */
 const MIN_HEIGHT_SHARE = 0.55;
 
-/** Typing and appear windows of each message, in order. */
-export function chatTiming(count: number, cardCount = 0): ChatTiming[] {
-  const done = cardCount > 0 ? MESSAGES_DONE_WITH_CARDS : MESSAGES_DONE;
-  const slot = count > 0 ? Math.min(MAX_SLOT, (done - MESSAGES_START) / count) : 0;
-  return Array.from({ length: count }, (_, i) => {
-    const start = MESSAGES_START + i * slot;
-    const typed = start + slot * TYPING_SHARE;
-    return { typing: [start, typed], appear: [typed, start + slot] };
-  });
+interface ChatSequence {
+  messages: ChatTiming[];
+  /** [start, end] of each card's slide-in. */
+  cards: Array<[number, number]>;
+  /** How much the sequence is sped up to fit the scene: 1 when it fits as it is. */
+  pace: number;
 }
 
-/** [start, end] of each card's slide-in, after the last message. */
-function cardTiming(count: number): Array<[number, number]> {
-  const gap = count > 1 ? (CARDS_DONE - MESSAGES_DONE_WITH_CARDS - CARD_ENTER) / (count - 1) : 0;
-  return Array.from({ length: count }, (_, i) => {
-    const start = MESSAGES_DONE_WITH_CARDS + i * gap;
-    return [start, start + CARD_ENTER];
+/**
+ * The conversation, in ms: once the window has faded in, each message types
+ * for a `beat`, then rises in with `enter`; the next starts typing as soon as
+ * it shows. The cards follow the last message, `enter`'s stagger apart. Given
+ * the scene's time, a conversation that would run into the exit plays faster.
+ */
+function chatSequence(theme: Theme, count: number, cardCount: number, time?: SceneTime): ChatSequence {
+  const { leadMs, fx, beat, enter } = theme.motion;
+  const start = leadMs + fx.ms;
+  const slot = beat.ms + fx.ms;
+  const lastShown = start + (count - 1) * slot + beat.ms + fx.ms;
+  const cardsStart = count > 0 ? lastShown : start;
+  const naturalEnd = cardCount > 0 ? cardsStart + (cardCount - 1) * enter.staggerMs + enter.ms : lastShown - fx.ms + enter.ms;
+  const pace = time === undefined ? 1 : fitSequence(theme, time, start, naturalEnd, enter.ms);
+  const at = (ms: number) => start + (ms - start) * pace;
+  const messages = Array.from({ length: count }, (_, i): ChatTiming => {
+    const typed = start + i * slot + beat.ms;
+    return { typing: [at(typed - beat.ms), at(typed)], appear: [at(typed), at(typed + enter.ms)] };
   });
+  const cards = Array.from({ length: cardCount }, (_, i): [number, number] => {
+    const cardStart = cardsStart + i * enter.staggerMs;
+    return [at(cardStart), at(cardStart + enter.ms)];
+  });
+  return { messages, cards, pace };
+}
+
+/** Typing and appear windows of each message, in order, in ms. Given the scene's time, sped up to fit before the exit if needed. */
+export function chatTiming(theme: Theme, count: number, cardCount = 0, time?: SceneTime): ChatTiming[] {
+  return chatSequence(theme, count, cardCount, time).messages;
 }
 
 export interface ChatWindowLayout {
@@ -441,29 +448,29 @@ function Composer({ channel, layout, theme }: { channel: string; layout: ChatWin
   );
 }
 
-function rise(progress: number, [start, end]: [number, number], distance: number, easing: Easing) {
-  return {
-    opacity: interpolate(progress, [start, end], [0, 1], { easing }),
-    offset: interpolate(progress, [start, end], [distance, 0], { easing }),
-  };
+/** A message or card rising `distance` px into place over its window: it moves on `enter`'s curve and fades in with `fx` (both at the sequence's pace). */
+function rise(theme: Theme, ms: number, [start, end]: [number, number], distance: number, pace: number) {
+  const fx: Timed = { ...theme.motion.fx, ms: theme.motion.fx.ms * pace };
+  const move = tween({ ms: end - start, curve: theme.motion.enter.curve }, ms - start);
+  return { opacity: fade(fx, ms - start), offset: Math.round((1 - move) * distance * 100) / 100 };
 }
 
-/** Typing indicator opacity: quick in, held, out just before the message lands. */
-function typingOpacity(progress: number, [start, end]: [number, number]): number {
-  const len = end - start;
-  if (progress <= start || progress >= end) return 0;
-  return Math.min(interpolate(progress, [start, start + len * 0.25], [0, 1]), interpolate(progress, [end - len * 0.2, end], [1, 0]));
+/** Typing indicator opacity: in quickly (`fx.fast`), held, out just as the message starts to rise. */
+function typingOpacity(theme: Theme, ms: number, [start, end]: [number, number], pace: number): number {
+  if (ms <= start || ms >= end) return 0;
+  const fast: Timed = { ...theme.motion["fx.fast"], ms: theme.motion["fx.fast"].ms * pace };
+  return Math.min(fade(fast, ms - start), 1 - fade(fast, ms - (end - fast.ms)));
 }
 
 export function ChatWindow({ progress, theme, aspect, area: slot, channel, messages, sidebar, cards, shareId }: ChatWindowProps) {
   const area = slot ?? contentArea(theme, aspect);
   const layout = chatWindowLayout(theme, aspect, { messages, sidebar, cards }, slot);
-  const easing = themeEasing(theme);
   const { colors, spacing, radius, cardShadow } = theme;
-  const enter = interpolate(progress, [0, WINDOW_ENTER], [0, 1], { easing });
-  const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
-  const timing = chatTiming(messages.length, cards?.length ?? 0);
-  const cardTimes = cardTiming(cards?.length ?? 0);
+  const time = useSceneTime(progress);
+  const { ms } = time;
+  const enter = arrive(theme, ms, theme.motion.leadMs);
+  const exit = exitOpacity(theme, time, theme.motion.enter.ms);
+  const { messages: timing, cards: cardTimes, pace } = chatSequence(theme, messages.length, cards?.length ?? 0, time);
   const shadow = `0 ${cardShadow.y}px ${cardShadow.blur}px ${withAlpha(colors.shadow, cardShadow.opacity)}`;
   const at = (rect: Rect): CSSProperties => ({ position: "absolute", left: rect.x - area.x, top: rect.y - area.y, width: rect.width, height: rect.height });
   const slide = spacing.md;
@@ -475,8 +482,8 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
         data-block="chat window"
         style={{
           ...at(layout.window),
-          opacity: enter,
-          transform: `translateY(${(1 - enter) * spacing.lg}px)`,
+          opacity: enter.opacity,
+          transform: `translateY(${Math.round((1 - enter.move) * spacing.lg * 100) / 100}px)`,
           backgroundColor: colors.surface,
           border: `${theme.hairline}px solid ${colors.border}`,
           borderRadius: radius.lg,
@@ -502,8 +509,9 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
           >
             {messages.map((message, i) => {
               const { typing, appear } = timing[i]!;
-              const shown = rise(progress, appear, spacing.xs * 1.5, easing);
-              const local = (progress - typing[0]) / (typing[1] - typing[0]);
+              const shown = rise(theme, ms, appear, spacing.xs * 1.5, pace);
+              // The dots pulse only while the indicator shows.
+              const local = Math.min(1, Math.max(0, (ms - typing[0]) / (typing[1] - typing[0])));
               return (
                 <div key={i} style={{ position: "relative" }}>
                   <div
@@ -519,7 +527,7 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
                   >
                     <MessageBody message={message} layout={layout} theme={theme} aspect={aspect} />
                   </div>
-                  <div data-chat-typing={i} style={{ position: "absolute", left: spacing.xxs * 1.5, top: spacing.xxs, opacity: typingOpacity(progress, typing) }}>
+                  <div data-chat-typing={i} style={{ position: "absolute", left: spacing.xxs * 1.5, top: spacing.xxs, opacity: typingOpacity(theme, ms, typing, pace) }}>
                     <TypingIndicator message={message} local={local} layout={layout} theme={theme} />
                   </div>
                 </div>
@@ -543,7 +551,7 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
           }}
         >
           {cards.map((card, i) => {
-            const shown = rise(progress, cardTimes[i]!, slide, easing);
+            const shown = rise(theme, ms, cardTimes[i]!, slide, pace);
             return (
               <div
                 key={i}

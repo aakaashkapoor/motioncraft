@@ -1,0 +1,89 @@
+{
+  "title": "Motion fixture: millisecond timing, 16:9 (design v3, section D)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "TitleCard",
+      "props": { "kicker": "motioncraft v3", "title": "Motion in ms" },
+      "durationMs": 3000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "short",
+      "component": "Section",
+      "props": {
+        "headline": "Same timing",
+        "content": {
+          "component": "CardRow",
+          "props": { "cards": [{ "icon": "terminal", "title": "Write" }, { "icon": "check", "title": "Check" }, { "icon": "play", "title": "Render" }], "highlight": 2 }
+        }
+      },
+      "durationMs": 3000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "long",
+      "component": "Section",
+      "props": {
+        "headline": "Same timing",
+        "content": {
+          "component": "CardRow",
+          "props": { "cards": [{ "icon": "terminal", "title": "Write" }, { "icon": "check", "title": "Check" }, { "icon": "play", "title": "Render" }], "highlight": 2 }
+        },
+        "note": "A longer scene only holds longer"
+      },
+      "durationMs": 7000,
+      "transition": { "type": "slide" }
+    },
+    {
+      "id": "number",
+      "component": "BigNumber",
+      "props": { "value": 150, "suffix": " ms", "label": "to the first motion" },
+      "durationMs": 3500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "chat",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "launches",
+        "messages": [
+          { "author": "Maya Chen", "time": "9:41 AM", "text": "Is the launch video ready?" },
+          { "author": "Render Bot", "time": "9:42 AM", "text": "Rendered and checked.", "badge": "APP", "highlight": true }
+        ]
+      },
+      "durationMs": 8000,
+      "transition": { "type": "slide" }
+    },
+    {
+      "id": "terminal",
+      "component": "TerminalWindow",
+      "props": {
+        "title": "zsh",
+        "lines": [{ "prompt": true, "text": "npx tsx scripts/stills.ts motion.json" }, { "text": "wrote 16 stills" }]
+      },
+      "durationMs": 4500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "flow",
+      "component": "FlowDiagram",
+      "props": { "nodes": ["Prompt", "Plan", "Video"], "caption": "Built in a second" },
+      "durationMs": 3500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "handoff",
+      "component": "Handoff",
+      "props": {
+        "from": { "component": "Card", "props": { "icon": "chat", "title": "The prompt" } },
+        "to": { "component": "AppWindow", "props": { "title": "Plan", "content": { "component": "StepList", "props": { "items": ["Hook", "Steps", "Ending"] } } } },
+        "label": "plan"
+      },
+      "durationMs": 4500
+    }
+  ]
+}

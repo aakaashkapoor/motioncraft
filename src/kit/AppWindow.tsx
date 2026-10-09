@@ -2,19 +2,18 @@
 // and a centered title, or a minimal bar with just the title) over a content
 // box on the theme surface, with the theme radius, hairline border and card
 // shadow. The window fills its area (the content area by default), enters with a scale-and-rise
-// spring and fades out at the end. `shareId` lets it morph between scenes.
+// `enter` spring on the scene's lead and exits fast at the end. `shareId` lets it morph between scenes.
 // `WindowShell` is the chrome itself, shared by every window component.
 
 import type { ReactNode } from "react";
-import { interpolate } from "../engine/easing";
-import { spring } from "../engine/spring";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
 import type { Theme } from "../theme/types";
-import { themeEasing } from "./motion";
+import { useSceneTime, type SceneTime } from "./frameContext";
+import { arrive, exitOpacity } from "./motion";
 import { Slot, type SlotContent } from "./Slot";
 import type { KitProps } from "./types";
 import { windowMetrics, windowWidth } from "./windowLayout";
@@ -38,14 +37,8 @@ export interface AppWindowProps extends KitProps {
   shareId?: string;
 }
 
-/** The spring settles over this fraction of the scene. */
-const ENTER = 0.25;
-const FADE_IN = 0.12;
-const EXIT = 0.1;
 /** Scale the window starts at before it springs to full size. */
 const START_SCALE = 0.9;
-/** Resolution of the enter spring, stretched over `ENTER`. */
-const SPRING_FRAMES = 60;
 /** Toolbar height, as a multiple of the label type size. */
 const TOOLBAR_EM = 2.2;
 /** Traffic light diameter, as a multiple of the label type size. */
@@ -83,17 +76,15 @@ export function windowLayout(theme: Theme, aspect: Aspect, toolbar: boolean, are
   };
 }
 
-/** Opacity, upward offset in px and scale of the window at `progress`. Pure. */
-export function windowMotion(theme: Theme, progress: number): { opacity: number; rise: number; scale: number } {
-  const frame = Math.min(1, Math.max(0, progress / ENTER)) * SPRING_FRAMES;
-  const settled = spring({ frame, fps: SPRING_FRAMES, config: theme.motion.springs.enter, durationInFrames: SPRING_FRAMES });
-  const easing = themeEasing(theme);
-  const fadeIn = interpolate(progress, [0, FADE_IN], [0, 1], { easing });
-  const fadeOut = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
+/** Opacity, upward offset in px and scale of the window at scene time `time`: an `enter` arrival on the lead, a fast exit. Pure. */
+export function windowMotion(theme: Theme, time: SceneTime): { opacity: number; rise: number; scale: number } {
+  const { leadMs, enter } = theme.motion;
+  const { move, opacity } = arrive(theme, time.ms, leadMs);
   return {
-    opacity: Math.min(fadeIn, fadeOut),
-    rise: theme.spacing.xxl * (1 - settled),
-    scale: START_SCALE + (1 - START_SCALE) * settled,
+    opacity: Math.min(opacity, exitOpacity(theme, time, enter.ms)),
+    // The rise carries the spring's overshoot; the scale stops at 1, so the window's text never draws larger than it lays out.
+    rise: theme.spacing.xxl * (1 - move),
+    scale: START_SCALE + (1 - START_SCALE) * Math.min(1, move),
   };
 }
 
@@ -136,7 +127,7 @@ export interface WindowShellProps extends KitProps {
 /** The window chrome: frame, motion, title bar, optional toolbar and the content slot. */
 export function WindowShell({ progress, theme, aspect, area, kind, shareId, content, children, titleBar, toolbar }: WindowShellProps) {
   const layout = windowLayout(theme, aspect, toolbar !== undefined, area);
-  const { opacity, rise, scale } = windowMotion(theme, progress);
+  const { opacity, rise, scale } = windowMotion(theme, useSceneTime(progress));
   const { colors, spacing, hairline, cardShadow } = theme;
   const divider = `${hairline}px solid ${colors.border}`;
   const bar = { height: layout.titleBar, display: "flex", alignItems: "center", gap: spacing.xs, padding: `0 ${spacing.md}px`, boxSizing: "border-box" } as const;
