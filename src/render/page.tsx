@@ -15,8 +15,11 @@ import { frameSize } from "../layout/frame";
 import type { Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { transitionStyle } from "../transitions";
+import { morphEndpoints, morphProgress, sharedIds, type BoundaryMeasurement, type SharedMeasurements } from "../transitions/shared";
 import { createPageEncoder, type PageEncoder } from "./encode";
 import { domImages, pageGate, waitUntilReady } from "./ready";
+import { SHARED_SCENE_ATTRIBUTE, SharedMorph } from "./SharedMorph";
+import { readSharedBoxes } from "./sharedMeasure";
 
 /** Everything the page needs, serialized into the HTML as JSON. */
 export interface PageInput {
@@ -36,20 +39,25 @@ export interface FrameProps {
   theme: Theme;
   timeline: Timeline;
   frame: number;
+  /**
+   * Shared-element boxes per scene boundary, measured in the page. Where a
+   * transition has some, its shared elements morph; without, every element
+   * uses the scene presentation.
+   */
+  shared?: SharedMeasurements;
 }
 
-/** One scene's component and caption. During a transition, wrapped in its presentation's style. */
-function SceneLayer({
-  storyboard,
-  theme,
-  fps,
-  scene: active,
-}: {
+interface SceneLayerProps {
   storyboard: Storyboard;
   theme: Theme;
   fps: number;
   scene: ActiveScene;
-}) {
+  /** Hide this scene's shared originals: a morph draws them. */
+  hideShared?: boolean;
+}
+
+/** One scene's component and caption. During a transition, wrapped in its presentation's style. */
+function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false }: SceneLayerProps) {
   const scene = storyboard.scenes[active.sceneIndex]!;
   const Component = Object.hasOwn(kit, scene.component) ? kit[scene.component] : undefined;
   if (Component === undefined) {
@@ -71,32 +79,70 @@ function SceneLayer({
   );
   if (active.transition === undefined) return content;
   const style = transitionStyle(active.transition, frameSize(aspect));
-  return <div style={{ position: "absolute", inset: 0, ...style }}>{content}</div>;
+  const marker = hideShared ? { [SHARED_SCENE_ATTRIBUTE]: "" } : {};
+  return (
+    <div {...marker} style={{ position: "absolute", inset: 0, ...style }}>
+      {content}
+    </div>
+  );
+}
+
+/** The boundary a frame's transition crosses, and the shared ids it can morph, if any. */
+function morphAt(info: ReturnType<typeof frameAt>, shared: SharedMeasurements | undefined) {
+  if (info.pair === undefined || shared === undefined) return undefined;
+  const boundary = info.sceneIndex - 1;
+  const measurement = shared.get(boundary);
+  if (measurement === undefined) return undefined;
+  const ids = sharedIds(measurement.from, measurement.to);
+  return ids.length === 0 ? undefined : { boundary, measurement, ids };
 }
 
 /**
  * Exactly what is on screen at `frame`: the ground, then each scene's
  * component and caption. During a transition both scenes are stacked, the
- * incoming one on top, over one shared ground.
+ * incoming one on top, over one shared ground; elements the two scenes share
+ * (see `shared`) are drawn once, morphing, above both.
  */
-export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
+export function Frame({ storyboard, theme, timeline, frame, shared }: FrameProps) {
   const info = frameAt(timeline, frame);
-  const { width, height } = frameSize(storyboard.aspect);
+  const size = frameSize(storyboard.aspect);
+  const morph = morphAt(info, shared);
+  const transition = morph === undefined ? undefined : timeline.transitions[morph.boundary]!;
 
   return (
     <div
       style={{
         position: "relative",
-        width,
-        height,
+        width: size.width,
+        height: size.height,
         overflow: "hidden",
         backgroundColor: theme.colors.ground,
       }}
     >
       <Ground theme={theme} aspect={storyboard.aspect} />
       {scenesOnScreen(info).map((scene) => (
-        <SceneLayer key={scene.sceneId} storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} />
+        <SceneLayer key={scene.sceneId} storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} hideShared={morph !== undefined} />
       ))}
+      {morph !== undefined && (
+        <SharedMorph
+          ids={morph.ids}
+          measurement={morph.measurement}
+          t={morphProgress(info.transition!.transitionProgress, transition!.frames, timeline.fps)}
+          endpoints={morphEndpoints(timeline, morph.boundary)}
+          size={size}
+          renderScene={(scene) => <SceneLayer storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} />}
+        />
+      )}
+    </div>
+  );
+}
+
+/** One scene alone, at rest (no presentation), on a frame-sized box: what shared elements are measured on. */
+function MeasureFrame({ storyboard, theme, fps, scene }: { storyboard: Storyboard; theme: Theme; fps: number; scene: ActiveScene }) {
+  const { width, height } = frameSize(storyboard.aspect);
+  return (
+    <div style={{ position: "relative", width, height, overflow: "hidden" }}>
+      <SceneLayer storyboard={storyboard} theme={theme} fps={fps} scene={scene} />
     </div>
   );
 }
@@ -140,24 +186,69 @@ export function mountPage(): void {
   // Load every bundled face up front: a face no frame has used yet must not be
   // missing (or silently replaced) when one first does.
   const fontsHandle = pageGate.delayRender("bundled fonts");
+  let fontsLoaded = false;
   Promise.all([...document.fonts].map((face) => face.load())).then(
-    () => pageGate.continueRender(fontsHandle),
+    () => {
+      fontsLoaded = true;
+      pageGate.continueRender(fontsHandle);
+    },
     (error: unknown) => pageGate.cancelRender(new Error(`a bundled font failed to load: ${String(error)}`)),
   );
 
+  // Shared elements are measured on an invisible stage beside the frame: A at
+  // the start of the transition and B at its end, once per boundary. Boxes
+  // measured before the fonts load are used but not kept, and the frame is
+  // redrawn once they have (see `waitUntilReady`).
+  const stage = document.createElement("div");
+  stage.style.cssText = "position:absolute;left:0;top:0;visibility:hidden;pointer-events:none";
+  document.body.append(stage);
+  const stageRoot = createRoot(stage, {
+    onUncaughtError(error) {
+      renderError = error;
+    },
+  });
+  const measured = new Map<number, BoundaryMeasurement>();
+  let provisional = false;
+  const measureScene = (scene: ActiveScene) => {
+    flushSync(() => stageRoot.render(<MeasureFrame storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} />));
+    if (renderError !== undefined) throw renderError;
+    return readSharedBoxes(stage.firstElementChild!);
+  };
+  const sharedFor = (frame: number): SharedMeasurements => {
+    const info = frameAt(timeline, frame);
+    if (info.pair === undefined) return measured;
+    const boundary = info.sceneIndex - 1;
+    if (measured.has(boundary)) return measured;
+    const [from, to] = morphEndpoints(timeline, boundary);
+    const measurement = { from: measureScene(from), to: measureScene(to) };
+    flushSync(() => stageRoot.render(null));
+    if (fontsLoaded) return measured.set(boundary, measurement);
+    provisional = true;
+    return new Map([...measured, [boundary, measurement]]);
+  };
+
+  let current = 0;
+  const renderFrame = (frame: number) => {
+    renderError = undefined;
+    current = frame;
+    provisional = false;
+    const shared = sharedFor(frame);
+    // Commit synchronously so the DOM shows `frame` when this returns.
+    flushSync(() => {
+      root.render(<Frame storyboard={storyboard} theme={theme} timeline={timeline} frame={frame} shared={shared} />);
+    });
+    if (renderError !== undefined) throw renderError;
+  };
+
   window.motioncraft = {
     totalFrames: timeline.totalFrames,
-    renderFrame(frame) {
-      renderError = undefined;
-      // Commit synchronously so the DOM shows `frame` when this returns.
-      flushSync(() => {
-        root.render(<Frame storyboard={storyboard} theme={theme} timeline={timeline} frame={frame} />);
-      });
-      if (renderError !== undefined) throw renderError;
-    },
-    waitUntilReady(timeoutMs) {
+    renderFrame,
+    async waitUntilReady(timeoutMs) {
       const sources = { fonts: () => document.fonts.ready, images: () => domImages(container) };
-      return waitUntilReady(pageGate, sources, timeoutMs);
+      await waitUntilReady(pageGate, sources, timeoutMs);
+      if (!provisional) return;
+      renderFrame(current);
+      await waitUntilReady(pageGate, sources, timeoutMs);
     },
     delayRender: (label) => pageGate.delayRender(label),
     continueRender: (handle) => pageGate.continueRender(handle),

@@ -12,6 +12,7 @@ import { FeatureList } from "./FeatureList";
 import { Caption, captionLimits } from "./Caption";
 import { FlowDiagram } from "./FlowDiagram";
 import { Section } from "./Section";
+import { Pinned } from "./Pinned";
 import { StepList } from "./StepList";
 import { CodeWindow, TerminalWindow } from "./windows";
 import { TitleCard } from "./TitleCard";
@@ -52,4 +53,5 @@ export const kit: Record<string, KitComponent> = {
   FeatureList: asKitComponent(FeatureList),
   VideoClip: asKitComponent(VideoClip),
   Image: asKitComponent(Image),
+  Pinned: asKitComponent(Pinned),
 };

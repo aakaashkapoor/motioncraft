@@ -8,3 +8,14 @@ export {
   ZOOM_OUT_SCALE,
   transitionStyle,
 } from "./presentation";
+export {
+  contentFade,
+  interpolateSharedBox,
+  morphEndpoints,
+  morphProgress,
+  sharedIds,
+  type BoundaryMeasurement,
+  type SharedBox,
+  type SharedBoxes,
+  type SharedMeasurements,
+} from "./shared";
