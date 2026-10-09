@@ -1,0 +1,20 @@
+{
+  "title": "BigNumber kit component",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "neutral",
+  "scenes": [
+    {
+      "id": "revenue",
+      "component": "BigNumber",
+      "props": { "value": 1250000, "prefix": "$", "label": "Revenue this year" },
+      "durationMs": 4000
+    },
+    {
+      "id": "growth",
+      "component": "BigNumber",
+      "props": { "value": 37.5, "suffix": "%", "decimals": 1, "label": "Growth since launch" },
+      "durationMs": 4000
+    }
+  ]
+}

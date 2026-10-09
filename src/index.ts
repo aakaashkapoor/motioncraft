@@ -41,3 +41,4 @@ export {
   titleCardStep,
 } from "./kit";
 export type { CaptionLimits, CaptionProps, KitComponent, KitProps, TitleCardProps } from "./kit";
+export { BigNumber, bigNumberStep, countedValue, formatBigNumber, type BigNumberProps } from "./kit/BigNumber";
