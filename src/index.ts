@@ -149,3 +149,4 @@ export { cancelRender, continueRender, delayRender, RenderNotReadyError, READY_T
 export { Ground, groundStyle, type GroundProps } from "./kit";
 export * from "./kit/windows";
 export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMessage, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";
+export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps } from "./kit/Arrow";

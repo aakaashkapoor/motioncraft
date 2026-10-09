@@ -2,6 +2,7 @@
 // scene uses in its `component` field.
 
 import { AppWindow } from "./AppWindow";
+import { Arrow } from "./Arrow";
 import { BigNumber } from "./BigNumber";
 import { BrowserWindow } from "./BrowserWindow";
 import { ChatWindow } from "./ChatWindow";
@@ -38,4 +39,5 @@ export const kit: Record<string, KitComponent> = {
   TerminalWindow: asKitComponent(TerminalWindow),
   CodeWindow: asKitComponent(CodeWindow),
   ChatWindow: asKitComponent(ChatWindow),
+  Arrow: asKitComponent(Arrow),
 };
