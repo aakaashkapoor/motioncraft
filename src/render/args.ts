@@ -1,4 +1,4 @@
-// Command-line arguments for scripts/stills.ts.
+// Command-line arguments for scripts/stills.ts and scripts/render.ts.
 
 import { parseArgs } from "node:util";
 import { parseFrameList } from "./frames";
@@ -36,4 +36,28 @@ export function parseStillsArgs(argv: readonly string[]): StillsArgs {
     out: values.out,
     frames: values.frames === undefined ? "per-scene" : parseFrameList(values.frames),
   };
+}
+
+export const RENDER_USAGE = "usage: npx tsx scripts/render.ts <storyboard.json> --out <file.mp4>";
+
+export interface RenderArgs {
+  storyboard: string;
+  out: string;
+}
+
+/** Parses the arguments for rendering a storyboard to MP4. */
+export function parseRenderArgs(argv: readonly string[]): RenderArgs {
+  const { values, positionals } = parseArgs({
+    args: [...argv],
+    allowPositionals: true,
+    options: { out: { type: "string" } },
+  });
+
+  if (positionals.length !== 1) throw new Error(`expected one storyboard file
+${RENDER_USAGE}`);
+  if (values.out === undefined || values.out === "") throw new Error(`--out <file.mp4> is required
+${RENDER_USAGE}`);
+  if (!values.out.toLowerCase().endsWith(".mp4")) throw new Error(`--out must name an .mp4 file
+${RENDER_USAGE}`);
+  return { storyboard: positionals[0]!, out: values.out };
 }

@@ -17,6 +17,14 @@ export function checkComponents(input: PageInput): void {
   }
 }
 
+/**
+ * Where the page is served from. Nothing listens here: Playwright answers the
+ * request itself (see `withRenderPage`). An https origin makes the page a
+ * secure context, which WebCodecs (`VideoEncoder`) requires; `setContent`
+ * leaves the page on about:blank, where it is missing.
+ */
+const PAGE_URL = "https://motioncraft.localhost/render.html";
+
 /** Loads the render page at the frame's size, runs `use`, then closes the browser. */
 export async function withRenderPage<T>(input: PageInput, use: (page: Page) => Promise<T>): Promise<T> {
   const html = await bundlePage(input);
@@ -25,7 +33,8 @@ export async function withRenderPage<T>(input: PageInput, use: (page: Page) => P
     const page = await browser.newPage({ viewport: frameSize(input.storyboard.aspect), deviceScaleFactor: 1 });
     const pageErrors: Error[] = [];
     page.on("pageerror", (error) => pageErrors.push(error));
-    await page.setContent(html);
+    await page.route(PAGE_URL, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: html }));
+    await page.goto(PAGE_URL);
     if (pageErrors.length > 0) throw new Error(`render page failed to load: ${pageErrors[0]!.message}`);
     await page.waitForFunction(() => window.motioncraft !== undefined);
     return await use(page);

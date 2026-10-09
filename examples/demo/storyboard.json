@@ -1,0 +1,26 @@
+{
+  "title": "motioncraft in motion",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "neutral",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "TitleCard",
+      "props": { "title": "Drawn in code" },
+      "durationMs": 2300
+    },
+    {
+      "id": "local",
+      "component": "TitleCard",
+      "props": { "title": "Rendered locally" },
+      "durationMs": 2000
+    },
+    {
+      "id": "mp4",
+      "component": "TitleCard",
+      "props": { "title": "Straight to MP4" },
+      "durationMs": 2300
+    }
+  ]
+}
