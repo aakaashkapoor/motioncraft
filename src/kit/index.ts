@@ -5,6 +5,7 @@ import { BigNumber } from "./BigNumber";
 import { Caption, captionLimits } from "./Caption";
 import { FlowDiagram } from "./FlowDiagram";
 import { StepList } from "./StepList";
+import { CodeWindow, TerminalWindow } from "./windows";
 import { TitleCard } from "./TitleCard";
 import { asKitComponent, type KitComponent } from "./types";
 
@@ -28,4 +29,6 @@ export const kit: Record<string, KitComponent> = {
   BigNumber: asKitComponent(BigNumber),
   FlowDiagram: asKitComponent(FlowDiagram),
   StepList: asKitComponent(StepList),
+  TerminalWindow: asKitComponent(TerminalWindow),
+  CodeWindow: asKitComponent(CodeWindow),
 };

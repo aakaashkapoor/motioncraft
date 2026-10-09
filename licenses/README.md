@@ -11,6 +11,7 @@ license and author. Everything here must allow commercial use and modification
 | react     | 19.3.0  | MIT     | Meta Platforms, Inc. â€” https://github.com/facebook/react |
 | react-dom | 19.3.0  | MIT     | Meta Platforms, Inc. â€” https://github.com/facebook/react |
 | scheduler | 0.28.0  | MIT     | Meta Platforms, Inc. â€” https://github.com/facebook/react (dependency of react-dom) |
+| prismjs   | 1.30.0  | MIT     | Lea Verou and contributors — https://github.com/PrismJS/prism (syntax highlighting for `CodeWindow`) |
 
 ## Tooling (development, rendering driver)
 
