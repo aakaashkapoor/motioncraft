@@ -5,7 +5,7 @@
 import { HEX_COLOR } from "../theme/color";
 import { SHOT_FILL } from "./shots";
 import { lightTheme } from "../theme/light";
-import { ACCENT_INTENSITIES, CURVE_NAMES, GROUND_STYLES } from "../theme/types";
+import { ACCENT_INTENSITIES, CAPTION_HIGHLIGHTS, CURVE_NAMES, GROUND_STYLES } from "../theme/types";
 import { TRANSITION_TYPES } from "./types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -38,6 +38,7 @@ const ENUMS: Record<string, readonly string[]> = {
   "ground.style": GROUND_STYLES,
   accentIntensity: ACCENT_INTENSITIES,
   "motion.transition": TRANSITION_TYPES,
+  "caption.highlight": CAPTION_HIGHLIGHTS,
 };
 
 /** The v3 token for each v2 motion field, named when a storyboard still uses one. */

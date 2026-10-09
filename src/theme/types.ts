@@ -308,6 +308,19 @@ export interface TypingToken extends MotionToken {
 }
 
 /**
+ * Word-highlight captions (design v3, life #4): each page enters over `ms`
+ * from `fromScale` and `risePx` below its place; the word being spoken turns
+ * accent and scales to `wordScale` over `wordMs` (4 frames at 30 fps), or over
+ * half the word when that is shorter, on `fx.fast`'s curve.
+ */
+export interface CaptionMotionToken extends MotionToken {
+  fromScale: number;
+  risePx: number;
+  wordMs: number;
+  wordScale: number;
+}
+
+/**
  * Motion by use (design v3, table D). Every kit timing is milliseconds from
  * the scene clock; a scene's length decides only how long the hold lasts.
  * Position and scale may overshoot (springs, `enter`'s bezier); opacity and
@@ -365,6 +378,22 @@ export interface ThemeMotion {
   typing: TypingToken;
   /** A band of light crossing an element once: a card lighting up, a number landing. */
   shine: ShineToken;
+  /** A caption page entering and the spoken word lighting up. */
+  caption: CaptionMotionToken;
+}
+
+export const CAPTION_HIGHLIGHTS = ["color", "plate"] as const;
+/** How the word being spoken stands out: in the accent colour, or on a rounded accent plate. */
+export type CaptionHighlight = (typeof CAPTION_HIGHLIGHTS)[number];
+
+/** How word-highlight captions look (design v3, life #4); `motion.caption` moves them. */
+export interface ThemeCaption {
+  highlight: CaptionHighlight;
+  /** The plate behind the spoken word reaches this far past it, in px; its corners are `radius.sm`. */
+  platePadY: number;
+  platePadX: number;
+  /** The punch style's dark outline, in px (14-20), painted under the letters. */
+  strokePx: number;
 }
 
 export interface Theme {
@@ -381,6 +410,7 @@ export interface Theme {
   /** Width of hairline borders, in px. */
   hairline: number;
   motion: ThemeMotion;
+  caption: ThemeCaption;
   /** The 9:16 safe profile layout keeps clear of (design v3, section C). Set by the storyboard's `safe`. */
   safe: SafeProfile;
 }

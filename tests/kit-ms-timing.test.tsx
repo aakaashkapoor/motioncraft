@@ -83,13 +83,15 @@ const STILL = new Set(["VideoClip", "Image"]);
 
 /**
  * Life, not entrance: the idle caret blinks for as long as the terminal is on
- * screen, and a drawn connector's dot flows, lighting nodes, until the exit.
+ * screen, a drawn connector's dot flows, lighting nodes, until the exit, and
+ * the caption lights each word as the narration, spread over the scene, says it.
  */
 const normalize = (html: string) =>
   html
     .replace(/(data-terminal-caret="\d+" style="[^"]*?)opacity:[^;"]*;?/g, "$1")
     .replace(/(<g data-flow-dot="")[^>]*>/g, "$1>")
-    .replace(/(data-flow-glow="" style="[^"]*?)opacity:[^;"]*;?/g, "$1");
+    .replace(/(data-flow-glow="" style="[^"]*?)opacity:[^;"]*;?/g, "$1")
+    .replace(/(data-caption-word="\d+" style=")[^"]*"/g, '$1"');
 
 function draw(name: string, aspect: Aspect, frames: number, frame: number): string {
   const Component = kit[name]!;

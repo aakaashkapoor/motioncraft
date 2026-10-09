@@ -137,10 +137,10 @@ of the frame than a shot may.
 
 A storyboard is one JSON document. Top-level fields: `title`, `aspect`
 (`"9:16"`, the primary format, or `"16:9"`), `fps` (default 30), `theme`
-(default `"light"`), the theme fields in section 3, `safe` (below), and
-`scenes`. Each scene has an `id` (unique), a `component` (a kit name from
-section 5), `props`, and optionally `narration`, `durationMs`, `transition`
-and camera `shots` (section 1).
+(default `"light"`), the theme fields in section 3, `safe` and
+`captionStyle` (below), and `scenes`. Each scene has an `id` (unique), a
+`component` (a kit name from section 5), `props`, and optionally `narration`,
+`durationMs`, `transition` and camera `shots` (section 1).
 
 ```json
 {
@@ -206,6 +206,25 @@ buttons. In 9:16, `safe` picks which platform UI the frame keeps clear of:
 
 ```json
 { "safe": "crosspost" }
+```
+
+### Captions
+
+Narration is burned in as a caption, a page of a few words at a time, centered
+in the caption band. The word being spoken lights up in the accent and scales
+up a touch, and each page pops in (scale 0.9 to 1, rising 24 px, in 170 ms).
+Until there is a voice track, the words are spread evenly over the scene, each
+taking time in proportion to its length. `captionStyle` picks the look:
+
+- `"standard"` (the default): pages of 3-6 words, one or two lines, in the
+  ramp's `subtitle` at bold, on a plate of the ground color. For explainers.
+- `"punch"`: pages of 1-3 big uppercase words on one line, in the ramp's
+  `headline` at heavy, white letters on a dark outline. For high-energy hooks.
+  A word too long for the line shrinks to fit.
+- `"off"`: no caption; the narration is still the scene's length.
+
+```json
+{ "captionStyle": "punch" }
 ```
 
 ## 3. Theme and overrides
@@ -291,7 +310,13 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     `"expoIn"`, `"expoInOut"`, `"sineInOut"`, `"power4InOut"`), a
     cubic bezier `[x1, y1, x2, y2]`, or a spring `{ "stiffness": 170,
     "damping": 18 }`. Position and scale may overshoot; opacity and color
-    never do.
+    never do. `caption` moves the captions: a page enters over `ms` from
+    `fromScale` and `risePx` below its place, and the spoken word scales to
+    `wordScale` over `wordMs` (or half the word, if shorter).
+  - `caption`: how the spoken word stands out, `highlight` `"color"` (the
+    default: the accent color) or `"plate"` (a rounded accent plate behind it,
+    reaching `platePadY` and `platePadX` px past the word); `strokePx`, the
+    punch style's outline (16).
 
 ### The type ramp
 
@@ -452,8 +477,10 @@ fits (`role` starts it lower: `display`, `headline` or `title`).
 
 #### `Caption`
 
-One line of large text, paged when long. Narration is captioned
-automatically; use `Caption` only for a text-only beat.
+Text a page of a few words at a time, the word being spoken lit in the accent
+(see "Captions" in section 2), with an optional `captionStyle` (`"standard"`
+or `"punch"`). Narration is captioned automatically; use `Caption` only for a
+text-only beat.
 
 ```json
 {
