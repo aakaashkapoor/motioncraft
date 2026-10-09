@@ -4,6 +4,7 @@
 import { BigNumber } from "./BigNumber";
 import { Caption, captionLimits } from "./Caption";
 import { FlowDiagram } from "./FlowDiagram";
+import { StepList } from "./StepList";
 import { TitleCard } from "./TitleCard";
 import { asKitComponent, type KitComponent } from "./types";
 
@@ -18,10 +19,12 @@ export type { TitleCardProps } from "./TitleCard";
 export type { KitComponent, KitProps } from "./types";
 export { presence, themeEasing } from "./motion";
 export { asKitComponent } from "./types";
+export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./StepList";
 
 export const kit: Record<string, KitComponent> = {
   TitleCard: asKitComponent(TitleCard),
   Caption: asKitComponent(Caption),
   BigNumber: asKitComponent(BigNumber),
   FlowDiagram: asKitComponent(FlowDiagram),
+  StepList: asKitComponent(StepList),
 };
