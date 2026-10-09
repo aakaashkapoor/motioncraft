@@ -168,9 +168,17 @@ export interface ExitToken {
   curve: MotionCurve;
 }
 
-/** A marker sweep, starting `delayMs` after the text it marks lands. */
+/**
+ * A marker sweep, starting `delayMs` after the text it marks lands (design
+ * v3, life #6): a bar of the accent at `opacity` behind the word, tilted up
+ * to the right by `tiltDeg`, or an underline `underlinePx` thick.
+ */
 export interface MarkToken extends MotionToken {
   delayMs: number;
+  tiltDeg: number;
+  /** Opacity of the bar's accent, 0..1. */
+  opacity: number;
+  underlinePx: number;
 }
 
 /** The camera's drift over a whole scene: scale 1 -> `scale`. */
@@ -221,6 +229,8 @@ export interface ThemeMotion {
   fx: MotionToken;
   /** A word or line rising in. */
   "text.in": TextInToken;
+  /** A headline's characters rising in one by one (design v3, life #3). */
+  "text.char": StaggeredToken;
   /** Words leaving. */
   "text.out": StaggeredToken;
   /** Cards, windows and chips arriving. */

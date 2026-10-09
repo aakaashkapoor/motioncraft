@@ -20,6 +20,8 @@ import { asKitComponent, type KitComponent } from "./types";
 import { Image } from "./Image";
 import { VideoClip } from "./VideoClip";
 import { Handoff } from "./Handoff";
+import { Headline } from "./Headline";
+import { SceneFrame } from "./SceneFrame";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -56,4 +58,6 @@ export const kit: Record<string, KitComponent> = {
   Image: asKitComponent(Image),
   Pinned: asKitComponent(Pinned),
   Handoff: asKitComponent(Handoff),
+  Headline: asKitComponent(Headline),
+  SceneFrame: asKitComponent(SceneFrame),
 };

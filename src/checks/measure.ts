@@ -3,7 +3,7 @@
 // the other files of this folder and run in Node.
 
 import type { Rect } from "../layout/frame";
-import { TYPE_FIT_ATTRIBUTE } from "../layout/type";
+import { TEXT_PIECES_ATTRIBUTE, TYPE_FIT_ATTRIBUTE } from "../layout/type";
 import { union } from "./geometry";
 import type { FrameMeasurement, MeasuredBlock, MeasuredKey, MeasuredText } from "./types";
 
@@ -70,18 +70,31 @@ function textRect(node: Text, origin: DOMRect): Rect | undefined {
   return union(lines.map((box) => toRect(box, origin)));
 }
 
+/** Text nodes inside `el`, at any depth. */
+function allText(el: Element): Text[] {
+  const nodes: Text[] = [];
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
+  return nodes;
+}
+
 function measureText(el: Element, root: Element, origin: DOMRect): MeasuredText | undefined {
-  const nodes = [...el.childNodes].filter((node): node is Text => node instanceof Text && node.data.trim() !== "");
+  // Text split into pieces is measured once, as a whole, from the element that holds the pieces.
+  if (el.parentElement?.closest(`[${TEXT_PIECES_ATTRIBUTE}]`)) return undefined;
+  const pieces = el.hasAttribute(TEXT_PIECES_ATTRIBUTE);
+  const nodes = (pieces ? allText(el) : [...el.childNodes].filter((node): node is Text => node instanceof Text)).filter((node) => node.data.trim() !== "");
   if (nodes.length === 0) return undefined;
   const rect = union(nodes.map((node) => textRect(node, origin)).filter((r): r is Rect => r !== undefined));
   if (rect === undefined) return undefined;
 
   const chain = lineage(el, root);
+  // A whole of pieces is only as visible as its faintest piece.
+  const opacity = pieces ? Math.min(...nodes.map((node) => effectiveOpacity(lineage(node.parentElement!, root)))) : effectiveOpacity(chain);
   return {
-    text: nodes.map((node) => node.data).join(" ").replace(/\s+/g, " ").trim(),
+    text: nodes.map((node) => node.data).join(pieces ? "" : " ").replace(/\s+/g, " ").trim(),
     rect,
     clips: chain.filter(clipsContent).map((node) => paddingBox(node, origin)),
-    opacity: effectiveOpacity(chain),
+    opacity,
     color: getComputedStyle(el).color,
     backgrounds: backgroundsUnder(el, rect, origin, chain),
     caption: el.closest(`[${CAPTION_ATTRIBUTE}]`) !== null,

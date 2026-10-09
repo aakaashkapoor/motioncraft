@@ -14,10 +14,11 @@ import { windowWidth } from "../src/kit/windowLayout";
 const theme = neutralTheme;
 
 /**
- * Kit components that are not nested content: the scene layouts (Section, and
- * Pinned, which docks other components), and the caption, which owns the caption band.
+ * Kit components that are not nested content: the scene layouts (Section,
+ * SceneFrame, and Pinned, which docks other components), and the caption,
+ * which owns the caption band.
  */
-const NOT_NESTED = ["Section", "Pinned", "Caption"];
+const NOT_NESTED = ["Section", "SceneFrame", "Pinned", "Caption"];
 
 const FIXTURES: Record<Aspect, string> = { "9:16": "section-nesting.json", "16:9": "section-nesting-wide.json" };
 /** 16:9 puts narrow content beside the headline; 9:16 puts it below. */

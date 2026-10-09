@@ -457,6 +457,19 @@ describe("runChecks (integration)", { timeout: 60_000 }, () => {
     expect(new Set(layout.map((p) => p.frame)).size).toBe(3);
   });
 
+  it("reads a headline rising character by character as its words, clear of its clip", async (ctx) => {
+    const sb = storyboard({
+      title: "Chars",
+      aspect: "9:16",
+      theme: "light",
+      scenes: [{ id: "chars", component: "Headline", props: { text: "Made for agents", motion: "chars", mark: "agents" }, durationMs: 2400 }],
+    });
+    // Three words need 2.25 s; read as thirteen characters they would need 4.75 s.
+    const result = await check(ctx, sb, lightTheme);
+    expect(result.problems.map(formatProblem)).toEqual([]);
+    expect(result.warnings.map(formatProblem)).toEqual([]);
+  });
+
   it("measures real colors and timing in the page", async (ctx) => {
     const sb = await loadStoryboard("..", "examples", "hello", "storyboard.json");
     const dim: Theme = { ...neutralTheme, colors: { ...neutralTheme.colors, textMuted: "#2a2d33" } };

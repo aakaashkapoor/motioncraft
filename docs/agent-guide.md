@@ -196,8 +196,11 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     `leadMs` (when a scene's first motion starts, 150), `cascadeMs` (when a
     cascade has landed, 1200), and one token per kind of motion (design v3,
     table D), each with an `ms` duration and a `curve`: `fx.fast`, `fx`,
-    `text.in`, `text.out`, `enter` (cards, windows, chips; with `staggerMs`),
-    `enter.hero`, `pop`, `count`, `mark`, `shot`, `beat`; `exit` takes a
+    `text.in`, `text.char` (a headline's characters, with `staggerMs`),
+    `text.out`, `enter` (cards, windows, chips; with `staggerMs`),
+    `enter.hero`, `pop`, `count`, `mark` (the marker sweep: `delayMs` after
+    the text lands, a bar at `opacity` tilted `tiltDeg`, or an underline
+    `underlinePx` thick), `shot`, `beat`; `exit` takes a
     `share` of the entry within `minMs`-`maxMs`; `flow` is the dot that runs
     along a drawn connector (one trip per `ms`, a `dotPx` dot, and a
     `glowPx` ring of the accent at `glowOpacity` on the node it reaches;
@@ -324,7 +327,9 @@ Every component takes the storyboard props listed here; `progress`, `theme`,
 #### `TitleCard`
 
 A title with an optional `kicker` above and `subtitle` below. Openers, chapter
-cards and endings.
+cards and endings. The lines land one after another; the title lands as a
+whole unless `titleMotion` says `"words"` or `"chars"` (see `Headline`), and
+takes `emphasis`, `mark` and `markStyle` like a `Headline`.
 
 ```json
 {
@@ -332,6 +337,32 @@ cards and endings.
   "component": "TitleCard",
   "props": { "kicker": "Field notes", "title": "Ship on Fridays", "subtitle": "Without the fear" },
   "narration": "Here is how we ship on Fridays without the fear."
+}
+```
+
+#### `Headline`
+
+One line of big text on its own: a hook, an end line, or a statement in
+another component's slot. Set at `hero` and stepped down the ramp until it
+fits (`role` starts it lower: `display`, `headline` or `title`).
+
+- `motion`: how it lands. `"whole"` (default) rises and fades in as one line;
+  `"words"` rises word by word through a clipped line, each word clearing a
+  blur, for hooks and end cards; `"chars"` rises character by character.
+  Words leave upward at the end of the scene.
+- `emphasis`: one or two words set in the accent, as a phrase (`"a prompt"`)
+  or a list (`["Ship", "Friday"]`).
+- `mark`: one key word that an accent bar sweeps under once the text has
+  landed; `markStyle` `"bar"` (default) or `"underline"`. One mark per scene,
+  never on an emphasized word. `Section`, `SceneFrame` and `TitleCard` take
+  the same three props for their headline.
+
+```json
+{
+  "id": "hook",
+  "component": "Headline",
+  "props": { "text": "Videos from a prompt", "motion": "words", "emphasis": "prompt" },
+  "narration": "Videos, from a single prompt."
 }
 ```
 
@@ -398,7 +429,10 @@ lights up, one node at a time, for as long as the scene holds.
 The standard frame for explanatory scenes: an optional `eyebrow`, a heavy
 `headline`, a `content` slot holding any component, and an optional `note`.
 Content sits beside the headline in 16:9 and below it in 9:16;
-`"contentWidth": "wide"` gives it more room in 16:9.
+`"contentWidth": "wide"` gives it more room in 16:9. The headline rises word
+by word; `headlineMotion` (`"whole"`, `"words"`, `"chars"`), `emphasis`,
+`mark` and `markStyle` work as in `Headline`. For the reference look, with
+the header centered on top in both aspects, use `SceneFrame`.
 
 ```json
 {
@@ -411,6 +445,34 @@ Content sits beside the headline in 16:9 and below it in 9:16;
     "note": "About four minutes in total"
   },
   "narration": "Then every suite runs in parallel, in about four minutes."
+}
+```
+
+#### `SceneFrame`
+
+The scene frame of the reference look: a grey `eyebrow` (sentence case) and a
+bold `headline` centered at the top, in the same place on every scene; the
+`content` component centered in the room below; and a takeaway `footer`
+centered at the bottom. The same in 9:16 and 16:9. The header lands first (the
+headline as a whole by default), the content builds as the headline lands,
+then the footer lands. `headlineMotion`, `emphasis`, `mark` and `markStyle`
+work as in `Headline`. Give every content scene of a video the same frame.
+
+```json
+{
+  "id": "how",
+  "component": "SceneFrame",
+  "props": {
+    "eyebrow": "How it works",
+    "headline": "Three steps to a video",
+    "content": {
+      "component": "CardRow",
+      "props": { "cards": [{ "icon": "chat", "title": "Prompt" }, { "icon": "code", "title": "Plan" }, { "icon": "play", "title": "Render" }] }
+    },
+    "footer": "All on your machine",
+    "mark": "video"
+  },
+  "narration": "Three steps: a prompt, a plan and a render, all on your machine."
 }
 ```
 

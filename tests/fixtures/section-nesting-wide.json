@@ -375,6 +375,25 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "headline",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A statement in the slot",
+        "content": {
+          "component": "Headline",
+          "props": {
+            "text": "Videos from a prompt",
+            "motion": "words",
+            "emphasis": "prompt",
+            "mark": "Videos"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }
