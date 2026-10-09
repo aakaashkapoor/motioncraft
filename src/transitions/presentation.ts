@@ -2,9 +2,14 @@
 // one scene, from its transition state (design v2, section 3). Pure, so the
 // page stays deterministic and the curves are easy to test.
 //
-// slide and zoomBlur split the transition: the outgoing scene moves over the
-// first 60% with an ease-in, the incoming one over the last 60% with an
-// ease-out, and the two crossfade in the middle, so the cut lands mid-motion.
+// zoomBlur splits the transition: the outgoing scene moves over the first 60%
+// with an ease-in, the incoming one over the last 60% with an ease-out, and the
+// two crossfade in the middle, so the cut lands mid-motion.
+//
+// slide and fade never show two half-visible scenes (a muddy double exposure).
+// slide cuts the curve: the outgoing scene accelerates away and is gone 28% in;
+// the incoming one enters there at 0.35 opacity, already moving, and is solid
+// by 60%. fade dips through the ground: out by 55%, in from 45%.
 
 import type { CSSProperties } from "react";
 import { easeInOutCubic, expoIn, expoOut } from "../engine/easing";
@@ -28,6 +33,18 @@ const OUT_WINDOW: [number, number] = [0, 0.6];
 const IN_WINDOW: [number, number] = [0.4, 1];
 /** Where the two sides crossfade. */
 const FADE_WINDOW: [number, number] = [0.4, 0.6];
+
+/** slide: the outgoing scene is gone, and the incoming one enters, at this progress. */
+const SLIDE_CUT = 0.28;
+/** slide: the incoming scene's opacity when it enters, and the progress where it is solid. */
+const SLIDE_IN_OPACITY = 0.35;
+const SLIDE_IN_SOLID = 0.6;
+/** fade: the outgoing scene is gone by FADE_OUT_END; the incoming one starts at FADE_IN_START. */
+const FADE_OUT_END = 0.55;
+const FADE_IN_START = 0.45;
+
+const easeInCubic = (t: number) => t ** 3;
+const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 
 const round = (value: number, places = 2) => {
   const factor = 10 ** places;
@@ -54,12 +71,20 @@ const AXIS: Record<SlideDirection, { x: number; y: number }> = {
 
 function slide(state: SceneTransitionState, { width, height }: Size): CSSProperties {
   const axis = AXIS[state.slideDirection];
-  const t = motion(state);
-  // Outgoing: 0 -> -distance along the travel. Incoming: +distance -> 0.
-  const offset = state.direction === "out" ? t : t - 1;
+  const p = state.transitionProgress;
+  const out = state.direction === "out";
+  // Outgoing: 0 -> -distance along the travel, fading out. Incoming: +distance -> 0.
+  const offset = out
+    ? easeInCubic(interpolate(p, [0, SLIDE_CUT], [0, 1]))
+    : expoOut(interpolate(p, [SLIDE_CUT, 1], [0, 1])) - 1;
+  const opacity = out
+    ? interpolate(p, [0, SLIDE_CUT], [1, 0])
+    : p < SLIDE_CUT
+      ? 0
+      : interpolate(p, [SLIDE_CUT, SLIDE_IN_SOLID], [SLIDE_IN_OPACITY, 1], { easing: easeOutCubic });
   const x = round(axis.x * offset * SLIDE_DISTANCE * width);
   const y = round(axis.y * offset * SLIDE_DISTANCE * height);
-  return { transform: `translate(${x}px, ${y}px)`, opacity: crossfade(state) };
+  return { transform: `translate(${x}px, ${y}px)`, opacity: round(opacity, 4) };
 }
 
 function zoomBlur(state: SceneTransitionState): CSSProperties {
@@ -70,8 +95,11 @@ function zoomBlur(state: SceneTransitionState): CSSProperties {
 }
 
 function fade({ direction, transitionProgress: p }: SceneTransitionState): CSSProperties {
-  const t = easeInOutCubic(p);
-  return { opacity: round(direction === "out" ? 1 - t : t, 4) };
+  const opacity =
+    direction === "out"
+      ? interpolate(p, [0, FADE_OUT_END], [1, 0], { easing: easeInOutCubic })
+      : interpolate(p, [FADE_IN_START, 1], [0, 1], { easing: easeInOutCubic });
+  return { opacity: round(opacity, 4) };
 }
 
 const GRADIENT_TOWARD: Record<SlideDirection, string> = { left: "left", right: "right", up: "top", down: "bottom" };

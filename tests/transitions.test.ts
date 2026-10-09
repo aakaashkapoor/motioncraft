@@ -193,19 +193,40 @@ describe("transitionStyle", () => {
     slideDirection: slide,
   });
 
-  it("slide: outgoing travels 0 to -12% of the frame, incoming +12% to 0, crossing mid-motion", () => {
+  const opacity = (type: "slide" | "fade", direction: "in" | "out", p: number) => Number(transitionStyle(state(type, direction, p), size).opacity);
+
+  it("slide: outgoing travels 0 to -12% of the frame, incoming +12% to 0, in the same direction", () => {
     expect(transitionStyle(state("slide", "out", 0), size)).toMatchObject({ transform: "translate(0px, 0px)", opacity: 1 });
     expect(transitionStyle(state("slide", "in", 1), size)).toMatchObject({ transform: "translate(0px, 0px)", opacity: 1 });
-    const outMid = transitionStyle(state("slide", "out", 0.5), size);
-    const inMid = transitionStyle(state("slide", "in", 0.5), size);
-    expect(outMid.transform).toMatch(/^translate\(-\d+(\.\d+)?px, 0px\)$/);
-    expect(inMid.transform).toMatch(/^translate\(\d+(\.\d+)?px, 0px\)$/);
-    expect(Number(outMid.opacity)).toBeGreaterThan(0);
-    expect(Number(inMid.opacity)).toBeGreaterThan(0);
-    expect(transitionStyle(state("slide", "out", 0.6), size).transform).toBe("translate(-129.6px, 0px)");
-    expect(transitionStyle(state("slide", "in", 0.4), size).transform).toBe("translate(129.6px, 0px)");
+    const outLate = transitionStyle(state("slide", "out", 0.2), size);
+    const inEarly = transitionStyle(state("slide", "in", 0.4), size);
+    expect(outLate.transform).toMatch(/^translate\(-\d+(\.\d+)?px, 0px\)$/);
+    expect(inEarly.transform).toMatch(/^translate\(\d+(\.\d+)?px, 0px\)$/);
+    expect(transitionStyle(state("slide", "out", 0.28), size).transform).toBe("translate(-129.6px, 0px)");
+    expect(transitionStyle(state("slide", "in", 0.28), size).transform).toBe("translate(129.6px, 0px)");
     // Vertical slides travel on the frame's height.
-    expect(transitionStyle(state("slide", "out", 0.6, "up" as never), size).transform).toBe("translate(0px, -230.4px)");
+    expect(transitionStyle(state("slide", "out", 0.28, "up" as never), size).transform).toBe("translate(0px, -230.4px)");
+  });
+
+  it("slide: the outgoing scene keeps moving as it fades out by 28%", () => {
+    const xs = [0.05, 0.1, 0.15, 0.2, 0.25].map((p) => parseFloat(transitionStyle(state("slide", "out", p), size).transform!.slice(10)));
+    expect(xs.every((x, i) => x < 0 && (i === 0 || x < xs[i - 1]!))).toBe(true);
+    expect(opacity("slide", "out", 0.14)).toBeCloseTo(0.5, 2);
+    expect(opacity("slide", "out", 0.28)).toBe(0);
+    expect(opacity("slide", "out", 0.5)).toBeLessThanOrEqual(0.05);
+  });
+
+  it("slide: the incoming scene enters at 0.35 opacity as the outgoing one is gone, and is solid by 60%", () => {
+    expect(opacity("slide", "in", 0.27)).toBe(0);
+    expect(opacity("slide", "in", 0.28)).toBeCloseTo(0.35, 2);
+    expect(opacity("slide", "in", 0.5)).toBeGreaterThanOrEqual(0.6);
+    expect(opacity("slide", "in", 0.6)).toBe(1);
+  });
+
+  it("slide: never two half-visible scenes", () => {
+    for (let p = 0; p <= 1; p += 0.01) {
+      expect(Math.min(opacity("slide", "out", p), opacity("slide", "in", p))).toBeLessThanOrEqual(0.05);
+    }
   });
 
   it("zoomBlur: outgoing scales up and blurs, incoming scales down from 0.8 and sharpens", () => {
@@ -215,10 +236,15 @@ describe("transitionStyle", () => {
     expect(transitionStyle(state("zoomBlur", "in", 1), size)).toMatchObject({ transform: "scale(1)", filter: "blur(0px)" });
   });
 
-  it("fade crossfades", () => {
-    expect(transitionStyle(state("fade", "out", 0), size).opacity).toBe(1);
-    expect(transitionStyle(state("fade", "in", 0), size).opacity).toBe(0);
-    expect(transitionStyle(state("fade", "in", 1), size).opacity).toBe(1);
+  it("fade: outgoing is gone by 55%, incoming starts at 45%", () => {
+    expect(opacity("fade", "out", 0)).toBe(1);
+    expect(opacity("fade", "out", 0.55)).toBe(0);
+    expect(opacity("fade", "in", 0.45)).toBe(0);
+    expect(opacity("fade", "in", 0)).toBe(0);
+    expect(opacity("fade", "in", 1)).toBe(1);
+    for (let p = 0; p <= 1; p += 0.01) {
+      expect(Math.min(opacity("fade", "out", p), opacity("fade", "in", p))).toBeLessThanOrEqual(0.05);
+    }
   });
 
   it("wipe masks both sides with complementary soft edges", () => {
@@ -245,11 +271,18 @@ describe("Frame during a transition", () => {
     renderToStaticMarkup(createElement(Frame, { storyboard, theme, timeline, frame }));
   const mid = (i: number) => tl.transitions[i]!.startFrame + Math.floor(tl.transitions[i]!.frames / 2);
 
-  it("mid-slide shows both scenes, both moving", () => {
+  /** The opacity of the transition layer holding `text`. */
+  const layerOpacity = (html: string, text: string) => {
+    const layers = html.split('<div style="position:absolute;inset:0;').slice(1);
+    const layer = layers.find((l) => l.includes(text));
+    return Number(layer?.match(/^[^"]*opacity:([\d.]+)/)?.[1]);
+  };
+
+  it("mid-slide: both scenes move, but only the incoming scene's text is legible", () => {
     const html = render(mid(0));
-    expect(html).toContain("First");
-    expect(html).toContain("Second");
     expect(html.match(/transform:translate\(/g)).toHaveLength(2);
+    expect(layerOpacity(html, "First")).toBeLessThanOrEqual(0.05);
+    expect(layerOpacity(html, "Second")).toBeGreaterThanOrEqual(0.6);
   });
 
   it("mid-zoomBlur applies a blur filter", () => {
