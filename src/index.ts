@@ -25,8 +25,17 @@ export type { TextStyle } from "./layout/textFit";
 
 export { buildTimeline, frameAt } from "./engine/timeline";
 export type { FrameInfo, SceneDurations, Timeline, TimelineScene } from "./engine/timeline";
-export { easeInOutCubic, easeOutBack, easeSpring, interpolate, linear, spring } from "./engine/easing";
-export type { Easing, InterpolateOptions, SpringOptions } from "./engine/easing";
+export { Easing, easeInOutCubic, easeOutBack, easeSpring, expoIn, expoOut, linear } from "./engine/easing";
+export type { SpringOptions } from "./engine/easing";
+export { bezier } from "./engine/bezier";
+export { interpolate, interpolateColors } from "./engine/interpolate";
+export type { Extrapolate, InterpolateOptions } from "./engine/interpolate";
+export { SPRING_SETTLE_THRESHOLD, measureSpring, spring, springPresets } from "./engine/spring";
+export type { SpringConfig, SpringParams, SpringPreset } from "./engine/spring";
+export { drawPath, stagger } from "./engine/choreography";
+export type { DrawPathStyle, StaggerOptions } from "./engine/choreography";
+export { noise2D, random } from "./engine/random";
+export type { Seed } from "./engine/random";
 
 export {
   Caption,
