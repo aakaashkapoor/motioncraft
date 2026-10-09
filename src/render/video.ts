@@ -62,8 +62,8 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
   const { out, onProgress } = options;
   checkComponents(options);
   const { input, sourceDurationsMs } = await prepareMedia(options);
-  const { storyboard, durations } = input;
-  const timeline = buildTimeline(storyboard, durations);
+  const { storyboard, durations, theme } = input;
+  const timeline = buildTimeline(storyboard, durations, theme);
   const { fps, totalFrames } = timeline;
   const { width, height } = frameSize(storyboard.aspect);
   await mkdir(dirname(out), { recursive: true });

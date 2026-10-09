@@ -9,6 +9,23 @@ export type Aspect = (typeof ASPECTS)[number];
 export const DEFAULT_FPS = 30;
 export const DEFAULT_THEME = "light";
 
+export const TRANSITION_TYPES = ["cut", "fade", "slide", "zoomBlur", "wipe"] as const;
+export type TransitionType = (typeof TRANSITION_TYPES)[number];
+
+export const SLIDE_DIRECTIONS = ["left", "right", "up", "down"] as const;
+/** Which way a `slide` or `wipe` travels: "left" moves content leftward, so the next scene enters from the right. */
+export type SlideDirection = (typeof SLIDE_DIRECTIONS)[number];
+export const DEFAULT_SLIDE_DIRECTION: SlideDirection = "left";
+
+/** The boundary from a scene into the next one (design v2, section 3). */
+export interface SceneTransition {
+  type: TransitionType;
+  /** Positive integer. Defaults to the theme's `motion.transitionMs`. Ignored by `cut`. */
+  durationMs?: number;
+  /** Defaults to "left", so a film slides one way throughout. */
+  direction?: SlideDirection;
+}
+
 export interface StoryboardScene {
   /** Unique within the storyboard. */
   id: string;
@@ -21,6 +38,8 @@ export interface StoryboardScene {
    * (resolved by `prepareMedia`). Required when there is no narration.
    */
   durationMs?: number | "clip";
+  /** Into the next scene. Defaults to the theme's transition; ignored on the last scene. */
+  transition?: SceneTransition;
 }
 
 /** A validated storyboard with defaults applied. */

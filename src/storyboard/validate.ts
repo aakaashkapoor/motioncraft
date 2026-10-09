@@ -2,7 +2,10 @@ import {
   ASPECTS,
   DEFAULT_FPS,
   DEFAULT_THEME,
+  SLIDE_DIRECTIONS,
+  TRANSITION_TYPES,
   type Aspect,
+  type SceneTransition,
   type Storyboard,
   type StoryboardScene,
   type StoryboardValidation,
@@ -12,7 +15,8 @@ import { accentIntensityError, colorError, themeOverridesErrors } from "./themeO
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
 const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "scenes"]);
-const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs"]);
+const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition"]);
+const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -36,10 +40,33 @@ function unknownFields(obj: Record<string, unknown>, known: Set<string>): string
     .map((key) => `unknown field "${key}"`);
 }
 
+/** `"a", "b" or "c"`. */
+function oneOf(options: readonly string[]): string {
+  const quoted = options.map((o) => `"${o}"`);
+  return `${quoted.slice(0, -1).join(", ")} or ${quoted.at(-1)}`;
+}
+
+/** Problems with a scene's `transition`, unprefixed. */
+function transitionErrors(raw: unknown): string[] {
+  if (!isObject(raw)) return [`transition must be an object (got ${describe(raw)})`];
+  const errors = unknownFields(raw, TRANSITION_FIELDS).map((e) => `transition: ${e}`);
+  const { type, durationMs, direction } = raw;
+  if (!TRANSITION_TYPES.includes(type as never)) {
+    errors.push(`transition.type must be ${oneOf(TRANSITION_TYPES)} (got ${describe(type)})`);
+  }
+  if (durationMs !== undefined && !isPositiveInteger(durationMs)) {
+    errors.push(`transition.durationMs must be a positive integer (got ${describe(durationMs)})`);
+  }
+  if (direction !== undefined && !SLIDE_DIRECTIONS.includes(direction as never)) {
+    errors.push(`transition.direction must be ${oneOf(SLIDE_DIRECTIONS)} (got ${describe(direction)})`);
+  }
+  return errors;
+}
+
 /** Validates a scene, pushing errors prefixed with `label`. Returns the scene if valid. */
 function validateScene(raw: Record<string, unknown>, label: string, errors: string[]): StoryboardScene | undefined {
   const sceneErrors: string[] = unknownFields(raw, SCENE_FIELDS);
-  const { component, props, narration, durationMs } = raw;
+  const { component, props, narration, durationMs, transition } = raw;
 
   if (!isNonEmptyString(component)) sceneErrors.push("component is required and must be a non-empty string");
   if (!isObject(props)) sceneErrors.push("props is required and must be an object");
@@ -55,6 +82,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   } else if (!isPositiveInteger(durationMs)) {
     sceneErrors.push(`durationMs must be a positive integer (got ${describe(durationMs)})`);
   }
+  if (transition !== undefined) sceneErrors.push(...transitionErrors(transition));
 
   errors.push(...sceneErrors.map((e) => `${label}: ${e}`));
   if (sceneErrors.length > 0) return undefined;
@@ -62,6 +90,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   const scene: StoryboardScene = { id: raw.id as string, component: component as string, props: props as Record<string, unknown> };
   if (narration !== undefined) scene.narration = narration as string;
   if (durationMs !== undefined) scene.durationMs = durationMs as number | "clip";
+  if (transition !== undefined) scene.transition = transition as SceneTransition;
   return scene;
 }
 

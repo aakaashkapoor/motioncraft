@@ -23,7 +23,7 @@ export async function renderStills(options: StillsOptions): Promise<string[]> {
   const { frames, outDir } = options;
   checkComponents(options);
   const { input } = await prepareMedia(options);
-  checkFrames(frames, buildTimeline(input.storyboard, input.durations));
+  checkFrames(frames, buildTimeline(input.storyboard, input.durations, input.theme));
   await mkdir(outDir, { recursive: true });
 
   return withRenderPage(input, async (page) => {

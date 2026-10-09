@@ -50,20 +50,20 @@ export function formatBigNumber(value: number, decimals: number): string {
 }
 
 /**
- * The largest step at which `text` fits on one line of the content area. If
+ * The largest step at which `text` fits on one line of `width` px (the content
+ * area by default). If
  * none fits, the smallest step: the number then overflows visibly and the
  * layer-1 checks report it.
  */
-export function bigNumberStep(theme: Theme, aspect: Aspect, text: string): TypeStep {
-  const { width } = contentArea(theme, aspect);
+export function bigNumberStep(theme: Theme, aspect: Aspect, text: string, width = contentArea(theme, aspect).width): TypeStep {
   const fits = NUMBER_STEPS.find((step) => text.length * fontSize(theme, step, aspect) * AVG_CHAR_EM <= width);
   return fits ?? NUMBER_STEPS[NUMBER_STEPS.length - 1]!;
 }
 
-export function BigNumber({ progress, theme, aspect, value, prefix = "", suffix = "", label, decimals = 0 }: BigNumberProps) {
-  const area = contentArea(theme, aspect);
+export function BigNumber({ progress, theme, aspect, area: slot, value, prefix = "", suffix = "", label, decimals = 0 }: BigNumberProps) {
+  const area = slot ?? contentArea(theme, aspect);
   const finalText = `${prefix}${formatBigNumber(value, decimals)}${suffix}`;
-  const step = bigNumberStep(theme, aspect, finalText);
+  const step = bigNumberStep(theme, aspect, finalText, area.width);
   const size = fontSize(theme, step, aspect);
   const easing = themeEasing(theme);
   const opacity = presence(progress, ENTER, EXIT, easing);

@@ -21,8 +21,8 @@ export interface RunChecksOptions extends PageInput {
 export async function runChecks(options: RunChecksOptions): Promise<CheckResult> {
   checkComponents(options);
   const { input } = await prepareMedia(options);
-  const { storyboard, durations } = input;
-  const timeline = buildTimeline(storyboard, durations);
+  const { storyboard, durations, theme } = input;
+  const timeline = buildTimeline(storyboard, durations, theme);
   const { frames } = options;
   if (frames !== undefined) checkFrames(frames, timeline);
 

@@ -23,7 +23,7 @@ async function main(argv: string[]): Promise<void> {
   const theme = resolveTheme(storyboard);
   const mediaDir = dirname(args.storyboard);
   const { input } = await prepareMedia({ storyboard, theme, durations: estimateDurations(storyboard), mediaDir });
-  const frames = args.frames === "per-scene" ? perSceneFrames(buildTimeline(storyboard, input.durations)) : args.frames;
+  const frames = args.frames === "per-scene" ? perSceneFrames(buildTimeline(storyboard, input.durations, theme)) : args.frames;
 
   const paths = await renderStills({ ...input, frames, outDir: args.out });
   for (const path of paths) console.log(path);

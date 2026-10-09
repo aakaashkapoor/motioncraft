@@ -156,7 +156,14 @@ describe("VideoClip (integration)", () => {
     const sb = storyboard({
       scenes: [
         // trimStart 200 ms = source frame 6; length from the clip: (1000 - 200) ms = 24 frames.
-        { id: "trimmed", component: "VideoClip", props: { src: "numbers.mp4", trimStartMs: 200, trimEndMs: 1000, muted: true }, durationMs: "clip" },
+        // A cut, so the scenes don't overlap and every output frame shows one clip.
+        {
+          id: "trimmed",
+          component: "VideoClip",
+          props: { src: "numbers.mp4", trimStartMs: 200, trimEndMs: 1000, muted: true },
+          durationMs: "clip",
+          transition: { type: "cut" },
+        },
         // Double speed from source frame 40: frames 40, 42, 44, ...
         { id: "fast", component: "VideoClip", props: { src: "numbers.mp4", trimStartMs: 4000 / 3, rate: 2 }, durationMs: 300 },
       ],

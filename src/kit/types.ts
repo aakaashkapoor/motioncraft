@@ -2,6 +2,7 @@
 // registry holds.
 
 import type { ComponentType } from "react";
+import type { Rect } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 
@@ -10,6 +11,11 @@ export interface KitProps {
   progress: number;
   theme: Theme;
   aspect: Aspect;
+  /**
+   * The box to lay out in, in frame px. Defaults to `contentArea(theme, aspect)`;
+   * `Section` passes its content slot. Components that ignore it fill the content area.
+   */
+  area?: Rect;
 }
 
 /** A kit component as the registry sees it: storyboard props are unchecked. */

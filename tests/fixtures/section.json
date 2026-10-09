@@ -1,0 +1,36 @@
+{
+  "title": "Section layout",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "stat",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Why it matters",
+        "headline": "Ship videos without an editor",
+        "content": { "component": "BigNumber", "props": { "value": 12500, "suffix": "+", "label": "Videos rendered" } },
+        "note": "Counted across every team in 2026"
+      },
+      "narration": "Teams ship videos without ever opening an editor.",
+      "durationMs": 7000
+    },
+    {
+      "id": "steps",
+      "component": "Section",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Three steps, no timeline",
+        "content": { "component": "StepList", "props": { "items": ["Write a storyboard", "Render the stills", "Run the checks"], "highlight": 1 } }
+      },
+      "durationMs": 7000
+    },
+    {
+      "id": "plain",
+      "component": "Section",
+      "props": { "headline": "One clear idea per scene", "note": "Everything else is noise" },
+      "durationMs": 4000
+    }
+  ]
+}
