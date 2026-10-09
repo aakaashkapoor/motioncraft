@@ -1,6 +1,6 @@
 # motioncraft: notes for coding agents
 
-Read `docs/design.md` first. It's the design this code implements.
+Read `docs/design.md` (the pipeline) and `docs/design-v2.md` (the design system, transitions, kit and media) first.
 
 ## Rules
 
