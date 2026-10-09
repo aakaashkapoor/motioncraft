@@ -6,6 +6,7 @@ import { kit } from "../kit";
 import { frameSize } from "../layout/frame";
 import { launchBrowser } from "./browser";
 import { bundlePage } from "./bundle";
+import { routeMedia } from "./media";
 import type { PageInput } from "./page";
 import { READY_TIMEOUT_MS, RenderNotReadyError } from "./ready";
 
@@ -35,6 +36,7 @@ export async function withRenderPage<T>(input: PageInput, use: (page: Page) => P
     const pageErrors: Error[] = [];
     page.on("pageerror", (error) => pageErrors.push(error));
     await page.route(PAGE_URL, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: html }));
+    await routeMedia(page, input.storyboard, input.mediaDir);
     await page.goto(PAGE_URL);
     if (pageErrors.length > 0) throw new Error(`render page failed to load: ${pageErrors[0]!.message}`);
     await page.waitForFunction(() => window.motioncraft !== undefined);

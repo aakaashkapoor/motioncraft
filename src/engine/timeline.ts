@@ -101,6 +101,9 @@ export function buildTimeline(storyboard: Storyboard, durations: SceneDurations,
   const ms = scenes.map((scene) => {
     const value = lookup(durations, scene.id) ?? scene.durationMs;
     if (value === undefined) throw new Error(`timeline: scene "${scene.id}" has no duration`);
+    if (value === "clip") {
+      throw new Error(`timeline: scene "${scene.id}" has durationMs "clip", so it takes its length from its clip; resolve it first (prepareMedia)`);
+    }
     if (!Number.isFinite(value) || value <= 0) {
       throw new Error(`timeline: scene "${scene.id}" duration must be a positive number of ms, got ${value}`);
     }

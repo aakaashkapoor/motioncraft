@@ -33,8 +33,11 @@ export interface StoryboardScene {
   component: string;
   props: Record<string, unknown>;
   narration?: string;
-  /** Positive integer. Required when there is no narration. */
-  durationMs?: number;
+  /**
+   * Positive integer, or "clip" to take the length from the scene's VideoClip
+   * (resolved by `prepareMedia`). Required when there is no narration.
+   */
+  durationMs?: number | "clip";
   /** Into the next scene. Defaults to the theme's transition; ignored on the last scene. */
   transition?: SceneTransition;
 }

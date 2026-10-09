@@ -3,7 +3,7 @@
 //   npx tsx scripts/render.ts <storyboard.json> --out <file.mp4>
 
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { validateStoryboard } from "../src/storyboard/validate";
 import { parseRenderArgs } from "../src/render/args";
 import { estimateDurations } from "../src/render/durations";
@@ -44,6 +44,7 @@ async function main(argv: string[]): Promise<void> {
     storyboard,
     theme: resolveTheme(storyboard),
     durations: estimateDurations(storyboard),
+    mediaDir: dirname(args.storyboard),
     out: args.out,
     onProgress: progressPrinter(),
   });

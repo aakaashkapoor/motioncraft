@@ -16,6 +16,8 @@ import { StepList } from "./StepList";
 import { CodeWindow, TerminalWindow } from "./windows";
 import { TitleCard } from "./TitleCard";
 import { asKitComponent, type KitComponent } from "./types";
+import { Image } from "./Image";
+import { VideoClip } from "./VideoClip";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -48,4 +50,6 @@ export const kit: Record<string, KitComponent> = {
   Card: asKitComponent(Card),
   CardRow: asKitComponent(CardRow),
   FeatureList: asKitComponent(FeatureList),
+  VideoClip: asKitComponent(VideoClip),
+  Image: asKitComponent(Image),
 };

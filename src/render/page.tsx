@@ -9,6 +9,7 @@ import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
 import type { FrameMeasurement } from "../checks/types";
 import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type SceneDurations, type Timeline } from "../engine/timeline";
 import { Caption, kit } from "../kit";
+import { SceneClockContext } from "../kit/frameContext";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
 import type { Storyboard } from "../storyboard/types";
@@ -23,6 +24,8 @@ export interface PageInput {
   theme: Theme;
   /** Scene durations in ms that override `durationMs` (see `buildTimeline`). The theme sets the default transition. */
   durations: Record<string, number>;
+  /** Where relative media paths (`src`) resolve; the working directory by default. Used by Node, not the page. */
+  mediaDir?: string;
 }
 
 export const INPUT_ELEMENT_ID = "motioncraft-input";
@@ -36,7 +39,17 @@ export interface FrameProps {
 }
 
 /** One scene's component and caption. During a transition, wrapped in its presentation's style. */
-function SceneLayer({ storyboard, theme, scene: active }: { storyboard: Storyboard; theme: Theme; scene: ActiveScene }) {
+function SceneLayer({
+  storyboard,
+  theme,
+  fps,
+  scene: active,
+}: {
+  storyboard: Storyboard;
+  theme: Theme;
+  fps: number;
+  scene: ActiveScene;
+}) {
   const scene = storyboard.scenes[active.sceneIndex]!;
   const Component = Object.hasOwn(kit, scene.component) ? kit[scene.component] : undefined;
   if (Component === undefined) {
@@ -46,7 +59,9 @@ function SceneLayer({ storyboard, theme, scene: active }: { storyboard: Storyboa
   const common = { progress: active.progress, theme, aspect };
   const content = (
     <>
-      <Component {...scene.props} {...common} />
+      <SceneClockContext.Provider value={{ fps, frame: active.localFrame }}>
+        <Component {...scene.props} {...common} />
+      </SceneClockContext.Provider>
       {scene.narration !== undefined && (
         <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
           <Caption {...common} text={scene.narration} />
@@ -80,7 +95,7 @@ export function Frame({ storyboard, theme, timeline, frame }: FrameProps) {
     >
       <Ground theme={theme} aspect={storyboard.aspect} />
       {scenesOnScreen(info).map((scene) => (
-        <SceneLayer key={scene.sceneId} storyboard={storyboard} theme={theme} scene={scene} />
+        <SceneLayer key={scene.sceneId} storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} />
       ))}
     </div>
   );

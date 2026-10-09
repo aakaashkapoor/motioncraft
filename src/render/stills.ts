@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { buildTimeline } from "../engine/timeline";
 import { checkFrames } from "./frames";
 import type { PageInput } from "./page";
+import { prepareMedia } from "./media";
 import { checkComponents, showFrame, withRenderPage } from "./session";
 
 export interface StillsOptions extends PageInput {
@@ -19,12 +20,13 @@ export function stillFileName(frame: number): string {
 
 /** Renders each frame to `<outDir>/frame-NNNNN.png`. Returns the file paths. */
 export async function renderStills(options: StillsOptions): Promise<string[]> {
-  const { storyboard, theme, durations, frames, outDir } = options;
+  const { frames, outDir } = options;
   checkComponents(options);
-  checkFrames(frames, buildTimeline(storyboard, durations, theme));
+  const { input } = await prepareMedia(options);
+  checkFrames(frames, buildTimeline(input.storyboard, input.durations, input.theme));
   await mkdir(outDir, { recursive: true });
 
-  return withRenderPage({ storyboard, theme, durations }, async (page) => {
+  return withRenderPage(input, async (page) => {
     const paths: string[] = [];
     for (const frame of frames) {
       await showFrame(page, frame);
