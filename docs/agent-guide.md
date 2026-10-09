@@ -157,7 +157,8 @@ taste.
 - `light` (the default): a flat warm-grey ground (`#e6e7df`), pure white cards
   with a soft wide shadow and 28 px corners, pale chips (`#f1f2ea`), near-black
   text and one orange accent (`#fb5a1f`), set in Source Sans 3.
-- `dark`: deep tinted ground, raised surfaces, a soft blue accent, faint dot grid.
+- `dark`: deep tinted ground, raised surfaces, a soft blue accent, over the
+  living `mesh` ground.
 - `neutral`: the v1 look (system fonts), kept for compatibility.
 
 Text set in the accent (a kicker, a highlighted step, `bold` headlines) is the
@@ -176,7 +177,15 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
   - `colors`: the roles `ground`, `surface`, `surfaceAlt`, `text`, `textMuted`,
     `textSubtle`, `accent`, `accentText`, `border`, `shadow` (hex only). Keep
     neutrals tinted, never pure `#000000` or `#ffffff`.
-  - `ground.style`: `solid`, `vignette`, `grid` or `noise`.
+  - `ground.style`: `solid` (flat, the light theme's), `vignette`, `grid` (a
+    faint dot grid that breathes, 1.00 -> 1.04 over 8 s), `noise` (still
+    grain) or `mesh` (three soft blobs of the accent and a tint of it drifting
+    over the ground; the dark theme's). The mesh keeps text readable on its
+    own: on a light ground it becomes a gentle warm light, because the muted
+    text has little contrast to spare. `ground.grain`: film grain over any
+    style, `0` (off, the default) or an opacity of 0.15-0.22; it changes 12
+    times a second. `ground.mesh` (`blobs`, `minPx`/`maxPx`,
+    `minAlpha`/`maxAlpha`) shapes the blobs.
   - `fonts.display`, `fonts.body`, `fonts.mono`: CSS font stacks. Only the
     bundled fonts are guaranteed to be present: `mc-sans` (Source Sans 3, the
     default sans), `mc-mono` (Source Code Pro, the default mono), and `mc-geist`
@@ -201,7 +210,9 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     `share` of the entry within `minMs`-`maxMs`; `flow` is the dot that runs
     along a drawn connector (one trip per `ms`, a `dotPx` dot, and a
     `glowPx` ring of the accent at `glowOpacity` on the node it reaches;
-    `"ms": 0` turns it off). A `curve` is a name (`"linear"`, `"expoOut"`,
+    `"ms": 0` turns it off); `drift` moves the mesh blobs (up to `px` from
+    home, each looping in `minMs`-`maxMs`), `grid.breathe` the grid (`ms`,
+    `scale`, `curve`) and `grainFps` the grain. A `curve` is a name (`"linear"`, `"expoOut"`,
     `"expoIn"`, `"expoInOut"`, `"sineInOut"`, `"power4InOut"`), a
     cubic bezier `[x1, y1, x2, y2]`, or a spring `{ "stiffness": 170,
     "damping": 18 }`. Position and scale may overshoot; opacity and color
@@ -245,6 +256,7 @@ takes a color, pass a role name such as `"accent"`, or leave it out.
 | --- | --- |
 | "use a dark theme" | `"theme": "dark"` |
 | "light and clean" | `"theme": "light"`, `"themeOverrides": { "ground": { "style": "solid" } }` |
+| "a moving background" / "more alive" | `"themeOverrides": { "ground": { "style": "mesh" } }` (add `"grain": 0.18` for film grain) |
 | "make it orange" | `"accent": "#ff6a00"` |
 | "lots of orange" | `"accent": "#ff6a00"`, `"accentIntensity": "bold"` |
 | "an orange background" | `"accent": "#ff6a00"`, `"accentIntensity": "full"` |

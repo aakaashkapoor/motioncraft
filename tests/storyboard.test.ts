@@ -205,6 +205,16 @@ describe("validateStoryboard: theme overrides", () => {
     ]);
   });
 
+  it("takes the living ground: the mesh style, grain as an opacity 0..1, and its tokens", () => {
+    const themeOverrides = {
+      ground: { style: "mesh", grain: 0.18, mesh: { maxAlpha: 0.2 } },
+      motion: { drift: { px: 40 }, "grid.breathe": { ms: 6000 }, grainFps: 12 },
+    };
+    expect(validateStoryboard(board({ themeOverrides })).ok).toBe(true);
+    expect(errorsOf(board({ themeOverrides: { ground: { grain: 1.5 } } }))).toEqual(["themeOverrides.ground.grain must be an opacity from 0 to 1 (got 1.5)"]);
+    expect(errorsOf(board({ themeOverrides: { ground: { grain: -0.1 } } }))).toEqual(["themeOverrides.ground.grain must be an opacity from 0 to 1 (got -0.1)"]);
+  });
+
   it("requires themeOverrides to be an object", () => {
     expect(errorsOf(board({ themeOverrides: "dark" }))).toEqual(["themeOverrides must be an object"]);
   });
@@ -228,7 +238,7 @@ describe("validateStoryboard: theme overrides", () => {
     ).toEqual([
       'themeOverrides.colors.text must be a hex color like "#ff6a00" (got "black")',
       'themeOverrides.colors: unknown field "glow"',
-      'themeOverrides.ground.style must be "solid", "vignette", "grid" or "noise" (got "plasma")',
+      'themeOverrides.ground.style must be "solid", "vignette", "grid", "noise" or "mesh" (got "plasma")',
       "themeOverrides.ground.seed must be an integer (got 1.5)",
       'themeOverrides.radius.md must be a number (got "12px")',
       "themeOverrides.type.headline.9:16.size must be a positive number (got -4)",

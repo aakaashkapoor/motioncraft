@@ -1,4 +1,4 @@
-import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { baseMesh, baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
 import { DEFAULT_SAFE_PROFILE } from "../storyboard/types";
 import type { Theme } from "./types";
 
@@ -19,7 +19,7 @@ export const neutralTheme: Theme = {
     border: "#2a2e35",
     shadow: "#030405",
   },
-  ground: { style: "solid", seed: 1 },
+  ground: { style: "solid", seed: 1, grain: 0, mesh: baseMesh },
   accentIntensity: "subtle",
   fonts: {
     display: SYSTEM_SANS,

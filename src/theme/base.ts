@@ -1,7 +1,7 @@
 // Tokens the built-in themes share: the type ramp, named weights, spacing,
 // radii and motion. Each theme spreads these and sets its own colors and ground.
 
-import type { CubicBezier, ThemeMotion, ThemeRadius, ThemeSpacing, ThemeWeights, TypeRamp, TypeSpec } from "./types";
+import type { CubicBezier, MeshSpec, ThemeMotion, ThemeRadius, ThemeSpacing, ThemeWeights, TypeRamp, TypeSpec } from "./types";
 
 export const SYSTEM_SANS =
   'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
@@ -66,6 +66,15 @@ export const baseRadius: ThemeRadius = {
   pill: 999,
 };
 
+/** Design v3, life #5: three soft blobs, 900-1200 px across, at 10-22% alpha. */
+export const baseMesh: MeshSpec = {
+  blobs: 3,
+  minPx: 900,
+  maxPx: 1200,
+  minAlpha: 0.1,
+  maxAlpha: 0.22,
+};
+
 /** Material 3's emphasized accelerate: the curve of everything leaving. */
 const EXIT_CURVE: CubicBezier = [0.3, 0, 0.8, 0.15];
 
@@ -91,6 +100,9 @@ export const baseMotion: ThemeMotion = {
   mark: { ms: 450, curve: [0.33, 1, 0.68, 1], delayMs: 500 },
   shot: { ms: 750, curve: [0.65, 0, 0.35, 1] },
   breathe: { scale: 1.04, curve: "sineInOut" },
+  drift: { px: 60, minMs: 4000, maxMs: 6000 },
+  "grid.breathe": { ms: 8000, scale: 1.04, curve: "sineInOut" },
+  grainFps: 12,
   beat: { ms: 400 },
   flow: { ms: 1400, curve: "expoInOut", dotPx: 14, glowPx: 6, glowOpacity: 0.25 },
 };

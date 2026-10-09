@@ -1,5 +1,5 @@
 import { MONO_FAMILY, SANS_FAMILY } from "../render/fontFaces";
-import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { baseMesh, baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
 import { DEFAULT_SAFE_PROFILE } from "../storyboard/types";
 import type { Theme } from "./types";
 
@@ -23,7 +23,7 @@ export const lightTheme: Theme = {
     border: "#dcddd4",
     shadow: "#2e2d24",
   },
-  ground: { style: "solid", seed: 1 },
+  ground: { style: "solid", seed: 1, grain: 0, mesh: baseMesh },
   accentIntensity: "subtle",
   fonts: {
     display: `${SANS_FAMILY}, ${SYSTEM_SANS}`,
