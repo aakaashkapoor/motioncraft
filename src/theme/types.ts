@@ -225,8 +225,10 @@ export interface BreatheToken {
 }
 
 /** The grid ground breathing: scale and opacity rise together 1 -> `scale` and back, once per `ms`. */
-export interface GridBreatheToken extends BreatheToken {
+export interface GridBreatheToken {
   ms: number;
+  scale: number;
+  curve: MotionCurve;
 }
 
 /** The mesh ground's blobs wandering along seeded noise: up to `px` from home, each looping in its own period within `minMs`-`maxMs`. */
