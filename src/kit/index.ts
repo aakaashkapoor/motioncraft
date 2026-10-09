@@ -7,6 +7,7 @@ import { BrowserWindow } from "./BrowserWindow";
 import { Caption, captionLimits } from "./Caption";
 import { FlowDiagram } from "./FlowDiagram";
 import { StepList } from "./StepList";
+import { CodeWindow, TerminalWindow } from "./windows";
 import { TitleCard } from "./TitleCard";
 import { asKitComponent, type KitComponent } from "./types";
 
@@ -33,4 +34,6 @@ export const kit: Record<string, KitComponent> = {
   StepList: asKitComponent(StepList),
   AppWindow: asKitComponent(AppWindow),
   BrowserWindow: asKitComponent(BrowserWindow),
+  TerminalWindow: asKitComponent(TerminalWindow),
+  CodeWindow: asKitComponent(CodeWindow),
 };

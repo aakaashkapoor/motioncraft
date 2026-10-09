@@ -1,0 +1,49 @@
+{
+  "title": "Terminal and code windows",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "terminal",
+      "component": "TerminalWindow",
+      "props": {
+        "title": "zsh",
+        "shareId": "window",
+        "lines": [
+          { "prompt": true, "text": "npm install motioncraft" },
+          { "text": "added 93 packages in 3s" },
+          { "prompt": true, "text": "npx motioncraft render video.json" },
+          { "text": "rendered 240 frames" },
+          { "text": "wrote out/video.mp4" }
+        ]
+      },
+      "narration": "Install motioncraft, then render the storyboard to a video.",
+      "durationMs": 7000
+    },
+    {
+      "id": "code",
+      "component": "CodeWindow",
+      "props": {
+        "title": "main.ts",
+        "language": "typescript",
+        "shareId": "window",
+        "highlightLines": [4, 5],
+        "code": "import { render } from \"motioncraft\";\n\n// Render every frame.\nexport async function main() {\n  const frames = await render(\"video.json\");\n  return frames.length;\n}"
+      },
+      "narration": "The render call returns every frame it drew.",
+      "durationMs": 12000
+    },
+    {
+      "id": "reveal",
+      "component": "CodeWindow",
+      "props": {
+        "language": "python",
+        "reveal": true,
+        "lineNumbers": false,
+        "code": "def fib(n):\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a"
+      },
+      "durationMs": 10000
+    }
+  ]
+}
