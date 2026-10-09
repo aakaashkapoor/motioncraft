@@ -7,6 +7,7 @@ import { frameSize } from "../layout/frame";
 import { launchBrowser } from "./browser";
 import { bundlePage } from "./bundle";
 import type { PageInput } from "./page";
+import { READY_TIMEOUT_MS, RenderNotReadyError } from "./ready";
 
 /** Throws if a scene names a component the kit does not have. */
 export function checkComponents(input: PageInput): void {
@@ -43,8 +44,25 @@ export async function withRenderPage<T>(input: PageInput, use: (page: Page) => P
   }
 }
 
-/** Shows `frame` on the page and waits for fonts, so it is ready to capture or measure. */
-export async function showFrame(page: Page, frame: number): Promise<void> {
+/**
+ * Shows `frame` on the page and waits until it is ready to capture or measure:
+ * fonts loaded, images decoded, every `delayRender` released. Throws
+ * `RenderNotReadyError` naming what was still pending after `timeoutMs`.
+ */
+export async function showFrame(page: Page, frame: number, timeoutMs = READY_TIMEOUT_MS): Promise<void> {
   await page.evaluate((n) => window.motioncraft!.renderFrame(n), frame);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const failure = await page.evaluate(
+    (t) =>
+      window.motioncraft!.waitUntilReady(t).then(
+        () => null,
+        (error: unknown) => ({
+          message: error instanceof Error ? error.message : String(error),
+          pending: error instanceof Error && "pending" in error ? (error.pending as string[]) : null,
+        }),
+      ),
+    timeoutMs,
+  );
+  if (failure === null) return;
+  if (failure.pending !== null) throw new RenderNotReadyError(failure.pending, timeoutMs);
+  throw new Error(`frame ${frame} could not be made ready: ${failure.message}`);
 }
