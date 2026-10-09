@@ -1,0 +1,36 @@
+{
+  "title": "Odometer BigNumber and the shine, 16:9 (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "revenue",
+      "component": "BigNumber",
+      "props": { "value": 1250000, "prefix": "$", "label": "Revenue this year" },
+      "narration": "One point two five million in revenue this year.",
+      "durationMs": 4000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "uptime",
+      "component": "BigNumber",
+      "props": { "value": 98.6, "decimals": 1, "suffix": "%", "label": "Uptime this quarter" },
+      "narration": "Ninety-eight point six percent uptime.",
+      "durationMs": 3500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "in-section",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Why it matters",
+        "headline": "Videos without an editor",
+        "content": { "component": "BigNumber", "props": { "value": 42, "suffix": "x", "label": "faster than editing by hand" } },
+        "note": "Measured across every team"
+      },
+      "narration": "Teams make videos forty-two times faster than by hand.",
+      "durationMs": 6500
+    }
+  ]
+}

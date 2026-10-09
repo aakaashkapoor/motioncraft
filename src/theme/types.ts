@@ -243,6 +243,39 @@ export interface BeatToken {
   ms: number;
 }
 
+/** Emphasis (design v3, table D): a spring to `scale`. A highlight stays there; a landing number comes back (`pulse`). */
+export interface PopToken extends MotionToken {
+  /** The scale an emphasised element pops to, e.g. 1.04. */
+  scale: number;
+}
+
+/**
+ * A number rolling to its value (design v3, life #7): each digit column rolls
+ * over `ms`, the next one to its left `staggerMs` later, and the unit follows
+ * `unitDelayMs` after the last digit lands.
+ */
+export interface CountToken extends StaggeredToken {
+  /** Vertical blur on a moving digit as it slows to a stop, in px. */
+  blurMinPx: number;
+  /** Vertical blur on a digit at full speed, in px. */
+  blurMaxPx: number;
+  /** From the number landing to its unit (the suffix) fading in, in ms. */
+  unitDelayMs: number;
+}
+
+/**
+ * A shine (design v3, life #9): a diagonal band of white crossing an element
+ * once, over `ms`. Never looped.
+ */
+export interface ShineToken extends MotionToken {
+  /** The band's width, as a share of the element's width. */
+  widthShare: number;
+  /** How far the band leans from vertical, top to the right, in degrees (a CSS `skewX` of minus this). */
+  skewDeg: number;
+  /** Opacity of the white at the band's middle, 0..1. */
+  opacity: number;
+}
+
 /**
  * A flowing connector (design v3, life #11): once a connector has drawn, a dot
  * travels it, one trip per `ms`, and the node it reaches glows.
@@ -288,12 +321,12 @@ export interface ThemeMotion {
   enter: StaggeredToken;
   /** The one big element of a scene arriving. */
   "enter.hero": MotionToken;
-  /** Emphasis: a highlighted card, an active badge. */
-  pop: MotionToken;
+  /** Emphasis: a highlighted card, an active badge, a number landing. */
+  pop: PopToken;
   /** Anything leaving. */
   exit: ExitToken;
-  /** A number rolling to its value. */
-  count: MotionToken;
+  /** A number rolling to its value, digit by digit. */
+  count: CountToken;
   /** A marker or underline sweeping in. */
   mark: MarkToken;
   /** The camera moving to a new framing. */
@@ -310,6 +343,8 @@ export interface ThemeMotion {
   beat: BeatToken;
   /** A dot flowing along a drawn connector, lighting the node it reaches. */
   flow: FlowToken;
+  /** A band of light crossing an element once: a card lighting up, a number landing. */
+  shine: ShineToken;
 }
 
 export interface Theme {

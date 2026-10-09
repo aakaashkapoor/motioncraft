@@ -15,16 +15,19 @@ export type {
   ThemeMotion,
   BeatToken,
   BreatheToken,
-  DriftToken,
-  GridBreatheToken,
-  MeshSpec,
+  CountToken,
   CubicBezier,
   CurveName,
+  DriftToken,
   ExitToken,
   FlowToken,
+  GridBreatheToken,
   MarkToken,
+  MeshSpec,
   MotionCurve,
   MotionToken,
+  PopToken,
+  ShineToken,
   ShotToken,
   SpringCurve,
   StaggeredToken,
@@ -85,7 +88,7 @@ export {
   titleCardStep,
 } from "./kit";
 export type { CaptionLimits, CaptionProps, KitComponent, KitProps, TitleCardProps } from "./kit";
-export { BigNumber, bigNumberStep, countedValue, formatBigNumber, type BigNumberProps } from "./kit/BigNumber";
+export { BigNumber, bigNumberStep, bigNumberTiming, formatBigNumber, odometerColumns, odometerText, type BigNumberProps, type BigNumberTiming, type OdometerColumn } from "./kit/BigNumber";
 export { FlowDiagram, flowDiagramLayout, flowDiagramTiming, type FlowArrow, type FlowDiagramLayout, type FlowDiagramProps, type FlowDiagramTiming } from "./kit";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./kit";
 export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./icons";
@@ -97,6 +100,7 @@ export * from "./kit/windows";
 export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMessage, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";
 export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, pointAlong, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps, type Point } from "./kit/Arrow";
 export { FlowDotMark, flowDot, flowGlow, type FlowDot } from "./kit/flow";
+export { Shine, shineBand, shineGradient, shineText, type ShineBand, type ShineProps } from "./kit/shine";
 export { Card, CardFace, cardHeight, cardMetrics, type CardData, type CardProps } from "./kit/Card";
 export { CardRow, cardRowLayout, cardRowTiming, type CardRowLayout, type CardRowProps } from "./kit/CardRow";
 export { FeatureList, featureListTiming, type FeatureItem, type FeatureListProps } from "./kit/FeatureList";
@@ -106,5 +110,5 @@ export { Handoff, handoffLayout, type HandoffLayout, type HandoffProps } from ".
 export { HEADLINE_MOTIONS, HEADLINE_ROLES, Headline, HeadlineText, MARK_STYLES, headlineBox, headlineMarks, headlineTiming, headlineWords, markSweep, wordLeaving, type HeadlineMarks, type HeadlineMotion, type HeadlineProps, type HeadlineRole, type HeadlineTextProps, type HeadlineTiming, type MarkStyle } from "./kit/Headline";
 export { SceneFrame, frameLineSpec, sceneFrameLayout, sceneFrameTiming, type SceneFrameLayout, type SceneFrameProps, type SceneFrameText, type SceneFrameTiming } from "./kit/SceneFrame";
 export { MotionDelay, NOMINAL_SCENE_MS, SceneClockContext, useSceneMs, useSceneTime, type SceneClock, type SceneTime } from "./kit/frameContext";
-export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, tween, type Timed } from "./kit/motion";
+export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, pulse, tween, type Timed } from "./kit/motion";
 export * from "./camera";
