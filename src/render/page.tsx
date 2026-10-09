@@ -118,7 +118,7 @@ export function Frame({ storyboard, theme, timeline, frame, shared }: FrameProps
         backgroundColor: theme.colors.ground,
       }}
     >
-      <Ground theme={theme} aspect={storyboard.aspect} />
+      <Ground theme={theme} aspect={storyboard.aspect} ms={(frame * 1000) / timeline.fps} />
       {scenesOnScreen(info).map((scene) => (
         <SceneLayer key={scene.sceneId} storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} hideShared={morph !== undefined} />
       ))}

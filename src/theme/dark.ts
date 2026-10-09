@@ -1,10 +1,10 @@
 import { MONO_FAMILY, SANS_FAMILY } from "../render/fontFaces";
-import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { baseMesh, baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
 import { DEFAULT_SAFE_PROFILE } from "../storyboard/types";
 import type { Theme } from "./types";
 
 // A deep blue-tinted ground with raised surfaces, light text and a periwinkle
-// accent, over a faint dot grid.
+// accent, over a living mesh of soft accent light (design v3, life #5).
 
 export const darkTheme: Theme = {
   name: "dark",
@@ -20,7 +20,7 @@ export const darkTheme: Theme = {
     border: "#2b313b",
     shadow: "#030406",
   },
-  ground: { style: "grid", seed: 1 },
+  ground: { style: "mesh", seed: 1, grain: 0, mesh: baseMesh },
   accentIntensity: "subtle",
   fonts: {
     display: `${SANS_FAMILY}, ${SYSTEM_SANS}`,

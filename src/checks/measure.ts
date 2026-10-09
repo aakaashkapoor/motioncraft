@@ -13,6 +13,12 @@ export const CAPTION_ATTRIBUTE = "data-caption";
 export const KEY_ATTRIBUTE = "data-key-element";
 /** Marks a kit component's visual block, for the centering check; the value labels it. */
 export const BLOCK_ATTRIBUTE = "data-block";
+/**
+ * Marks a ground layer that moves under text; the value is the most tinted
+ * ground colour it can show (see `groundTint`), which text on the ground is
+ * judged against.
+ */
+export const GROUND_TINT_ATTRIBUTE = "data-ground-tint";
 
 function toRect(box: DOMRect, origin: DOMRect): Rect {
   return { x: box.left - origin.left, y: box.top - origin.top, width: box.width, height: box.height };
@@ -50,16 +56,23 @@ function isTransparent(css: string): boolean {
 
 /**
  * Background colors under `el` at the center of `rect`, topmost first: whatever
- * is painted there, including siblings drawn beneath it. Falls back to the
- * element's ancestors when the point is off screen.
+ * is painted there, including siblings drawn beneath it, and a moving ground's
+ * tint just above the frame's own ground. Falls back to the element's
+ * ancestors when the point is off screen.
  */
-function backgroundsUnder(el: Element, rect: Rect, origin: DOMRect, chain: readonly Element[]): string[] {
+function backgroundsUnder(el: Element, rect: Rect, origin: DOMRect, chain: readonly Element[], root: Element): string[] {
   const x = origin.left + rect.x + rect.width / 2;
   const y = origin.top + rect.y + rect.height / 2;
   const stack = document.elementsFromPoint(x, y);
   const index = stack.indexOf(el);
   const layers = index >= 0 ? stack.slice(index) : [...chain];
-  return layers.map((node) => getComputedStyle(node).backgroundColor).filter((css) => !isTransparent(css));
+  const tint = root.querySelector(`[${GROUND_TINT_ATTRIBUTE}]`)?.getAttribute(GROUND_TINT_ATTRIBUTE);
+  return layers
+    .flatMap((node) => {
+      const color = getComputedStyle(node).backgroundColor;
+      return node === root && tint ? [tint, color] : [color];
+    })
+    .filter((css) => !isTransparent(css));
 }
 
 /** Box around a text node's rendered lines, or undefined if it is not laid out. */
@@ -96,7 +109,7 @@ function measureText(el: Element, root: Element, origin: DOMRect): MeasuredText 
     clips: chain.filter(clipsContent).map((node) => paddingBox(node, origin)),
     opacity,
     color: getComputedStyle(el).color,
-    backgrounds: backgroundsUnder(el, rect, origin, chain),
+    backgrounds: backgroundsUnder(el, rect, origin, chain, root),
     caption: el.closest(`[${CAPTION_ATTRIBUTE}]`) !== null,
     fontSize: parseFloat(getComputedStyle(el).fontSize),
     fitted: el.closest(`[${TYPE_FIT_ATTRIBUTE}]`) !== null,

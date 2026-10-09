@@ -69,6 +69,9 @@ function leafError(path: string, reference: unknown, value: unknown): string | u
   const key = path.split(".").at(-1)!;
   if (typeof reference === "number") {
     if (path === "ground.seed") return Number.isInteger(value) ? undefined : `${label} must be an integer (got ${describe(value)})`;
+    if (path === "ground.grain") {
+      return isNumber(value) && value >= 0 && value <= 1 ? undefined : `${label} must be an opacity from 0 to 1 (got ${describe(value)})`;
+    }
     if (key === "size" || key === "stiffness") {
       return isNumber(value) && value > 0 ? undefined : `${label} must be a positive number (got ${describe(value)})`;
     }

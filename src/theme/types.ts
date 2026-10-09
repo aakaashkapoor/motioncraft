@@ -35,14 +35,37 @@ export interface ThemeColors {
 
 export type ColorRole = keyof ThemeColors;
 
-export const GROUND_STYLES = ["solid", "vignette", "grid", "noise"] as const;
-/** solid; vignette (a soft radial gradient); grid (a faint dot grid); noise (subtle seeded grain). */
+export const GROUND_STYLES = ["solid", "vignette", "grid", "noise", "mesh"] as const;
+/**
+ * solid; vignette (a soft radial gradient); grid (a faint dot grid that
+ * breathes); noise (subtle seeded grain); mesh (soft blobs of the accent
+ * drifting over the ground, design v3 life #5).
+ */
 export type GroundStyle = (typeof GROUND_STYLES)[number];
+
+/**
+ * The `mesh` ground's blobs: each one's size and strength is picked, seeded,
+ * within these ranges. Their colours are the accent and a tint of it, lifted
+ * toward the ground's far side where needed so text on the ground keeps AA.
+ */
+export interface MeshSpec {
+  /** How many blobs. */
+  blobs: number;
+  /** Blob diameters, in px. */
+  minPx: number;
+  maxPx: number;
+  /** Opacity of a blob's colour at its center, 0..1; it falls off to 0 at its edge. */
+  minAlpha: number;
+  maxAlpha: number;
+}
 
 export interface ThemeGround {
   style: GroundStyle;
-  /** Seed for the `noise` grain, so the same storyboard gives the same pixels. */
+  /** Seed for the `noise` grain, the mesh and the film grain, so the same storyboard gives the same pixels. */
   seed: number;
+  /** Film grain over any style: its opacity, 0 for none or 0.15-0.22. Re-seeded `motion.grainFps` times a second. */
+  grain: number;
+  mesh: MeshSpec;
 }
 
 export const ACCENT_INTENSITIES = ["subtle", "bold", "full"] as const;
@@ -187,6 +210,18 @@ export interface BreatheToken {
   curve: MotionCurve;
 }
 
+/** The grid ground breathing: scale and opacity rise together 1 -> `scale` and back, once per `ms`. */
+export interface GridBreatheToken extends BreatheToken {
+  ms: number;
+}
+
+/** The mesh ground's blobs wandering along seeded noise: up to `px` from home, each looping in its own period within `minMs`-`maxMs`. */
+export interface DriftToken {
+  px: number;
+  minMs: number;
+  maxMs: number;
+}
+
 /** A hold before a payoff. */
 export interface BeatToken {
   ms: number;
@@ -249,6 +284,12 @@ export interface ThemeMotion {
   shot: MotionToken;
   /** The camera drifting during holds. */
   breathe: BreatheToken;
+  /** The mesh ground's blobs wandering (design v3, life #5). */
+  drift: DriftToken;
+  /** The grid ground breathing (design v3, life #5). */
+  "grid.breathe": GridBreatheToken;
+  /** How many times a second film grain is re-seeded (see `ThemeGround.grain`). */
+  grainFps: number;
   /** A hold before a payoff. */
   beat: BeatToken;
   /** A dot flowing along a drawn connector, lighting the node it reaches. */
