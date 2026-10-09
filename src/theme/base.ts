@@ -92,4 +92,5 @@ export const baseMotion: ThemeMotion = {
   shot: { ms: 750, curve: [0.65, 0, 0.35, 1] },
   breathe: { scale: 1.04, curve: "sineInOut" },
   beat: { ms: 400 },
+  flow: { ms: 1400, curve: "expoInOut", dotPx: 14, glowPx: 6, glowOpacity: 0.25 },
 };

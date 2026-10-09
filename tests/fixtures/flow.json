@@ -1,0 +1,101 @@
+{
+  "title": "Flowing connectors, 9:16 (must pass layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "pipeline",
+      "component": "FlowDiagram",
+      "props": {
+        "nodes": [
+          "Prompt",
+          "Storyboard",
+          "Render",
+          "Video"
+        ],
+        "caption": "From idea to finished video"
+      },
+      "narration": "You write a prompt, the agent plans a storyboard, renders every frame, and you get a video.",
+      "durationMs": 6500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "in-section",
+      "component": "Section",
+      "props": {
+        "eyebrow": "How it ships",
+        "headline": "Every push goes live",
+        "content": {
+          "component": "FlowDiagram",
+          "props": {
+            "nodes": [
+              "Commit",
+              "Build",
+              "Deploy"
+            ]
+          }
+        },
+        "note": "No one presses a button"
+      },
+      "durationMs": 5500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "arrow",
+      "component": "Arrow",
+      "props": {
+        "from": {
+          "x": 250,
+          "y": 1250
+        },
+        "to": {
+          "x": 800,
+          "y": 450
+        },
+        "curve": 0.3,
+        "label": "Then"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "handoff",
+      "component": "Handoff",
+      "props": {
+        "from": {
+          "component": "Card",
+          "props": {
+            "icon": "chat",
+            "title": "The prompt",
+            "subtitle": "A launch intro"
+          }
+        },
+        "to": {
+          "component": "AppWindow",
+          "props": {
+            "title": "Plan",
+            "content": {
+              "component": "StepList",
+              "props": {
+                "items": [
+                  "Hook",
+                  "Steps",
+                  "Ending"
+                ]
+              }
+            }
+          }
+        },
+        "label": "plan"
+      },
+      "durationMs": 5000
+    }
+  ]
+}

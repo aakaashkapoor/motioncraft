@@ -1,8 +1,9 @@
 // A connector that draws itself: a straight or curved line from one point or
 // anchored element to another, revealed with `drawPath` in a `mark` sweep from
 // the scene's lead. The arrowhead appears as the line completes; an optional
-// label sits at the curve's midpoint. The whole arrow exits fast at the end of
-// the scene.
+// label sits at the curve's midpoint. Once drawn, an accent dot flows along it
+// every 1.4 s (`flow`, design v3 life #11), so the arrow keeps moving through
+// the hold. The whole arrow exits fast at the end of the scene.
 // Points are always frame px. Standalone, the arrow's box is the whole frame;
 // given an `area` (a Section slot), its box is the slot and anchored ends are
 // kept inside it.
@@ -12,12 +13,13 @@ import { drawPath } from "../engine/choreography";
 import { frameSize, type Rect } from "../layout/frame";
 import { typeCss } from "../layout/type";
 import type { ColorRole, Theme } from "../theme/types";
-import { arrowGeometry, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type Point } from "./arrowGeometry";
+import { arrowGeometry, pointAlong, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type Point } from "./arrowGeometry";
+import { FlowDotMark, flowDot } from "./flow";
 import { useSceneTime } from "./frameContext";
 import { exitOpacity, fade, tween } from "./motion";
 import type { KitProps } from "./types";
 
-export { ARROW_SIDES, anchorPoint, arrowGeometry, resolveArrowEnds } from "./arrowGeometry";
+export { ARROW_SIDES, anchorPoint, arrowGeometry, pointAlong, resolveArrowEnds } from "./arrowGeometry";
 export type { AnchorBoxes, ArrowAnchor, ArrowEnd, ArrowGeometry, ArrowSide, Point } from "./arrowGeometry";
 
 export interface ArrowProps extends KitProps {
@@ -105,6 +107,7 @@ export function Arrow({ progress, theme, aspect, area, from, to, curve = 0, wind
   const [startMs, durationMs] = window === undefined ? [theme.motion.leadMs, theme.motion.mark.ms] : windowMs(window, time.endMs);
   const timing = arrowTiming(theme, time.ms - startMs, durationMs);
   const dash = drawPath(timing.drawn, round(geometry.length));
+  const dot = flowDot(theme, time.ms - startMs - durationMs);
   const opacity = exitOpacity(theme, time, durationMs);
   const strokeColor = colors[color];
 
@@ -133,6 +136,7 @@ export function Arrow({ progress, theme, aspect, area, from, to, curve = 0, wind
             opacity={round(timing.head)}
           />
         </g>
+        {dot !== undefined && <FlowDotMark theme={theme} at={pointAlong(geometry, dot.along)} opacity={dot.opacity} />}
       </svg>
       {label !== undefined && (
         <div

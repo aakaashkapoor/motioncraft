@@ -18,6 +18,7 @@ export type {
   CubicBezier,
   CurveName,
   ExitToken,
+  FlowToken,
   MarkToken,
   MotionCurve,
   MotionToken,
@@ -88,7 +89,8 @@ export { Ground, groundStyle, type GroundProps } from "./kit";
 export { Section, sectionLayout, sectionTiming, type SectionContent, type SectionLayout, type SectionProps } from "./kit/Section";
 export * from "./kit/windows";
 export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMessage, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";
-export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps } from "./kit/Arrow";
+export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, pointAlong, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps, type Point } from "./kit/Arrow";
+export { FlowDotMark, flowDot, flowGlow, type FlowDot } from "./kit/flow";
 export { Card, CardFace, cardHeight, cardMetrics, type CardData, type CardProps } from "./kit/Card";
 export { CardRow, cardRowLayout, cardRowTiming, type CardRowLayout, type CardRowProps } from "./kit/CardRow";
 export { FeatureList, featureListTiming, type FeatureItem, type FeatureListProps } from "./kit/FeatureList";

@@ -158,7 +158,7 @@ describe("FlowDiagram", () => {
     expect(rootBox(render("16:9", 0.9)).opacity).toBeCloseTo(1, 3);
   });
 
-  it("draws nodes as theme-surface cards with an accent border", () => {
+  it("draws nodes as theme-surface cards, lit with an accent edge", () => {
     const html = render("9:16", 0.5);
     expect(html).toContain(`background-color:${neutralTheme.colors.surface}`);
     expect(html).toContain(neutralTheme.colors.accent);
