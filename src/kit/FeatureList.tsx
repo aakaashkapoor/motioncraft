@@ -1,10 +1,11 @@
 // 2-6 feature rows, each an icon in a soft accent-tinted circle beside a line
-// of text, with an optional title, centered in the content area. Rows spring
-// in one after another, rising and sliding from the left.
+// of text, with an optional title, centered in its area (the content area by
+// default). Rows spring in one after another, rising and sliding from the left.
 
 import { interpolate } from "../engine/easing";
 import { Icon } from "../icons";
 import { contentArea } from "../layout/caption";
+import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
 import { fontSize } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
@@ -75,15 +76,14 @@ function estimateHeight(theme: Theme, aspect: Aspect, width: number, title: stri
 }
 
 /** The largest text size at which the list fits; if none does, the smallest (the checks report it). */
-function featureListLayout(theme: Theme, aspect: Aspect, title: string | undefined, items: FeatureItem[]): FeatureLayout {
-  const area = contentArea(theme, aspect);
+function featureListLayout(theme: Theme, aspect: Aspect, title: string | undefined, items: FeatureItem[], area: Rect): FeatureLayout {
   const layouts = ROW_STEPS.map((step) => layoutFor(theme, aspect, step));
   return layouts.find((l) => estimateHeight(theme, aspect, area.width, title, items, l) <= area.height) ?? layouts.at(-1)!;
 }
 
-export function FeatureList({ progress, theme, aspect, items, title }: FeatureListProps) {
-  const area = contentArea(theme, aspect);
-  const layout = featureListLayout(theme, aspect, title, items);
+export function FeatureList({ progress, theme, aspect, area: slot, items, title }: FeatureListProps) {
+  const area = slot ?? contentArea(theme, aspect);
+  const layout = featureListLayout(theme, aspect, title, items, area);
   const easing = themeEasing(theme);
   const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
   const titleIn = interpolate(progress, [0, TITLE_ENTER], [0, 1], { easing });

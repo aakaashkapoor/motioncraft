@@ -2,14 +2,17 @@
 // anchored element to another, revealed with `drawPath` over its window of the
 // scene. The arrowhead appears as the line completes; an optional label sits
 // at the curve's midpoint. The whole arrow fades out at the end of the scene.
+// Points are always frame px. Standalone, the arrow's box is the whole frame;
+// given an `area` (a Section slot), its box is the slot and anchored ends are
+// kept inside it.
 
 import { createContext, useContext } from "react";
 import { drawPath } from "../engine/choreography";
 import { interpolate, type Easing } from "../engine/easing";
-import { frameSize } from "../layout/frame";
+import { frameSize, type Rect } from "../layout/frame";
 import { fontSize } from "../layout/type";
 import type { ColorRole } from "../theme/types";
-import { arrowGeometry, resolveArrowEnds, type AnchorBoxes, type ArrowEnd } from "./arrowGeometry";
+import { arrowGeometry, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type Point } from "./arrowGeometry";
 import { themeEasing } from "./motion";
 import type { KitProps } from "./types";
 
@@ -70,16 +73,28 @@ export function arrowTiming(progress: number, window: readonly [number, number],
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
-export function Arrow({ progress, theme, aspect, from, to, curve = 0, window = DEFAULT_WINDOW, color = "accent", label, anchors }: ArrowProps) {
+const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+
+/** `point`, moved into `box` if it lies outside. */
+function clampInto(point: Point, box: Rect): Point {
+  return { x: clamp(point.x, box.x, box.x + box.width), y: clamp(point.y, box.y, box.y + box.height) };
+}
+
+const isAnchored = (end: ArrowEnd) => typeof (end as { anchor?: unknown }).anchor === "string";
+
+export function Arrow({ progress, theme, aspect, area, from, to, curve = 0, window = DEFAULT_WINDOW, color = "accent", label, anchors }: ArrowProps) {
   const sceneAnchors = useContext(SceneAnchors);
   if (!COLOR_ROLES.includes(color)) throw new Error(`Arrow: color must be a theme color role (${COLOR_ROLES.join(", ")}), got "${color}"`);
   const { colors, spacing, fonts, radius, hairline } = theme;
   const easing = themeEasing(theme);
   const { width, height } = frameSize(aspect);
+  const box = area ?? { x: 0, y: 0, width, height };
 
   const stroke = spacing.xs;
   const headSize = spacing.md * 0.75;
-  const { start, end } = resolveArrowEnds(from, to, { ...sceneAnchors, ...anchors }, spacing.sm);
+  const ends = resolveArrowEnds(from, to, { ...sceneAnchors, ...anchors }, spacing.sm);
+  const start = isAnchored(from) ? clampInto(ends.start, box) : ends.start;
+  const end = isAnchored(to) ? clampInto(ends.end, box) : ends.end;
   const geometry = arrowGeometry(start, end, curve, headSize);
   const timing = arrowTiming(progress, window, easing);
   const dash = drawPath(timing.drawn, round(geometry.length));
@@ -87,12 +102,13 @@ export function Arrow({ progress, theme, aspect, from, to, curve = 0, window = D
   const strokeColor = colors[color];
 
   return (
-    <div style={{ position: "absolute", left: 0, top: 0, width, height, opacity, pointerEvents: "none" }}>
+    <div style={{ position: "absolute", left: box.x, top: box.y, width: box.width, height: box.height, opacity, pointerEvents: "none" }}>
+      {/* The drawing spans the whole frame, offset back to its origin, so points stay in frame px. */}
       <svg
         width={width}
         height={height}
         viewBox={`0 0 ${width} ${height}`}
-        style={{ position: "absolute", left: 0, top: 0, overflow: "visible" }}
+        style={{ position: "absolute", left: -box.x, top: -box.y, overflow: "visible" }}
       >
         <g data-key-element="arrow" fill="none" stroke={strokeColor} strokeWidth={stroke} strokeLinejoin="round">
           <path
@@ -116,8 +132,8 @@ export function Arrow({ progress, theme, aspect, from, to, curve = 0, window = D
           data-arrow-label=""
           style={{
             position: "absolute",
-            left: round(geometry.mid.x),
-            top: round(geometry.mid.y),
+            left: round(geometry.mid.x - box.x),
+            top: round(geometry.mid.y - box.y),
             transform: "translate(-50%, -50%)",
             opacity: round(timing.label),
             padding: `${spacing.xs}px ${spacing.sm}px`,

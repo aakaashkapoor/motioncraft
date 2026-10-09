@@ -4,6 +4,7 @@
 
 import { interpolate } from "../engine/easing";
 import { contentArea } from "../layout/caption";
+import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
 import { fontSize } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
@@ -49,19 +50,18 @@ function estimateCardHeight(theme: Theme, aspect: Aspect, width: number, text: T
 }
 
 /**
- * The largest title step at which kicker, title and subtitle fit above the
- * caption band. If none fits, the smallest step: the card then overflows
+ * The largest title step at which kicker, title and subtitle fit in `area`
+ * (the content area, above the caption band, by default). If none fits, the smallest step: the card then overflows
  * visibly and the layer-1 checks report it.
  */
-export function titleCardStep(theme: Theme, aspect: Aspect, text: TitleText): TypeStep {
-  const area = contentArea(theme, aspect);
+export function titleCardStep(theme: Theme, aspect: Aspect, text: TitleText, area: Rect = contentArea(theme, aspect)): TypeStep {
   const fits = TITLE_STEPS.find((step) => estimateCardHeight(theme, aspect, area.width, text, step) <= area.height);
   return fits ?? TITLE_STEPS[TITLE_STEPS.length - 1]!;
 }
 
-export function TitleCard({ progress, theme, aspect, title, subtitle, kicker }: TitleCardProps) {
-  const area = contentArea(theme, aspect);
-  const step = titleCardStep(theme, aspect, { title, subtitle, kicker });
+export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle, kicker }: TitleCardProps) {
+  const area = slot ?? contentArea(theme, aspect);
+  const step = titleCardStep(theme, aspect, { title, subtitle, kicker }, area);
   const easing = themeEasing(theme);
   const opacity = presence(progress, ENTER, EXIT, easing);
   const rise = interpolate(progress, [0, ENTER], [theme.spacing.lg, 0], { easing });
