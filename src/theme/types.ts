@@ -1,3 +1,4 @@
+import type { SpringPreset } from "../engine/spring";
 // The shape every theme fills in (design v2, section 1). A theme is a plain
 // object of tokens: color roles, ground style, accent intensity, type, shape,
 // depth and motion. Kit components read from it and never hard-code values.
@@ -118,8 +119,8 @@ export interface ThemeShadow {
   opacity: number;
 }
 
-export const SPRING_PRESETS = ["smooth", "snappy", "gentle", "bouncy"] as const;
-export type SpringPreset = (typeof SPRING_PRESETS)[number];
+// The spring presets themselves live in the engine; themes only name them.
+export const SPRING_PRESETS = ["smooth", "snappy", "gentle", "bouncy"] as const satisfies readonly SpringPreset[];
 
 export interface ThemeMotion {
   /** Name of the default easing curve, e.g. "expoOut" or "easeInOutCubic". */

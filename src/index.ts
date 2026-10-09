@@ -8,7 +8,6 @@ export type {
   AccentIntensity,
   ColorRole,
   GroundStyle,
-  SpringPreset,
   Theme,
   ThemeColors,
   ThemeFonts,

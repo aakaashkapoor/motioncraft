@@ -1,3 +1,4 @@
+import { MONO_FAMILY, SANS_FAMILY } from "../render/fonts";
 import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseTypeScale, SYSTEM_MONO, SYSTEM_SANS } from "./base";
 import type { Theme } from "./types";
 
@@ -21,9 +22,9 @@ export const lightTheme: Theme = {
   ground: { style: "vignette", seed: 1 },
   accentIntensity: "subtle",
   fonts: {
-    display: `"Geist", ${SYSTEM_SANS}`,
-    body: `"Geist", ${SYSTEM_SANS}`,
-    mono: `"Geist Mono", ${SYSTEM_MONO}`,
+    display: `${SANS_FAMILY}, ${SYSTEM_SANS}`,
+    body: `${SANS_FAMILY}, ${SYSTEM_SANS}`,
+    mono: `${MONO_FAMILY}, ${SYSTEM_MONO}`,
   },
   type: baseTypeRamp,
   typeScale: baseTypeScale,
