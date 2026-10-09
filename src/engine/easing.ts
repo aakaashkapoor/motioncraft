@@ -1,4 +1,7 @@
-// Easing curves and value interpolation. Every easing maps 0 -> 0 and 1 -> 1.
+// Easing curves. Every easing maps 0 -> 0 and 1 -> 1.
+// Interpolation is re-exported from interpolate.ts.
+
+import { bezier } from "./bezier";
 
 /** Maps progress in 0..1 to eased progress. May overshoot in between. */
 export type Easing = (t: number) => number;
@@ -39,29 +42,14 @@ export function spring({ damping = 6, frequency = 1.5 }: SpringOptions = {}): Ea
 
 export const easeSpring: Easing = spring();
 
-export interface InterpolateOptions {
-  easing?: Easing;
-  /** Clamp input to the input range. Default true. */
-  clamp?: boolean;
-}
+/** Exponential ease out, `1 - 2^(-10t)`: fast start, long soft landing. */
+export const expoOut: Easing = (t) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t));
 
-/**
- * Maps `value` from `[inStart, inEnd]` to `[outStart, outEnd]`, applying
- * `easing` to the normalized position. Clamps to the input range by default.
- */
-export function interpolate(
-  value: number,
-  [inStart, inEnd]: readonly [number, number],
-  [outStart, outEnd]: readonly [number, number],
-  { easing = linear, clamp = true }: InterpolateOptions = {},
-): number {
-  if (!Number.isFinite(value)) {
-    throw new Error(`interpolate: value must be finite, got ${value}`);
-  }
-  if (inStart === inEnd) {
-    throw new Error(`interpolate: input range [${inStart}, ${inEnd}] is empty`);
-  }
-  let t = (value - inStart) / (inEnd - inStart);
-  if (clamp) t = Math.min(1, Math.max(0, t));
-  return outStart + (outEnd - outStart) * easing(t);
-}
+/** Exponential ease in, the mirror of `expoOut`. */
+export const expoIn: Easing = (t) => (t <= 0 ? 0 : 2 ** (-10 * (1 - t)));
+
+/** Easing curves by name, plus `Easing.bezier(x1, y1, x2, y2)`. */
+export const Easing = { linear, easeInOutCubic, easeOutBack, easeSpring, expoOut, expoIn, bezier } as const;
+
+// Interpolation lives in interpolate.ts; re-exported here for v1 imports.
+export { interpolate, type InterpolateOptions } from "./interpolate";
