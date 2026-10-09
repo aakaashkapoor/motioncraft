@@ -1,6 +1,6 @@
 // Turns a storyboard's theme choice into the theme its frames use: the named
 // built-in theme, with `themeOverrides` deep-merged over it, then the `accent`
-// and `accentIntensity` shortcuts. Any color is allowed; the layer-1 checks
+// and `accentIntensity` shortcuts, and the `safe` profile. Any color is allowed; the layer-1 checks
 // judge contrast in the rendered frames, so nothing is blocked here.
 
 import type { Storyboard } from "../storyboard/types";
@@ -94,7 +94,7 @@ function fullAccent(colors: ThemeColors): ThemeColors {
 }
 
 /** The theme a storyboard renders with, or a built-in theme by name. */
-export function resolveTheme(source: string | Pick<Storyboard, "theme" | "themeOverrides" | "accent" | "accentIntensity">): Theme {
+export function resolveTheme(source: string | Pick<Storyboard, "theme" | "themeOverrides" | "accent" | "accentIntensity" | "safe">): Theme {
   if (typeof source === "string") return namedTheme(source);
   const base = namedTheme(source.theme);
   const overrides = source.themeOverrides ?? {};
@@ -107,5 +107,6 @@ export function resolveTheme(source: string | Pick<Storyboard, "theme" | "themeO
   }
   if (source.accentIntensity !== undefined) theme = { ...theme, accentIntensity: source.accentIntensity };
   if (theme.accentIntensity === "full") theme = { ...theme, colors: fullAccent(theme.colors) };
+  if (source.safe !== undefined) theme = { ...theme, safe: source.safe };
   return theme;
 }

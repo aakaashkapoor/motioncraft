@@ -5,12 +5,14 @@
 import type { Rect } from "../layout/frame";
 import { TYPE_FIT_ATTRIBUTE } from "../layout/type";
 import { union } from "./geometry";
-import type { FrameMeasurement, MeasuredKey, MeasuredText } from "./types";
+import type { FrameMeasurement, MeasuredBlock, MeasuredKey, MeasuredText } from "./types";
 
 /** Marks the burned-in narration caption, so readability can leave it out. */
 export const CAPTION_ATTRIBUTE = "data-caption";
 /** Marks a non-text element that must stay in the safe area; the value labels it. */
 export const KEY_ATTRIBUTE = "data-key-element";
+/** Marks a kit component's visual block, for the centering check; the value labels it. */
+export const BLOCK_ATTRIBUTE = "data-block";
 
 function toRect(box: DOMRect, origin: DOMRect): Rect {
   return { x: box.left - origin.left, y: box.top - origin.top, width: box.width, height: box.height };
@@ -96,12 +98,27 @@ function measureKey(el: Element, root: Element, origin: DOMRect): MeasuredKey {
   };
 }
 
-/** Measures every text element and key element in `root`, in coordinates relative to `root`. */
+function measureBlock(el: Element, root: Element, origin: DOMRect): MeasuredBlock {
+  return {
+    label: el.getAttribute(BLOCK_ATTRIBUTE) || el.tagName.toLowerCase(),
+    rect: toRect(el.getBoundingClientRect(), origin),
+    opacity: effectiveOpacity(lineage(el, root)),
+    caption: el.closest(`[${CAPTION_ATTRIBUTE}]`) !== null,
+  };
+}
+
+/** Blocks not nested in another block: a window's own content is part of the window. */
+function outermostBlocks(root: Element): Element[] {
+  return [...root.querySelectorAll(`[${BLOCK_ATTRIBUTE}]`)].filter((el) => !el.parentElement?.closest(`[${BLOCK_ATTRIBUTE}]`));
+}
+
+/** Measures every text element, key element and outermost block in `root`, in coordinates relative to `root`. */
 export function measureFrame(root: Element): FrameMeasurement {
   const origin = root.getBoundingClientRect();
   const elements = [root, ...root.querySelectorAll("*")];
   return {
     texts: elements.map((el) => measureText(el, root, origin)).filter((t): t is MeasuredText => t !== undefined),
     keys: [...root.querySelectorAll(`[${KEY_ATTRIBUTE}]`)].map((el) => measureKey(el, root, origin)),
+    blocks: outermostBlocks(root).map((el) => measureBlock(el, root, origin)),
   };
 }

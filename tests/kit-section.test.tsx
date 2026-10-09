@@ -122,8 +122,11 @@ describe("Section", () => {
       const rect = boxOf(ps.find((p) => p.part === name)!.style);
       inside(area, rect);
     }
-    // The nested component fills the content slot, not the whole content area.
-    expect(boxOf(nestedRoot(html))).toEqual(layout.content);
+    // The nested component lays out in the content slot, centered in it, not in the whole content area.
+    const root = boxOf(nestedRoot(html));
+    inside(layout.content, root);
+    expect(root.x + root.width / 2).toBeCloseTo(layout.content.x + layout.content.width / 2, 6);
+    expect(root.y + root.height / 2).toBeCloseTo(layout.content.y + layout.content.height / 2, 6);
   });
 
   it.each(ASPECTS)("keeps the eyebrow's and note's glyphs inside their boxes, so neither pokes out of the safe area (%s)", (aspect) => {

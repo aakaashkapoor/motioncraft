@@ -1,4 +1,5 @@
 import { baseMotion, baseRadius, baseSpacing, baseTypeRamp, baseWeights, SYSTEM_MONO, SYSTEM_SANS } from "./base";
+import { DEFAULT_SAFE_PROFILE } from "../storyboard/types";
 import type { Theme } from "./types";
 
 // The v1 look, kept for compatibility: a near-black solid ground, near-white
@@ -32,4 +33,5 @@ export const neutralTheme: Theme = {
   cardShadow: { y: 16, blur: 48, opacity: 0.4 },
   hairline: 2,
   motion: { ...baseMotion, easing: "easeInOutCubic", enterMs: 400, exitMs: 300 },
+  safe: DEFAULT_SAFE_PROFILE,
 };

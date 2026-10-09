@@ -7,6 +7,7 @@
 import { interpolate } from "../engine/easing";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
+import { estimateLines } from "../layout/textFit";
 import { TYPE_FIT_ATTRIBUTE, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
@@ -45,6 +46,8 @@ const PAUSE_CHARS = 6;
 /** Caret blinks per scene while idle. */
 const BLINKS = 6;
 const PROMPT_MARKER = "$";
+/** Stands in for the caret when counting a line's characters: one more, on the last word. */
+const CARET_ROOM = "_";
 
 /**
  * Every line's timing. Each line appears when the one before it ends; a prompt
@@ -69,27 +72,22 @@ function blink(progress: number): number {
   return 0.5 + 0.5 * Math.cos(2 * Math.PI * BLINKS * progress);
 }
 
-/** Rows a line takes when wrapped at `columns` characters. */
-function rows(chars: number, columns: number): number {
-  return Math.max(1, Math.ceil(chars / Math.max(1, columns)));
-}
 
-function terminalLayout(theme: Theme, aspect: Aspect, lines: readonly TerminalLine[], area: Rect) {
+function terminalLayout(theme: Theme, aspect: Aspect, lines: readonly TerminalLine[], slot: Rect | undefined) {
+  const area = slot ?? contentArea(theme, aspect);
   const { inner } = windowWidth(theme, aspect, area);
   const { lineHeight } = theme.type.mono[aspect];
-  const prefix = PROMPT_MARKER.length + 1;
-  // Every line plus the fresh prompt at the end; prompt lines leave room for the caret.
-  const widths = [...lines.map((line) => line.text.length + (line.prompt ? prefix + 1 : 0)), prefix + 1];
-  const heightAt = (size: number) => {
-    const columns = Math.floor(inner / (size * MONO_ADVANCE));
-    return widths.reduce((sum, chars) => sum + rows(chars, columns), 0) * size * lineHeight;
-  };
+  // Every line plus the fresh prompt at the end; prompt lines carry the marker and leave room for
+  // the caret. Lines wrap at their spaces (`pre-wrap`), breaking a word only when it is too long.
+  const texts = [...lines.map((line) => (line.prompt ? `${PROMPT_MARKER} ${line.text}${CARET_ROOM}` : line.text)), `${PROMPT_MARKER} ${CARET_ROOM}`];
+  const heightAt = (size: number) =>
+    texts.reduce((sum, text) => sum + Math.max(1, estimateLines(text, inner, size, MONO_ADVANCE)), 0) * size * lineHeight;
   const size = fitMonoSize(theme, aspect, (s) => heightAt(s) <= maxInnerHeight(theme, aspect, area));
-  return { size, box: windowBox(theme, aspect, heightAt(size), area) };
+  return { size, box: windowBox(theme, aspect, heightAt(size), slot) };
 }
 
 export function TerminalWindow({ progress, theme, aspect, area, lines, title = "Terminal", shareId, chrome = "traffic" }: TerminalWindowProps) {
-  const { size, box } = terminalLayout(theme, aspect, lines, area ?? contentArea(theme, aspect));
+  const { size, box } = terminalLayout(theme, aspect, lines, area);
   const timing = terminalTiming(lines);
   const colors = syntaxColors(theme);
   const mono = theme.type.mono[aspect];

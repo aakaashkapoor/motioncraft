@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, type TestContext } from "vitest";
 import {
+  checkCentering,
   checkContrast,
   checkOverflow,
   checkReadability,
@@ -19,6 +20,7 @@ import {
   textContrast,
   type CheckResult,
   type FrameMeasurement,
+  type MeasuredBlock,
   type MeasuredText,
 } from "../src/checks";
 import { contains, describeExcess, excess, union } from "../src/checks/geometry";
@@ -46,8 +48,14 @@ function text(overrides: Partial<MeasuredText> = {}): MeasuredText {
 }
 
 function frame(...texts: MeasuredText[]): FrameMeasurement {
-  return { texts, keys: [] };
+  return { texts, keys: [], blocks: [] };
 }
+
+function block(overrides: Partial<MeasuredBlock> = {}): MeasuredBlock {
+  return { label: "Card", rect: { x: 240, y: 700, width: 600, height: 300 }, opacity: 1, caption: false, ...overrides };
+}
+
+const withBlocks = (...blocks: MeasuredBlock[]): FrameMeasurement => ({ texts: [], keys: [], blocks });
 
 describe("geometry", () => {
   const outer = { x: 0, y: 0, width: 100, height: 100 };
@@ -94,18 +102,38 @@ describe("checkOverflow", () => {
 describe("checkSafeArea", () => {
   const safe = safeArea("9:16");
 
-  it("passes text inside the safe area", () => {
-    expect(checkSafeArea(frame(text({ rect: { ...safe } })), "9:16")).toEqual([]);
+  it("passes text inside the safe area, clear of the rail", () => {
+    // In shorts the rail cuts into the column's lower rows; crosspost's rail is outside its column.
+    expect(checkSafeArea(frame(text({ rect: { ...safe, height: 960 - safe.y } })), "9:16")).toEqual([]);
+    expect(checkSafeArea(frame(text({ rect: safeArea("9:16", "crosspost") })), "9:16", "crosspost")).toEqual([]);
   });
 
   it("flags text under the vertical platform UI", () => {
-    // The right-hand button column starts at 950px in 9:16.
+    // The shorts text column ends at x = 960.
     const right = text({ rect: { x: 600, y: 800, width: 400, height: 100 } });
     expect(checkSafeArea(frame(right), "9:16")).toEqual([
-      `text "Hello there" is outside the 9:16 safe area (right by ${600 + 400 - (safe.x + safe.width)}px)`,
+      `text "Hello there" is outside the 9:16 "shorts" safe area (right by ${600 + 400 - (safe.x + safe.width)}px)`,
     ]);
     // The same box is fine in 16:9, which has no overlaid UI.
     expect(checkSafeArea(frame(right), "16:9")).toEqual([]);
+  });
+
+  it("keeps text off the right rail only in the rail's rows (shorts: x > 900 for y 960-1600)", () => {
+    const high = text({ text: "High", rect: { x: 500, y: 800, width: 440, height: 100 } });
+    expect(checkSafeArea(frame(high), "9:16")).toEqual([]);
+    const low = text({ text: "Low", rect: { x: 500, y: 1100, width: 440, height: 100 } });
+    expect(checkSafeArea(frame(low), "9:16")).toEqual([`text "Low" is under the platform's button rail (x > 900 for y 960-1600) by 40px`]);
+    // The rail is a keep-out for text, not for shapes: key elements may cross it.
+    const measurement: FrameMeasurement = { texts: [], keys: [{ label: "arrow", rect: { x: 500, y: 1100, width: 440, height: 100 }, opacity: 1 }], blocks: [] };
+    expect(checkSafeArea(measurement, "9:16")).toEqual([]);
+  });
+
+  it("checks the crosspost profile: centered text within x 200-880, nothing below 1240", () => {
+    const left = text({ text: "Left", rect: { x: 150, y: 800, width: 400, height: 100 } });
+    expect(checkSafeArea(frame(left), "9:16")).toEqual([]);
+    expect(checkSafeArea(frame(left), "9:16", "crosspost")).toEqual(['text "Left" is outside the 9:16 "crosspost" safe area (left by 50px)']);
+    const low = text({ text: "Low", rect: { x: 300, y: 1250, width: 400, height: 100 } });
+    expect(checkSafeArea(frame(low), "9:16", "crosspost")).toEqual(['text "Low" is outside the 9:16 "crosspost" safe area (bottom by 110px)']);
   });
 
   it("flags key elements and ignores invisible ones", () => {
@@ -115,10 +143,41 @@ describe("checkSafeArea", () => {
         { label: "logo", rect: { x: 0, y: 0, width: 100, height: 100 }, opacity: 1 },
         { label: "ghost", rect: { x: 0, y: 0, width: 100, height: 100 }, opacity: 0 },
       ],
+      blocks: [],
     };
     const messages = checkSafeArea(measurement, "9:16");
     expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatch(/^logo is outside the 9:16 safe area \(top by \d+px, left by \d+px\)$/);
+    expect(messages[0]).toMatch(/^logo is outside the 9:16 "shorts" safe area \(top by \d+px, left by \d+px\)$/);
+  });
+});
+
+describe("checkCentering", () => {
+  it("passes a main block centered on x = 540, give or take 8 px", () => {
+    expect(checkCentering(withBlocks(block()), "9:16")).toEqual([]);
+    expect(checkCentering(withBlocks(block({ rect: { x: 248, y: 700, width: 600, height: 300 } })), "9:16")).toEqual([]);
+  });
+
+  it("warns when the main block's center is more than 8 px from the frame center", () => {
+    // v2's layout: the content column centered on x = 502.
+    const off = withBlocks(block({ rect: { x: 54, y: 700, width: 896, height: 300 } }));
+    expect(checkCentering(off, "9:16")).toEqual(["the main block (Card) is centered on x = 502, 38px left of the frame center (x = 540)"]);
+    const right = withBlocks(block({ label: "terminal window", rect: { x: 300, y: 700, width: 600, height: 300 } }));
+    expect(checkCentering(right, "9:16")).toEqual(["the main block (terminal window) is centered on x = 600, 60px right of the frame center (x = 540)"]);
+  });
+
+  it("takes the main block as the scene's blocks together, leaving out the caption and hidden blocks", () => {
+    const pair = withBlocks(
+      block({ label: "CardRow", rect: { x: 120, y: 700, width: 400, height: 300 } }),
+      block({ label: "CardRow", rect: { x: 560, y: 700, width: 400, height: 300 } }),
+      block({ label: "Caption", caption: true, rect: { x: 0, y: 1300, width: 300, height: 100 } }),
+      block({ label: "ghost", opacity: 0, rect: { x: 0, y: 0, width: 100, height: 100 } }),
+    );
+    expect(checkCentering(pair, "9:16")).toEqual([]);
+  });
+
+  it("only applies to 9:16, and passes a frame without blocks", () => {
+    expect(checkCentering(withBlocks(block({ rect: { x: 0, y: 0, width: 100, height: 100 } })), "16:9")).toEqual([]);
+    expect(checkCentering(withBlocks(), "9:16")).toEqual([]);
   });
 });
 
@@ -256,6 +315,20 @@ describe("judge", () => {
     expect(formatProblem(result.warnings[0]!)).toMatch(/^warn \[type-scale\] scene "slow", frame 30: text "Off" is 50px/);
   });
 
+  it("reports an off-center main block as a centering warning, once per scene", () => {
+    const off = withBlocks(block({ rect: { x: 54, y: 700, width: 896, height: 300 } }));
+    const result = judge(sb, timeline, [30, 100].map((n) => ({ frame: n, measurement: off })), lightTheme);
+    expect(result.passed).toBe(true);
+    expect(result.warnings.map(({ check, sceneId, frame: n }) => [check, sceneId, n])).toEqual([["centering", "slow", 30]]);
+  });
+
+  it("judges the safe area with the theme's profile", () => {
+    const left = frame(text({ text: "Left", rect: { x: 150, y: 800, width: 400, height: 100 } }));
+    expect(judge(sb, timeline, [{ frame: 100, measurement: left }], lightTheme).passed).toBe(true);
+    const crosspost = judge(sb, timeline, [{ frame: 100, measurement: left }], { ...lightTheme, safe: "crosspost" });
+    expect(crosspost.problems.map((p) => p.check)).toEqual(["safe-area"]);
+  });
+
   it("tags each problem with its check, scene and frame", () => {
     const result = judge(sb, timeline, [
       { frame: 15, measurement: frame(text({ text: "far too many words for one second" })) },
@@ -306,7 +379,7 @@ describe("sampleVisibleFrames", () => {
   it("reads content opacity as the faintest element on the frame", () => {
     expect(contentOpacity(frame())).toBe(0);
     expect(contentOpacity(frame(text({ opacity: 1 }), text({ opacity: 0.4 })))).toBe(0.4);
-    expect(contentOpacity({ texts: [text()], keys: [{ label: "logo", rect: { x: 0, y: 0, width: 1, height: 1 }, opacity: 0.5 }] })).toBe(0.5);
+    expect(contentOpacity({ texts: [text()], keys: [{ label: "logo", rect: { x: 0, y: 0, width: 1, height: 1 }, opacity: 0.5 }], blocks: [] })).toBe(0.5);
   });
 
   it("picks the first and last fully visible frames and the middle of each scene", async () => {

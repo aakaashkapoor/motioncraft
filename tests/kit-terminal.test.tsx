@@ -162,6 +162,17 @@ describe("TerminalWindow", () => {
     expect(rootBox(terminal(1, aspect)).opacity).toBeCloseTo(0, 3);
   });
 
+  it("is tall enough for commands that word-wrap in a narrow window", () => {
+    // The crosspost window is 680 px wide: 24 columns of 40 px mono. The command wraps at its
+    // spaces, so it takes three rows, not the two its characters alone would fill.
+    const theme = { ...lightTheme, safe: "crosspost" as const };
+    const lines: TerminalLine[] = [{ prompt: true, text: "npx tsx scripts/render.ts intro.json" }, { text: "checks passed" }, { text: "wrote intro.mp4" }];
+    const box = rootBox(renderToStaticMarkup(<TerminalWindow progress={1} theme={theme} aspect="9:16" lines={lines} />));
+    const mono = theme.type.mono["9:16"];
+    const rowsHeight = 6 * mono.size * mono.lineHeight;
+    expect(box.height).toBeGreaterThanOrEqual(rowsHeight + 2 * theme.spacing.md + Math.round(theme.type.label["9:16"].size * 2));
+  });
+
   it("keeps the window the same size while lines appear", () => {
     expect(rootBox(terminal(0.1)).height).toBe(rootBox(terminal(0.9)).height);
   });

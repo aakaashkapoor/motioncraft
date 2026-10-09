@@ -10,6 +10,7 @@ import type { Theme } from "../theme/types";
 // The registry imports this module's users; it is only read at render time.
 import { kit } from "./index";
 import { VisibleRectContext } from "./frameContext";
+import { FULL_BLEED_COMPONENTS } from "./media";
 
 /** A nested kit component, written in a storyboard the same way as a scene. */
 export interface SlotContent {
@@ -82,7 +83,8 @@ export function Slot({ progress, theme, aspect, box, content, backgroundColor, a
         >
           {/* The box, in the nested frame's coordinates: what media fills. */}
           <VisibleRectContext.Provider value={{ x: -x / scale, y: -y / scale, width: box.width / scale, height: box.height / scale }}>
-            <Component {...content!.props} progress={progress} theme={theme} aspect={aspect} />
+            {/* Given its area, a nested component centers in it (and so in the box), not on the frame's optical center. Media fill the box. */}
+            <Component {...content!.props} progress={progress} theme={theme} aspect={aspect} area={FULL_BLEED_COMPONENTS.has(content!.component) ? undefined : contentArea(theme, aspect)} />
           </VisibleRectContext.Provider>
         </div>
       )}

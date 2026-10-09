@@ -1,10 +1,12 @@
-// A list of 2-6 steps with an optional title, centered in the safe area above
-// the caption band. Each item has a numbered or accent-dot marker and appears
+// A list of 2-6 steps with an optional title, on the frame's optical center
+// above the caption band (or centered in its slot), no wider than the text
+// column. Each item has a numbered or accent-dot marker and appears
 // in turn, fading in and sliding from the left; all are in by ~70% of the
 // scene. An optional highlighted item is drawn in the accent color.
 
 import { interpolate, type Easing } from "../engine/easing";
-import { contentArea } from "../layout/caption";
+import { blockCenterY, placeBlock } from "../layout/block";
+import { contentArea, textColumn } from "../layout/caption";
 import { estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
@@ -135,7 +137,10 @@ function itemMotion(progress: number, [start, end]: [number, number], slide: num
 
 export function StepList({ progress, theme, aspect, area: slot, items, title, highlight, marker = "number" }: StepListProps) {
   const area = slot ?? contentArea(theme, aspect);
-  const layout = stepListLayout(theme, aspect, title, items, area);
+  const width = Math.min(area.width, textColumn(theme, aspect).width);
+  const layout = stepListLayout(theme, aspect, title, items, { ...area, width });
+  const height = estimateListHeight(theme, aspect, width, title, items, layout);
+  const box = placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot));
   const easing = themeEasing(theme);
   const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
   const titleOpacity = interpolate(progress, [0, TITLE_ENTER], [0, 1], { easing });
@@ -147,10 +152,10 @@ export function StepList({ progress, theme, aspect, area: slot, items, title, hi
     <div
       style={{
         position: "absolute",
-        left: area.x,
-        top: area.y,
-        width: area.width,
-        height: area.height,
+        left: box.x,
+        top: box.y,
+        width: box.width,
+        height: box.height,
         opacity: exit,
         display: "flex",
         flexDirection: "column",
@@ -158,7 +163,7 @@ export function StepList({ progress, theme, aspect, area: slot, items, title, hi
         alignItems: "center",
       }}
     >
-      <div style={{ maxWidth: area.width - 2 * layout.slide }}>
+      <div data-block="StepList" style={{ maxWidth: width - 2 * layout.slide }}>
         {title !== undefined && (
           <h2
             style={{

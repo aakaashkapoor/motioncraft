@@ -4,11 +4,25 @@
 // landed, an optional `highlight` card lights up in the accent.
 
 import { interpolate } from "../engine/easing";
+import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
 import type { Rect } from "../layout/frame";
+import { safeZones } from "../layout/safe";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
-import { CARD_TITLE_STEPS, CardFace, cardEntrance, cardHeight, cardMetrics, type CardData, type CardMetrics, type CardOrientation } from "./Card";
+import {
+  CARD_TITLE_STEPS,
+  CardFace,
+  cardContentWidth,
+  cardEntrance,
+  cardHeight,
+  cardMetrics,
+  cardWordsFit,
+  isLabelCard,
+  type CardData,
+  type CardMetrics,
+  type CardOrientation,
+} from "./Card";
 import { themeEasing } from "./motion";
 import { springIn } from "./springIn";
 import type { KitProps } from "./types";
@@ -47,16 +61,20 @@ export interface CardRowLayout {
 }
 
 /**
- * Lays the cards out in `area` (the content area by default), all the same
- * size, the block centered. One row when the area is landscape and every card
- * gets at least `MIN_ROW_CARD_EM` of width; otherwise a stack or a grid. Uses
- * the largest title size at which every card fits its cell; if none fits, the
- * smallest, and the layer-1 checks report the overflow.
+ * Lays the cards out in `slot` (the content area when there is none), all the
+ * same size, the block on the frame's optical center (see `blockCenterY`). One
+ * row when the area is landscape and every card gets at least
+ * `MIN_ROW_CARD_EM` of width; otherwise a stack or a grid, at most the primary
+ * width. A stack of label cards takes that whole width; a stack with
+ * subtitles hugs its widest card. Uses the largest title size at which every
+ * card fits its cell with no word broken; if none fits, the smallest, and the
+ * layer-1 checks report the overflow.
  */
-export function cardRowLayout(theme: Theme, aspect: Aspect, cards: readonly CardData[], area: Rect = contentArea(theme, aspect)): CardRowLayout {
+export function cardRowLayout(theme: Theme, aspect: Aspect, cards: readonly CardData[], slot?: Rect): CardRowLayout {
   if (!Array.isArray(cards) || cards.length < MIN_CARDS || cards.length > MAX_CARDS) {
     throw new Error(`CardRow: needs ${MIN_CARDS}-${MAX_CARDS} cards, got ${Array.isArray(cards) ? cards.length : typeof cards}`);
   }
+  const area = slot ?? contentArea(theme, aspect);
   const gap = theme.spacing.md;
   const n = cards.length;
   const rowCell = (area.width - (n - 1) * gap) / n;
@@ -64,19 +82,28 @@ export function cardRowLayout(theme: Theme, aspect: Aspect, cards: readonly Card
   const cols = wide ? n : n <= 3 ? 1 : 2;
   const rows = Math.ceil(n / cols);
   const orientation: CardOrientation = cols === 1 ? "row" : "column";
+  const maxWidth = Math.min(area.width, safeZones(aspect, theme.safe).primaryWidth);
+  const hug = cols === 1 && !cards.every(isLabelCard);
   // In a row of few cards, keep each from stretching past a third of the width.
-  const width = wide ? Math.min((area.width - (n - 1) * gap) / n, (area.width - 2 * gap) / 3) : (area.width - (cols - 1) * gap) / cols;
+  const widthFor = (m: CardMetrics) => {
+    if (wide) return Math.min((area.width - (n - 1) * gap) / n, (area.width - 2 * gap) / 3);
+    const cell = (maxWidth - (cols - 1) * gap) / cols;
+    return hug ? Math.min(cell, Math.max(...cards.map((card) => cardContentWidth(theme, card, m)))) : cell;
+  };
   const room = (area.height - (rows - 1) * gap) / rows;
 
-  const tallest = (m: CardMetrics) => Math.max(...cards.map((card) => cardHeight(theme, card, width, m)));
+  const tallest = (m: CardMetrics) => Math.max(...cards.map((card) => cardHeight(theme, card, widthFor(m), m)));
   const candidates = CARD_TITLE_STEPS.map((step) => cardMetrics(theme, aspect, step, orientation));
-  const metrics = candidates.find((m) => tallest(m) <= room) ?? candidates.at(-1)!;
+  const fits = (m: CardMetrics) => tallest(m) <= room && cards.every((card) => cardWordsFit(theme, card, widthFor(m), m));
+  const metrics = candidates.find(fits) ?? candidates.at(-1)!;
+  const width = widthFor(metrics);
   const height = Math.min(room, tallest(metrics));
 
   const blockWidth = cols * width + (cols - 1) * gap;
   const blockHeight = rows * height + (rows - 1) * gap;
-  const left = (area.width - blockWidth) / 2;
-  const top = (area.height - blockHeight) / 2;
+  const block = placeBlock(area, { width: blockWidth, height: blockHeight }, blockCenterY(theme, aspect, slot));
+  const left = block.x - area.x;
+  const top = block.y - area.y;
   const cells = cards.map((_, i) => {
     const r = Math.floor(i / cols);
     const c = i % cols;
@@ -90,7 +117,7 @@ export function cardRowLayout(theme: Theme, aspect: Aspect, cards: readonly Card
 
 export function CardRow({ progress, theme, aspect, area: slot, cards, highlight }: CardRowProps) {
   const area = slot ?? contentArea(theme, aspect);
-  const layout = cardRowLayout(theme, aspect, cards, area);
+  const layout = cardRowLayout(theme, aspect, cards, slot);
   const timing = cardRowTiming(cards.length);
   const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing: themeEasing(theme) });
   const landed = timing.at(-1)![1];
@@ -106,6 +133,7 @@ export function CardRow({ progress, theme, aspect, area: slot, cards, highlight 
           <div
             key={i}
             data-card={i}
+            data-block="CardRow"
             style={{ position: "absolute", left: cell.x, top: cell.y, width: cell.width, height: cell.height, ...entrance }}
           >
             <CardFace theme={theme} metrics={layout.metrics} highlight={i === highlight ? lit : 0} {...card} />

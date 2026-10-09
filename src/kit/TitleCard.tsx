@@ -1,9 +1,11 @@
-// A headline card: optional kicker, title, optional subtitle, centered in the
-// safe area above the caption band. Long titles step down the type ramp until
-// the card fits. Fades in with a slight rise, holds, then fades out.
+// A headline card: optional kicker, title, optional subtitle, centered on the
+// frame's optical center above the caption band, no wider than the text column.
+// Long titles step down the type ramp until the card fits. Fades in with a
+// slight rise, holds, then fades out.
 
 import { interpolate } from "../engine/easing";
-import { contentArea } from "../layout/caption";
+import { blockCenterY, placeBlock } from "../layout/block";
+import { contentArea, textColumn } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
@@ -53,9 +55,22 @@ export function titleCardStep(theme: Theme, aspect: Aspect, text: TitleText, are
   return fits ?? TITLE_STEPS[TITLE_STEPS.length - 1]!;
 }
 
-export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle, kicker }: TitleCardProps) {
+/**
+ * The card's box: the text column's width (clear of the right rail), as tall
+ * as its text is estimated to be, on the frame's optical center or centered
+ * in its slot. Its text is centered in the box, so a short estimate never
+ * moves it off center.
+ */
+export function titleCardBox(theme: Theme, aspect: Aspect, text: TitleText, slot?: Rect): { box: Rect; step: TypeRole } {
   const area = slot ?? contentArea(theme, aspect);
-  const step = titleCardStep(theme, aspect, { title, subtitle, kicker }, area);
+  const width = Math.min(area.width, textColumn(theme, aspect).width);
+  const step = titleCardStep(theme, aspect, text, { ...area, width });
+  const height = estimateCardHeight(theme, aspect, width, text, step);
+  return { box: placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot)), step };
+}
+
+export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle, kicker }: TitleCardProps) {
+  const { box, step } = titleCardBox(theme, aspect, { title, subtitle, kicker }, slot);
   const easing = themeEasing(theme);
   const opacity = presence(progress, ENTER, EXIT, easing);
   const rise = interpolate(progress, [0, ENTER], [theme.spacing.lg, 0], { easing });
@@ -65,10 +80,10 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
     <div
       style={{
         position: "absolute",
-        left: area.x,
-        top: area.y,
-        width: area.width,
-        height: area.height,
+        left: box.x,
+        top: box.y,
+        width: box.width,
+        height: box.height,
         opacity,
         display: "flex",
         flexDirection: "column",
@@ -77,7 +92,7 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
         textAlign: "center",
       }}
     >
-      <div style={{ transform: `translateY(${rise}px)`, maxWidth: "100%" }}>
+      <div data-block="TitleCard" style={{ transform: `translateY(${rise}px)`, maxWidth: "100%" }}>
         {kicker !== undefined && (
           <p
             style={{

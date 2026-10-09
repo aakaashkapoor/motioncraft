@@ -12,8 +12,11 @@ export interface KitProps {
   theme: Theme;
   aspect: Aspect;
   /**
-   * The box to lay out in, in frame px. Defaults to `contentArea(theme, aspect)`;
-   * `Section` passes its content slot. Components that ignore it fill the content area.
+   * The box to lay out in, in frame px. `Section`, `Handoff` and `Pinned` pass
+   * a slot, and the component centers in it. Without one the component is the
+   * scene's main block: it lays out in `contentArea(theme, aspect)` and centers
+   * on the frame's optical center (see `blockCenterY`). Media ignore it and
+   * fill what is visible.
    */
   area?: Rect;
 }

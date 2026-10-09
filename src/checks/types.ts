@@ -3,11 +3,11 @@
 
 import type { Rect } from "../layout/frame";
 
-export const CHECK_NAMES = ["overflow", "safe-area", "contrast", "readability", "type-scale"] as const;
+export const CHECK_NAMES = ["overflow", "safe-area", "contrast", "readability", "type-scale", "centering"] as const;
 export type CheckName = (typeof CHECK_NAMES)[number];
 
 /** Checks whose problems are warnings: reported, but they do not fail the run. */
-export const WARNING_CHECKS: ReadonlySet<CheckName> = new Set<CheckName>(["type-scale"]);
+export const WARNING_CHECKS: ReadonlySet<CheckName> = new Set<CheckName>(["type-scale", "centering"]);
 
 export interface Problem {
   check: CheckName;
@@ -53,9 +53,23 @@ export interface MeasuredKey {
   opacity: number;
 }
 
+/**
+ * A kit component's visual block (a card, a window, a list), marked
+ * `data-block`; only blocks not inside another block are measured.
+ */
+export interface MeasuredBlock {
+  /** The marker's value, e.g. "Card" or "terminal window". */
+  label: string;
+  rect: Rect;
+  opacity: number;
+  /** The burned-in narration caption rather than the scene itself. */
+  caption: boolean;
+}
+
 export interface FrameMeasurement {
   texts: MeasuredText[];
   keys: MeasuredKey[];
+  blocks: MeasuredBlock[];
 }
 
 /** Below this effective opacity an element counts as not on screen. */

@@ -123,9 +123,11 @@ describe("sizing scales to the slot", () => {
     const nodes = ["Write", "Render", "Check", "Ship"].slice(0, count);
     const full = flowDiagramLayout(theme, "16:9", nodes);
     expect(new Set(full.nodes.map((n) => n.y)).size).toBe(1);
-    const nested = flowDiagramLayout(theme, "16:9", nodes, undefined, SLOT["16:9"]);
+    // A narrow landscape slot, tall enough for four cards stacked at the smallest label step.
+    const slot = { ...SLOT["16:9"], height: 800 };
+    const nested = flowDiagramLayout(theme, "16:9", nodes, undefined, slot);
     expect(new Set(nested.nodes.map((n) => n.x)).size).toBe(1);
-    expect(nested.nodes.at(-1)!.y + nested.nodes.at(-1)!.height).toBeLessThanOrEqual(SLOT["16:9"].height);
+    expect(nested.nodes.at(-1)!.y + nested.nodes.at(-1)!.height).toBeLessThanOrEqual(slot.height);
   });
 
   it("ChatWindow stacks in a narrow 16:9 slot and stays inside it", () => {

@@ -325,6 +325,7 @@ describe("sampleVisibleFrames skips transitions", () => {
     const visible: FrameMeasurement = {
       texts: [{ opacity: 1 }],
       keys: [],
+      blocks: [],
     } as unknown as FrameMeasurement;
     const measured = await sampleVisibleFrames(tl, async () => visible);
     for (const { frame } of measured) expect(frameAt(tl, frame).pair).toBeUndefined();
