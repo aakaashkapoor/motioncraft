@@ -5,6 +5,9 @@
 
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { CameraWorld } from "../camera/Camera";
+import { readTarget } from "../camera/measure";
+import { cameraAt, type CameraMode, type CameraTargets, type SceneTargets, type ShotTargetBox } from "../camera/shots";
 import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
 import type { FrameMeasurement } from "../checks/types";
 import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type SceneDurations, type Timeline } from "../engine/timeline";
@@ -12,7 +15,7 @@ import { Caption, kit } from "../kit";
 import { SceneClockContext } from "../kit/frameContext";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
-import type { Storyboard } from "../storyboard/types";
+import { WIDE_SHOT, type Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { transitionStyle } from "../transitions";
 import { morphEndpoints, morphProgress, sharedIds, type BoundaryMeasurement, type SharedMeasurements } from "../transitions/shared";
@@ -46,6 +49,14 @@ export interface FrameProps {
    * uses the scene presentation.
    */
   shared?: SharedMeasurements;
+  /**
+   * Boxes of the scenes' shot targets, measured in the page (which stops with
+   * an error when a target is not drawn). Here, a shot onto an element
+   * without one is skipped.
+   */
+  targets?: CameraTargets;
+  /** `live` (default) draws the camera as it plays; `steady` holds its breathing still, for the checks. */
+  camera?: Exclude<CameraMode, "wide">;
 }
 
 interface SceneLayerProps {
@@ -55,10 +66,15 @@ interface SceneLayerProps {
   scene: ActiveScene;
   /** Hide this scene's shared originals: a morph draws them. */
   hideShared?: boolean;
+  targets?: CameraTargets;
+  camera: CameraMode;
 }
 
-/** One scene's component and caption. During a transition, wrapped in its presentation's style. */
-function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false }: SceneLayerProps) {
+/**
+ * One scene's component, in its camera's world, and its caption, which stays
+ * fixed. During a transition, wrapped in its presentation's style.
+ */
+function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false, targets, camera }: SceneLayerProps) {
   const scene = storyboard.scenes[active.sceneIndex]!;
   const Component = Object.hasOwn(kit, scene.component) ? kit[scene.component] : undefined;
   if (Component === undefined) {
@@ -66,9 +82,21 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false 
   }
   const { aspect } = storyboard;
   const common = { progress: active.progress, theme, aspect };
+  const view = cameraAt({
+    theme,
+    aspect,
+    sceneIndex: active.sceneIndex,
+    ms: (active.localFrame * 1000) / fps,
+    progress: active.progress,
+    shots: scene.shots,
+    targets: targets?.get(active.sceneIndex),
+    mode: camera,
+  });
   const content = (
     <SceneClockContext.Provider value={{ fps, frame: active.localFrame, frames: active.sceneFrames }}>
-      <Component {...scene.props} {...common} />
+      <CameraWorld view={view} aspect={aspect}>
+        <Component {...scene.props} {...common} />
+      </CameraWorld>
       {scene.narration !== undefined && (
         <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
           <Caption {...common} text={scene.narration} />
@@ -102,11 +130,12 @@ function morphAt(info: ReturnType<typeof frameAt>, shared: SharedMeasurements | 
  * incoming one on top, over one shared ground; elements the two scenes share
  * (see `shared`) are drawn once, morphing, above both.
  */
-export function Frame({ storyboard, theme, timeline, frame, shared }: FrameProps) {
+export function Frame({ storyboard, theme, timeline, frame, shared, targets, camera = "live" }: FrameProps) {
   const info = frameAt(timeline, frame);
   const size = frameSize(storyboard.aspect);
   const morph = morphAt(info, shared);
   const transition = morph === undefined ? undefined : timeline.transitions[morph.boundary]!;
+  const layer = { storyboard, theme, fps: timeline.fps, targets, camera };
 
   return (
     <div
@@ -120,7 +149,7 @@ export function Frame({ storyboard, theme, timeline, frame, shared }: FrameProps
     >
       <Ground theme={theme} aspect={storyboard.aspect} />
       {scenesOnScreen(info).map((scene) => (
-        <SceneLayer key={scene.sceneId} storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} hideShared={morph !== undefined} />
+        <SceneLayer key={scene.sceneId} {...layer} scene={scene} hideShared={morph !== undefined} />
       ))}
       {morph !== undefined && (
         <SharedMorph
@@ -129,19 +158,23 @@ export function Frame({ storyboard, theme, timeline, frame, shared }: FrameProps
           t={morphProgress(info.transition!.transitionProgress, transition!.frames, timeline.fps)}
           endpoints={morphEndpoints(timeline, morph.boundary)}
           size={size}
-          renderScene={(scene) => <SceneLayer storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} />}
+          renderScene={(scene) => <SceneLayer {...layer} camera="live" scene={scene} />}
         />
       )}
     </div>
   );
 }
 
-/** One scene alone, at rest (no presentation), on a frame-sized box: what shared elements are measured on. */
-function MeasureFrame({ storyboard, theme, fps, scene }: { storyboard: Storyboard; theme: Theme; fps: number; scene: ActiveScene }) {
-  const { width, height } = frameSize(storyboard.aspect);
+/**
+ * One scene alone, out of any transition, on a frame-sized box: what shared
+ * elements are measured on (through the camera, as drawn), and shot targets
+ * (with the camera wide).
+ */
+function MeasureFrame(props: { storyboard: Storyboard; theme: Theme; fps: number; scene: ActiveScene; targets?: CameraTargets; camera: CameraMode }) {
+  const { width, height } = frameSize(props.storyboard.aspect);
   return (
     <div style={{ position: "relative", width, height, overflow: "hidden" }}>
-      <SceneLayer storyboard={storyboard} theme={theme} fps={fps} scene={scene} />
+      <SceneLayer {...props} />
     </div>
   );
 }
@@ -208,18 +241,46 @@ export function mountPage(): void {
   });
   const measured = new Map<number, BoundaryMeasurement>();
   let provisional = false;
-  const measureScene = (scene: ActiveScene) => {
-    flushSync(() => stageRoot.render(<MeasureFrame storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} />));
+  const stageScene = (scene: ActiveScene, camera: CameraMode) => {
+    flushSync(() => stageRoot.render(<MeasureFrame storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} targets={targets} camera={camera} />));
     if (renderError !== undefined) throw renderError;
-    return readSharedBoxes(stage.firstElementChild!);
+    return stage.firstElementChild!;
   };
+
+  // Shot targets are measured on the same stage, with the camera wide, on
+  // the frame each shot lands; once per scene. Boxes measured before the
+  // fonts load are measured again once they have.
+  const targets = new Map<number, SceneTargets>();
+  const provisionalTargets = new Set<number>();
+  const measureTargets = (sceneIndex: number) => {
+    if (targets.has(sceneIndex)) return;
+    const scene = storyboard.scenes[sceneIndex]!;
+    const { id, frames } = timeline.scenes[sceneIndex]!;
+    const boxes = (scene.shots ?? []).map((shot): ShotTargetBox | undefined => {
+      if (typeof shot.target !== "string" || shot.target === WIDE_SHOT) return undefined;
+      const landed = Math.min(frames - 1, Math.round(((shot.atMs + (shot.durationMs ?? theme.motion.shot.ms)) * timeline.fps) / 1000));
+      const at = { sceneIndex, sceneId: id, localFrame: landed, sceneFrames: frames, progress: frames === 1 ? 1 : landed / (frames - 1) };
+      const box = readTarget(stageScene(at, "wide"), shot.target);
+      if (box === undefined) {
+        flushSync(() => stageRoot.render(null));
+        throw new Error(`scene "${scene.id}": shot target "${shot.target}" is not drawn in the scene`);
+      }
+      return box;
+    });
+    targets.set(sceneIndex, boxes);
+    if (boxes.every((box) => box === undefined)) return;
+    flushSync(() => stageRoot.render(null));
+    if (!fontsLoaded) provisionalTargets.add(sceneIndex);
+  };
+
   const sharedFor = (frame: number): SharedMeasurements => {
     const info = frameAt(timeline, frame);
     if (info.pair === undefined) return measured;
     const boundary = info.sceneIndex - 1;
     if (measured.has(boundary)) return measured;
     const [from, to] = morphEndpoints(timeline, boundary);
-    const measurement = { from: measureScene(from), to: measureScene(to) };
+    // Measured through each scene's camera, as drawn: the morph runs on screen, above both.
+    const measurement = { from: readSharedBoxes(stageScene(from, "live")), to: readSharedBoxes(stageScene(to, "live")) };
     flushSync(() => stageRoot.render(null));
     if (fontsLoaded) return measured.set(boundary, measurement);
     provisional = true;
@@ -227,16 +288,26 @@ export function mountPage(): void {
   };
 
   let current = 0;
+  let shared: SharedMeasurements = measured;
+  // Commits synchronously, so the DOM shows the frame when this returns.
+  const draw = (camera: Exclude<CameraMode, "wide">) => {
+    flushSync(() => {
+      root.render(<Frame storyboard={storyboard} theme={theme} timeline={timeline} frame={current} shared={shared} targets={targets} camera={camera} />);
+    });
+    if (renderError !== undefined) throw renderError;
+  };
   const renderFrame = (frame: number) => {
     renderError = undefined;
     current = frame;
     provisional = false;
-    const shared = sharedFor(frame);
-    // Commit synchronously so the DOM shows `frame` when this returns.
-    flushSync(() => {
-      root.render(<Frame storyboard={storyboard} theme={theme} timeline={timeline} frame={frame} shared={shared} />);
-    });
-    if (renderError !== undefined) throw renderError;
+    if (fontsLoaded) {
+      for (const index of provisionalTargets) targets.delete(index);
+      provisionalTargets.clear();
+    }
+    for (const scene of scenesOnScreen(frameAt(timeline, frame))) measureTargets(scene.sceneIndex);
+    shared = sharedFor(frame);
+    if (provisionalTargets.size > 0) provisional = true;
+    draw("live");
   };
 
   window.motioncraft = {
@@ -252,9 +323,15 @@ export function mountPage(): void {
     delayRender: (label) => pageGate.delayRender(label),
     continueRender: (handle) => pageGate.continueRender(handle),
     measureFrame() {
-      const frame = container.firstElementChild;
-      if (!frame) throw new Error("motioncraft page: no frame rendered yet");
-      return measureFrame(frame);
+      if (!container.firstElementChild) throw new Error("motioncraft page: no frame rendered yet");
+      if (!theme.motion.breathe.on) return measureFrame(container.firstElementChild);
+      // The checks judge the frame with the breathing held still: it moves nothing far, and it is not layout. Shots stay.
+      draw("steady");
+      try {
+        return measureFrame(container.firstElementChild!);
+      } finally {
+        draw("live");
+      }
     },
     encoder: createPageEncoder(),
   };

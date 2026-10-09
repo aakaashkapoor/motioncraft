@@ -468,3 +468,29 @@ describe("runChecks (integration)", { timeout: 60_000 }, () => {
     expect(result.problems.filter((p) => p.check === "readability").map((p) => p.sceneId)).toEqual(["hello", "local"]);
   });
 });
+
+describe("camera shots", () => {
+  // While the camera holds a shot, what lies outside the shot is cropped scenery, not layout.
+  const offFrame = { x: 200, y: 2100, width: 400, height: 100 };
+
+  it("leave text out of shot to the camera: no safe-area or overflow problem", () => {
+    expect(checkSafeArea(frame(text({ rect: offFrame })), "9:16")).toHaveLength(1);
+    expect(checkSafeArea(frame(text({ rect: offFrame, outOfShot: true })), "9:16")).toEqual([]);
+    expect(checkOverflow(frame(text({ rect: offFrame, outOfShot: true })), FRAME_9x16)).toEqual([]);
+    expect(checkOverflow(frame(text({ rect: offFrame })), FRAME_9x16)).toHaveLength(1);
+  });
+
+  it("still judge text in shot", () => {
+    expect(checkSafeArea(frame(text({ rect: offFrame, outOfShot: false })), "9:16")).toHaveLength(1);
+  });
+
+  it("leave key elements and blocks out of shot alone", () => {
+    const key = { label: "logo", rect: offFrame, opacity: 1 };
+    expect(checkSafeArea({ texts: [], keys: [key], blocks: [] }, "9:16")).toHaveLength(1);
+    expect(checkSafeArea({ texts: [], keys: [{ ...key, outOfShot: true }], blocks: [] }, "9:16")).toEqual([]);
+    const centered = block({ rect: { x: 240, y: 700, width: 600, height: 300 } });
+    const pushedAside = block({ rect: { x: 900, y: 1700, width: 600, height: 300 } });
+    expect(checkCentering(withBlocks(centered, pushedAside), "9:16")).toHaveLength(1);
+    expect(checkCentering(withBlocks(centered, { ...pushedAside, outOfShot: true }), "9:16")).toEqual([]);
+  });
+});

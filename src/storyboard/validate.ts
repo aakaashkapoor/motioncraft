@@ -7,17 +7,19 @@ import {
   TRANSITION_TYPES,
   type Aspect,
   type SafeProfile,
+  type SceneShot,
   type SceneTransition,
   type Storyboard,
   type StoryboardScene,
   type StoryboardValidation,
 } from "./types";
 import { sceneComponents } from "./components";
+import { shotsErrors } from "./shots";
 import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
 const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "scenes"]);
-const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition"]);
+const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition", "shots"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -68,7 +70,7 @@ function transitionErrors(raw: unknown): string[] {
 /** Validates a scene, pushing errors prefixed with `label`. Returns the scene if valid. */
 function validateScene(raw: Record<string, unknown>, label: string, errors: string[]): StoryboardScene | undefined {
   const sceneErrors: string[] = unknownFields(raw, SCENE_FIELDS);
-  const { component, props, narration, durationMs, transition } = raw;
+  const { component, props, narration, durationMs, transition, shots } = raw;
 
   if (!isNonEmptyString(component)) sceneErrors.push("component is required and must be a non-empty string");
   if (!isObject(props)) sceneErrors.push("props is required and must be an object");
@@ -85,6 +87,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
     sceneErrors.push(`durationMs must be a positive integer (got ${describe(durationMs)})`);
   }
   if (transition !== undefined) sceneErrors.push(...transitionErrors(transition));
+  if (shots !== undefined && isObject(props)) sceneErrors.push(...shotsErrors(shots, { component, props, durationMs }));
 
   errors.push(...sceneErrors.map((e) => `${label}: ${e}`));
   if (sceneErrors.length > 0) return undefined;
@@ -93,6 +96,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   if (narration !== undefined) scene.narration = narration as string;
   if (durationMs !== undefined) scene.durationMs = durationMs as number | "clip";
   if (transition !== undefined) scene.transition = transition as SceneTransition;
+  if (shots !== undefined) scene.shots = shots as SceneShot[];
   return scene;
 }
 

@@ -89,8 +89,9 @@ export const baseMotion: ThemeMotion = {
   exit: { share: 0.65, minMs: 300, maxMs: 450, curve: EXIT_CURVE },
   count: { ms: 1000, curve: "expoOut" },
   mark: { ms: 450, curve: [0.33, 1, 0.68, 1], delayMs: 500 },
-  shot: { ms: 750, curve: [0.65, 0, 0.35, 1] },
-  breathe: { scale: 1.04, curve: "sineInOut" },
+  shot: { ms: 750, curve: [0.65, 0, 0.35, 1], fill: 0.75 },
+  // The owner's reference keeps the camera calm: subtle breathing, and only when a storyboard asks for it.
+  breathe: { on: false, scale: 1.02, curve: "sineInOut", driftPx: 16 },
   beat: { ms: 400 },
   flow: { ms: 1400, curve: "expoInOut", dotPx: 14, glowPx: 6, glowOpacity: 0.25 },
 };

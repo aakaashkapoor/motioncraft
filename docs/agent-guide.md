@@ -72,13 +72,75 @@ move: a window is the hero of one scene, then docks in a corner with `Pinned`
 while the next scene's content arrives beside it. Keep the window's props the
 same on both sides so its content does not jump.
 
+### The camera: shots and breathing
+
+Each scene's content sits under a camera; the caption stays fixed. Two things
+move it:
+
+- **Shots** (a scene's `shots`) push in to one element and back. A shot starts
+  at `atMs` and frames its `target`: a `shareId` in the scene, a rect
+  `{ "x", "y", "width", "height" }` in frame px, or `"wide"` to pull back to
+  the whole frame. The camera moves on the theme's `shot` token (750 ms, ease
+  in-out; the shot's own `durationMs` overrides it) until the target fills
+  `fill` of the frame (0.6-0.85, default 0.75), centered where a scene's main
+  block goes and never past the content area, and holds until the next shot.
+  The target is framed as it is laid out when the shot lands.
+  List shots in time order. Use them deliberately, at most a push and a pull
+  per scene: the usual one makes a docked `Pinned` window full size, so its
+  text can be read. Land the shot before the narration talks about what it
+  shows.
+- **Breathing** is a slow drift over the whole scene: scale 1.00 -> 1.02,
+  sine in-out, drifting 16 px on screen, in on one scene and out on the next.
+  It is off in the built-in themes; switch it on with
+  `"themeOverrides": { "motion": { "breathe": { "on": true } } }`.
+
+`Pinned` and `Handoff` draw on parallax layers, so a camera move shows depth:
+a docked window sits back (it follows 0.5x of the camera's motion), content
+moves with the camera, and chips and a `Handoff`'s source float nearer
+(1.15x). Shared elements morph through the camera, so a window carried into a
+scene lands where the camera shows it. The checks judge every frame with the
+breathing held still. While the camera is on a shot (pushing in, holding,
+pulling back), what lies outside the shot is not judged there; the wide
+frames around the shot judge it.
+
+```json
+{
+  "id": "read",
+  "component": "Pinned",
+  "props": {
+    "pinned": { "component": "ChatWindow", "props": { "channel": "launches", "shareId": "chat", "messages": [{ "author": "Maya Chen", "time": "9:41 AM", "text": "Ready for review." }] } },
+    "content": { "component": "Card", "props": { "icon": "check", "title": "Reviewed" } }
+  },
+  "shots": [
+    { "atMs": 1500, "target": "chat" },
+    { "atMs": 4500, "target": "wide" }
+  ],
+  "narration": "Up close, the thread is easy to read.",
+  "durationMs": 6000
+}
+```
+
+**Incorrect:** a shot onto an element the scene does not draw, filling more
+of the frame than a shot may.
+
+```json incorrect
+{
+  "id": "read",
+  "component": "ChatWindow",
+  "props": { "channel": "launches", "messages": [{ "author": "Maya Chen", "time": "9:41 AM", "text": "Ready for review." }] },
+  "shots": [{ "atMs": 1500, "target": "chat", "fill": 0.95 }],
+  "durationMs": 6000
+}
+```
+
 ## 2. The storyboard
 
 A storyboard is one JSON document. Top-level fields: `title`, `aspect`
 (`"9:16"`, the primary format, or `"16:9"`), `fps` (default 30), `theme`
 (default `"light"`), the theme fields in section 3, `safe` (below), and
 `scenes`. Each scene has an `id` (unique), a `component` (a kit name from
-section 5), `props`, and optionally `narration`, `durationMs` and `transition`.
+section 5), `props`, and optionally `narration`, `durationMs`, `transition`
+and camera `shots` (section 1).
 
 ```json
 {
@@ -197,10 +259,12 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     cascade has landed, 1200), and one token per kind of motion (design v3,
     table D), each with an `ms` duration and a `curve`: `fx.fast`, `fx`,
     `text.in`, `text.out`, `enter` (cards, windows, chips; with `staggerMs`),
-    `enter.hero`, `pop`, `count`, `mark`, `shot`, `beat`; `exit` takes a
-    `share` of the entry within `minMs`-`maxMs`; `flow` is the dot that runs
-    along a drawn connector (one trip per `ms`, a `dotPx` dot, and a
-    `glowPx` ring of the accent at `glowOpacity` on the node it reaches;
+    `enter.hero`, `pop`, `count`, `mark`, `shot` (with the default `fill`),
+    `beat`; `breathe` is the camera's drift (`on`, `scale`, `curve`,
+    `driftPx`; off unless `on` is true); `exit` takes a `share` of the entry
+    within `minMs`-`maxMs`; `flow` is the dot that runs along a drawn connector
+    (one trip per `ms`, a `dotPx` dot, and a `glowPx` ring of the accent at
+    `glowOpacity` on the node it reaches;
     `"ms": 0` turns it off). A `curve` is a name (`"linear"`, `"expoOut"`,
     `"expoIn"`, `"expoInOut"`, `"sineInOut"`, `"power4InOut"`), a
     cubic bezier `[x1, y1, x2, y2]`, or a spring `{ "stiffness": 170,
@@ -424,7 +488,9 @@ would crowd out the content (a short area, the `crosspost` profile), the
 pinned component becomes an icon chip with its title instead of a tiny window.
 Built for shared elements: with the default `"arrive": "settled"` the pinned
 component is already in place, because it morphs in from the previous scene;
-use `"animate"` when nothing morphs into it.
+use `"animate"` when nothing morphs into it. Under a moving camera the docked
+window sits back and the content in front; a shot onto the docked window's
+`shareId` brings it up to full size (section 1).
 
 ```json
 {
@@ -569,6 +635,7 @@ and a receiver `to` (a window), joined by an `Arrow` that draws from one into
 the other, with an optional `label`. The source arrives, the arrow draws, then
 the receiver arrives. Side by side in 16:9, stacked in 9:16, so no points to
 work out. Give the receiver a `shareId` to carry it into the next scene.
+Under a moving camera the source floats a little nearer than the receiver.
 
 ```json
 {

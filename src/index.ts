@@ -22,6 +22,7 @@ export type {
   MarkToken,
   MotionCurve,
   MotionToken,
+  ShotToken,
   SpringCurve,
   StaggeredToken,
   TextInToken,
@@ -99,3 +100,4 @@ export { Pinned, pinnedLayout, type PinnedCorner, type PinnedLayout, type Pinned
 export { Handoff, handoffLayout, type HandoffLayout, type HandoffProps } from "./kit/Handoff";
 export { MotionDelay, NOMINAL_SCENE_MS, SceneClockContext, useSceneMs, useSceneTime, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, tween, type Timed } from "./kit/motion";
+export * from "./camera";

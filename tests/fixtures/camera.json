@@ -1,0 +1,136 @@
+{
+  "title": "Camera fixture, 9:16: a shot onto a docked window, breathing, parallax (must pass layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "themeOverrides": {
+    "motion": {
+      "breathe": {
+        "on": true
+      }
+    }
+  },
+  "scenes": [
+    {
+      "id": "thread",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "launches",
+        "shareId": "chat",
+        "messages": [
+          {
+            "author": "Maya Chen",
+            "time": "9:41 AM",
+            "text": "Ready for review."
+          },
+          {
+            "author": "Sam Ortiz",
+            "time": "9:43 AM",
+            "text": "Ship it today.",
+            "highlight": true
+          }
+        ]
+      },
+      "narration": "The team agrees on the launch in one short thread.",
+      "durationMs": 7500,
+      "transition": {
+        "type": "fade",
+        "durationMs": 900
+      }
+    },
+    {
+      "id": "docked",
+      "component": "Pinned",
+      "props": {
+        "pinned": {
+          "component": "ChatWindow",
+          "props": {
+            "channel": "launches",
+            "shareId": "chat",
+            "messages": [
+              {
+                "author": "Maya Chen",
+                "time": "9:41 AM",
+                "text": "Ready for review."
+              },
+              {
+                "author": "Sam Ortiz",
+                "time": "9:43 AM",
+                "text": "Ship it today.",
+                "highlight": true
+              }
+            ]
+          }
+        },
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              {
+                "icon": "check",
+                "title": "Reviewed",
+                "subtitle": "By design"
+              },
+              {
+                "icon": "zap",
+                "title": "Shipped",
+                "subtitle": "Same day"
+              }
+            ],
+            "highlight": 1
+          }
+        }
+      },
+      "shots": [
+        {
+          "atMs": 1500,
+          "target": "chat",
+          "fill": 0.75
+        },
+        {
+          "atMs": 5500,
+          "target": "wide"
+        }
+      ],
+      "narration": "Up close, the thread is easy to read. Then it ships.",
+      "durationMs": 9000,
+      "transition": {
+        "type": "slide"
+      }
+    },
+    {
+      "id": "handoff",
+      "component": "Handoff",
+      "props": {
+        "from": {
+          "component": "Card",
+          "props": {
+            "icon": "chat",
+            "title": "The prompt",
+            "subtitle": "Explain the launch"
+          }
+        },
+        "to": {
+          "component": "AppWindow",
+          "props": {
+            "title": "Plan",
+            "shareId": "plan",
+            "content": {
+              "component": "StepList",
+              "props": {
+                "items": [
+                  "Hook",
+                  "Steps",
+                  "Ending"
+                ]
+              }
+            }
+          }
+        },
+        "label": "plan"
+      },
+      "narration": "A one-line prompt becomes a three-step plan.",
+      "durationMs": 5000
+    }
+  ]
+}
