@@ -4,7 +4,7 @@
 
 import { HEX_COLOR } from "../theme/color";
 import { lightTheme } from "../theme/light";
-import { ACCENT_INTENSITIES, GROUND_STYLES, SPRING_PRESETS } from "../theme/types";
+import { ACCENT_INTENSITIES, CURVE_NAMES, GROUND_STYLES } from "../theme/types";
 import { TRANSITION_TYPES } from "./types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -37,20 +37,44 @@ const ENUMS: Record<string, readonly string[]> = {
   "ground.style": GROUND_STYLES,
   accentIntensity: ACCENT_INTENSITIES,
   "motion.transition": TRANSITION_TYPES,
-  "motion.springs.enter": SPRING_PRESETS,
-  "motion.springs.exit": SPRING_PRESETS,
-  "motion.springs.emphasis": SPRING_PRESETS,
 };
+
+/** The v3 token for each v2 motion field, named when a storyboard still uses one. */
+const RENAMED_MOTION: Record<string, string> = {
+  enterMs: 'use "enter": { "ms": ... }',
+  exitMs: 'use "exit": { "maxMs": ... }',
+  staggerMs: 'use "enter": { "staggerMs": ... }',
+  springs: 'use "enter", "pop" and "exit" with a "curve"',
+};
+
+const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+
+/** The problem with a whole motion curve (a name, a cubic bezier or a spring), or undefined if it is one. */
+function curveError(label: string, value: unknown): string | undefined {
+  const bezier =
+    Array.isArray(value) && value.length === 4 && value.every(isNumber) && [value[0], value[2]].every((x) => x !== undefined && x >= 0 && x <= 1);
+  const spring =
+    isObject(value) &&
+    Object.keys(value).sort().join() === "damping,stiffness" &&
+    isNumber(value.stiffness) &&
+    value.stiffness > 0 &&
+    isNumber(value.damping) &&
+    value.damping >= 0;
+  if (CURVE_NAMES.includes(value as never) || bezier || spring) return undefined;
+  return `${label} must be ${oneOf(CURVE_NAMES)}, a cubic bezier [x1, y1, x2, y2] with x1 and x2 in 0..1, or a spring { "stiffness": ..., "damping": ... } (got ${describe(value)})`;
+}
 
 function leafError(path: string, reference: unknown, value: unknown): string | undefined {
   const label = `themeOverrides.${path}`;
   const key = path.split(".").at(-1)!;
   if (typeof reference === "number") {
     if (path === "ground.seed") return Number.isInteger(value) ? undefined : `${label} must be an integer (got ${describe(value)})`;
-    if (key === "size") {
-      return typeof value === "number" && Number.isFinite(value) && value > 0 ? undefined : `${label} must be a positive number (got ${describe(value)})`;
+    if (key === "size" || key === "stiffness") {
+      return isNumber(value) && value > 0 ? undefined : `${label} must be a positive number (got ${describe(value)})`;
     }
-    return typeof value === "number" && Number.isFinite(value) ? undefined : `${label} must be a number (got ${describe(value)})`;
+    // Durations, shares, scales and damping: never negative.
+    if (path.startsWith("motion.")) return isNumber(value) && value >= 0 ? undefined : `${label} must be a number >= 0 (got ${describe(value)})`;
+    return isNumber(value) ? undefined : `${label} must be a number (got ${describe(value)})`;
   }
   if (path.startsWith("colors.")) return colorError(label, value);
   const choices = ENUMS[path];
@@ -67,7 +91,12 @@ function walk(path: string, reference: Record<string, unknown>, value: Record<st
     const childPath = path === "" ? key : `${path}.${key}`;
     const ref = Object.hasOwn(reference, key) && !(path === "" && NOT_OVERRIDABLE.has(key)) ? reference[key] : undefined;
     if (ref === undefined) {
-      errors.push(`themeOverrides${path === "" ? "" : `.${path}`}: unknown field "${key}"`);
+      const renamed = path === "motion" && Object.hasOwn(RENAMED_MOTION, key) ? ` (motion tokens are named by design v3, table D: ${RENAMED_MOTION[key]})` : "";
+      errors.push(`themeOverrides${path === "" ? "" : `.${path}`}: unknown field "${key}"${renamed}`);
+    } else if (path.startsWith("motion.") && key === "curve" && !(isObject(ref) && isObject(child))) {
+      // Any kind of curve replaces another; only a spring merges into a spring.
+      const error = curveError(`themeOverrides.${childPath}`, child);
+      if (error !== undefined) errors.push(error);
     } else if (isObject(ref)) {
       if (isObject(child)) walk(childPath, ref, child, errors);
       else errors.push(`themeOverrides.${childPath} must be an object (got ${describe(child)})`);

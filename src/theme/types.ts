@@ -1,4 +1,3 @@
-import type { SpringPreset } from "../engine/spring";
 // The shape every theme fills in (design v2, section 1; type and spacing from
 // design v3, sections B and C). A theme is a plain object of tokens: color
 // roles, ground style, accent intensity, type, shape, depth and motion. Kit
@@ -126,31 +125,109 @@ export interface ThemeShadow {
   opacity: number;
 }
 
-// The spring presets themselves live in the engine; themes only name them.
-export const SPRING_PRESETS = ["smooth", "snappy", "gentle", "bouncy"] as const satisfies readonly SpringPreset[];
+/** Named curves: `expoOut` is `1 - 2^(-10t)`, `expoIn` its mirror, `power4InOut` the quartic in-out. */
+export const CURVE_NAMES = ["linear", "expoOut", "expoIn", "sineInOut", "power4InOut"] as const;
+export type CurveName = (typeof CURVE_NAMES)[number];
 
+/** CSS `cubic-bezier(x1, y1, x2, y2)`: x1 and x2 in 0..1; y may leave 0..1 to overshoot. */
+export type CubicBezier = readonly [x1: number, y1: number, x2: number, y2: number];
+
+/** A physical spring (mass 1, see `spring`), its settle curve stretched to the token's duration. */
+export interface SpringCurve {
+  stiffness: number;
+  damping: number;
+}
+
+/** The shape of a motion over its duration, 0 -> 1. Springs and some beziers overshoot. */
+export type MotionCurve = CurveName | CubicBezier | SpringCurve;
+
+/** A duration and the curve played over it. */
+export interface MotionToken {
+  /** Duration in ms. */
+  ms: number;
+  curve: MotionCurve;
+}
+
+/** A motion played by a group, item after item. */
+export interface StaggeredToken extends MotionToken {
+  /** Delay between consecutive items, in ms. */
+  staggerMs: number;
+}
+
+/** Text rising in: `staggerMs` per word, or per character or line. */
+export interface TextInToken extends StaggeredToken {
+  charStaggerMs: number;
+  lineStaggerMs: number;
+}
+
+/** Anything leaving: fast, a share of its entry, within `minMs`-`maxMs`. */
+export interface ExitToken {
+  share: number;
+  minMs: number;
+  maxMs: number;
+  curve: MotionCurve;
+}
+
+/** A marker sweep, starting `delayMs` after the text it marks lands. */
+export interface MarkToken extends MotionToken {
+  delayMs: number;
+}
+
+/** The camera's drift over a whole scene: scale 1 -> `scale`. */
+export interface BreatheToken {
+  scale: number;
+  curve: MotionCurve;
+}
+
+/** A hold before a payoff. */
+export interface BeatToken {
+  ms: number;
+}
+
+/**
+ * Motion by use (design v3, table D). Every kit timing is milliseconds from
+ * the scene clock; a scene's length decides only how long the hold lasts.
+ * Position and scale may overshoot (springs, `enter`'s bezier); opacity and
+ * colour never do. The table's `transition` row is `transition` and
+ * `transitionMs`; each presentation draws its own cut-the-curve shape.
+ */
 export interface ThemeMotion {
-  /** Name of the default easing curve, e.g. "expoOut" or "easeInOutCubic". */
+  /** Curve of the v1 helpers `presence` and `themeEasing`, e.g. "expoOut". The kit reads the tokens below. */
   easing: string;
-  /** How long an element takes to enter, in ms. */
-  enterMs: number;
-  /** How long an element takes to exit, in ms. */
-  exitMs: number;
   /** Default transition between scenes, where the storyboard sets none. */
   transition: TransitionType;
-  /** Default length of a transition between scenes, in ms. */
+  /** Default length of a transition between scenes, in ms (500-600). */
   transitionMs: number;
-  /** Delay between items of a staggered group, in ms. */
-  staggerMs: number;
-  /** Spring preset names by use. */
-  springs: {
-    /** Elements arriving. */
-    enter: SpringPreset;
-    /** Elements leaving. */
-    exit: SpringPreset;
-    /** A highlight or a value landing. */
-    emphasis: SpringPreset;
-  };
+  /** A scene's first motion starts this long in (100-200 ms). */
+  leadMs: number;
+  /** A cascade (cards, rows, words) finishes within about this long of the scene's start; a long group staggers tighter. */
+  cascadeMs: number;
+  /** Opacity, colour, a highlight on or off. */
+  "fx.fast": MotionToken;
+  /** Fades and blur clearing. */
+  fx: MotionToken;
+  /** A word or line rising in. */
+  "text.in": TextInToken;
+  /** Words leaving. */
+  "text.out": StaggeredToken;
+  /** Cards, windows and chips arriving. */
+  enter: StaggeredToken;
+  /** The one big element of a scene arriving. */
+  "enter.hero": MotionToken;
+  /** Emphasis: a highlighted card, an active badge. */
+  pop: MotionToken;
+  /** Anything leaving. */
+  exit: ExitToken;
+  /** A number rolling to its value. */
+  count: MotionToken;
+  /** A marker or underline sweeping in. */
+  mark: MarkToken;
+  /** The camera moving to a new framing. */
+  shot: MotionToken;
+  /** The camera drifting during holds. */
+  breathe: BreatheToken;
+  /** A hold before a payoff. */
+  beat: BeatToken;
 }
 
 export interface Theme {

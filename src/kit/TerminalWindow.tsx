@@ -1,5 +1,6 @@
-// A terminal in the shared window chrome. Prompt lines are typed character by
-// character behind a prompt marker with a caret; output lines appear the instant the
+// A terminal in the shared window chrome. Once the window has faded in, prompt
+// lines are typed character by character (`text.in`'s per-character step)
+// behind a prompt marker with a caret; output lines appear the instant the
 // command before them has been typed. Once everything has run, a fresh prompt
 // waits with a smoothly blinking caret. The window keeps its final size
 // throughout, so lines appear without anything moving.
@@ -11,6 +12,8 @@ import { estimateLines } from "../layout/textFit";
 import { TYPE_FIT_ATTRIBUTE, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
+import { useSceneTime, type SceneTime } from "./frameContext";
+import { fitSequence } from "./motion";
 import { syntaxColors } from "./syntaxColors";
 import type { KitProps } from "./types";
 import { TitleBar, WindowShell, type WindowChromeStyle } from "./AppWindow";
@@ -31,33 +34,35 @@ export interface TerminalWindowProps extends KitProps {
   chrome?: WindowChromeStyle;
 }
 
-/** When a line appears and, for prompt lines, when typing starts and ends, as fractions of the scene. */
+/** When a line appears and, for prompt lines, when typing starts and ends, in ms from the scene's start. */
 export interface TerminalLineTiming {
   start: number;
   typeStart: number;
   end: number;
 }
 
-/** Typing runs between these fractions of the scene. */
-const TYPE_START = 0.12;
-const TYPE_END = 0.7;
 /** Pause on an empty prompt before typing starts, in characters' worth of time. */
 const PAUSE_CHARS = 6;
-/** Caret blinks per scene while idle. */
-const BLINKS = 6;
+/** The idle caret's blink period: on for half of it (design v3, life #10). */
+const CARET_BLINK_MS = 1060;
 const PROMPT_MARKER = "$";
 /** Stands in for the caret when counting a line's characters: one more, on the last word. */
 const CARET_ROOM = "_";
 
 /**
- * Every line's timing. Each line appears when the one before it ends; a prompt
- * line then pauses and types its text at an even rate, and an output line
- * ends as it appears. All typing fits between `TYPE_START` and `TYPE_END`.
+ * Every line's timing, in ms. The first line appears once the window has
+ * faded in; each line after appears when the one before it ends; a prompt
+ * line then pauses and types its text at `text.in`'s per-character step, and
+ * an output line ends as it appears. Given the scene's time, typing that would
+ * run into the exit speeds up to finish before it.
  */
-export function terminalTiming(lines: readonly TerminalLine[]): TerminalLineTiming[] {
+export function terminalTiming(theme: Theme, lines: readonly TerminalLine[], time?: SceneTime): TerminalLineTiming[] {
+  const { leadMs, fx, enter } = theme.motion;
+  const typeStart = leadMs + fx.ms;
   const units = lines.reduce((sum, line) => sum + (line.prompt ? PAUSE_CHARS + line.text.length : 0), 0);
-  const unit = units === 0 ? 0 : (TYPE_END - TYPE_START) / units;
-  let at = TYPE_START;
+  const natural = theme.motion["text.in"].charStaggerMs;
+  const unit = time === undefined ? natural : natural * fitSequence(theme, time, typeStart, typeStart + units * natural, enter.ms);
+  let at = typeStart;
   return lines.map((line) => {
     const start = at;
     if (!line.prompt) return { start, typeStart: start, end: start };
@@ -67,9 +72,9 @@ export function terminalTiming(lines: readonly TerminalLine[]): TerminalLineTimi
   });
 }
 
-/** Caret opacity while idle: a smooth blink, fully on at the scene's start. */
-function blink(progress: number): number {
-  return 0.5 + 0.5 * Math.cos(2 * Math.PI * BLINKS * progress);
+/** Caret opacity `ms` into idling: a smooth blink, fully on as it starts. */
+function blink(ms: number): number {
+  return 0.5 + 0.5 * Math.cos((2 * Math.PI * ms) / CARET_BLINK_MS);
 }
 
 
@@ -88,14 +93,17 @@ function terminalLayout(theme: Theme, aspect: Aspect, lines: readonly TerminalLi
 
 export function TerminalWindow({ progress, theme, aspect, area, lines, title = "Terminal", shareId, chrome = "traffic" }: TerminalWindowProps) {
   const { size, box } = terminalLayout(theme, aspect, lines, area);
-  const timing = terminalTiming(lines);
+  const time = useSceneTime(progress);
+  const { ms } = time;
+  const timing = terminalTiming(theme, lines, time);
   const colors = syntaxColors(theme);
   const mono = theme.type.mono[aspect];
-  const finished = progress >= (timing.at(-1)?.end ?? TYPE_START);
+  const idleFrom = timing.at(-1)?.end ?? theme.motion.leadMs + theme.motion.fx.ms;
+  const finished = ms >= idleFrom;
   // The line that has appeared most recently holds the caret.
   let active = -1;
   timing.forEach((t, i) => {
-    if (t.start <= progress) active = i;
+    if (t.start <= ms) active = i;
   });
 
   const caret = (line: number, solid: boolean) => (
@@ -108,7 +116,7 @@ export function TerminalWindow({ progress, theme, aspect, area, lines, title = "
         marginLeft: "0.08em",
         verticalAlign: "text-bottom",
         backgroundColor: theme.colors.accent,
-        opacity: solid ? 1 : blink(progress),
+        opacity: solid ? 1 : blink(ms - idleFrom),
       }}
     />
   );
@@ -120,18 +128,16 @@ export function TerminalWindow({ progress, theme, aspect, area, lines, title = "
 
   const rendered = lines.map((line, i) => {
     const t = timing[i]!;
-    if (t.start > progress) return null;
-    const typed = line.prompt
-      ? line.text.slice(0, Math.floor(interpolate(progress, [t.typeStart, t.end], [0, line.text.length])))
-      : line.text;
-    const holdsCaret = line.prompt === true && i === active && progress < t.end;
+    if (t.start > ms) return null;
+    const typed = line.prompt ? line.text.slice(0, Math.floor(interpolate(ms, [t.typeStart, t.end], [0, line.text.length]))) : line.text;
+    const holdsCaret = line.prompt === true && i === active && ms < t.end;
     return (
       <div key={i} data-terminal-line={i}>
         {line.prompt && marker}
         <span data-terminal-text={i} style={{ color: line.prompt ? colors.plain : colors.comment }}>
           {typed}
         </span>
-        {holdsCaret && caret(i, progress >= t.typeStart)}
+        {holdsCaret && caret(i, ms >= t.typeStart)}
       </div>
     );
   });

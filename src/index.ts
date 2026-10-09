@@ -13,6 +13,17 @@ export type {
   ThemeFonts,
   ThemeGround,
   ThemeMotion,
+  BeatToken,
+  BreatheToken,
+  CubicBezier,
+  CurveName,
+  ExitToken,
+  MarkToken,
+  MotionCurve,
+  MotionToken,
+  SpringCurve,
+  StaggeredToken,
+  TextInToken,
   ThemeOverrides,
   ThemeRadius,
   ThemeShadow,
@@ -22,7 +33,7 @@ export type {
   TypeRole,
   TypeSpec,
 } from "./theme/types";
-export { ACCENT_INTENSITIES, GROUND_STYLES, SPRING_PRESETS, TYPE_ROLES } from "./theme/types";
+export { ACCENT_INTENSITIES, CURVE_NAMES, GROUND_STYLES, TYPE_ROLES } from "./theme/types";
 export { neutralTheme } from "./theme/neutral";
 export { lightTheme } from "./theme/light";
 export { darkTheme } from "./theme/dark";
@@ -69,7 +80,7 @@ export {
 } from "./kit";
 export type { CaptionLimits, CaptionProps, KitComponent, KitProps, TitleCardProps } from "./kit";
 export { BigNumber, bigNumberStep, countedValue, formatBigNumber, type BigNumberProps } from "./kit/BigNumber";
-export { FlowDiagram, flowDiagramLayout, type FlowArrow, type FlowDiagramLayout, type FlowDiagramProps } from "./kit";
+export { FlowDiagram, flowDiagramLayout, flowDiagramTiming, type FlowArrow, type FlowDiagramLayout, type FlowDiagramProps, type FlowDiagramTiming } from "./kit";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./kit";
 export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./icons";
 export { cancelRender, continueRender, delayRender, RenderNotReadyError, READY_TIMEOUT_MS } from "./render/ready";
@@ -84,3 +95,5 @@ export { FeatureList, featureListTiming, type FeatureItem, type FeatureListProps
 export * from "./kit/media";
 export { Pinned, pinnedLayout, type PinnedCorner, type PinnedLayout, type PinnedProps } from "./kit/Pinned";
 export { Handoff, handoffLayout, type HandoffLayout, type HandoffProps } from "./kit/Handoff";
+export { MotionDelay, NOMINAL_SCENE_MS, SceneClockContext, useSceneMs, useSceneTime, type SceneClock, type SceneTime } from "./kit/frameContext";
+export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, tween, type Timed } from "./kit/motion";

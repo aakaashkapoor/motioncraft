@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, captionBand, fontSize, neutralTheme, safeArea, safeZones, type Aspect } from "../src/index";
+import { ASPECTS, NOMINAL_SCENE_MS, captionBand, fontSize, neutralTheme, safeArea, safeZones, type Aspect } from "../src/index";
 import { Caption, TitleCard, captionLimits, kit, pageCaption, titleCardStep } from "../src/kit";
 
 interface Box {
@@ -67,11 +67,14 @@ describe("TitleCard", () => {
     expect(rootBox(render(aspect, 1)).opacity).toBeCloseTo(0, 3);
   });
 
-  it("is fully in by 20% and still in at 90%", () => {
-    expect(rootBox(render("9:16", 0.2)).opacity).toBeCloseTo(1, 3);
+  it("fades in over fx from the scene's lead and is still in at 90%", () => {
+    const { leadMs, fx } = neutralTheme.motion;
+    const at = (ms: number) => rootBox(render("9:16", ms / NOMINAL_SCENE_MS)).opacity;
+    expect(at(leadMs)).toBeCloseTo(0, 3);
+    expect(at(leadMs + fx.ms / 2)).toBeGreaterThan(0);
+    expect(at(leadMs + fx.ms / 2)).toBeLessThan(1);
+    expect(at(leadMs + fx.ms)).toBeCloseTo(1, 3);
     expect(rootBox(render("9:16", 0.9)).opacity).toBeCloseTo(1, 3);
-    expect(rootBox(render("9:16", 0.1)).opacity).toBeGreaterThan(0);
-    expect(rootBox(render("9:16", 0.1)).opacity).toBeLessThan(1);
   });
 
   it("rises into place", () => {

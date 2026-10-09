@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, StepList, contentArea, kit, neutralTheme, stepListTiming, type Aspect } from "../src/index";
+import { ASPECTS, NOMINAL_SCENE_MS, StepList, contentArea, kit, neutralTheme, stepListTiming, type Aspect } from "../src/index";
 
 interface Box {
   opacity: number;
@@ -86,7 +86,8 @@ describe("StepList", () => {
   });
 
   it("brings items in one after another", () => {
-    const states = itemStates(render("9:16", 0.3));
+    const timing = stepListTiming(neutralTheme, ITEMS.length, true);
+    const states = itemStates(render("9:16", (timing.at(-1)![0] + 50) / NOMINAL_SCENE_MS));
     const opacities = states.map((s) => s.opacity);
     expect(opacities[0]).toBeCloseTo(1, 3);
     expect(opacities.at(-1)).toBeLessThan(1);
@@ -100,16 +101,20 @@ describe("StepList", () => {
     for (const item of itemStates(render("9:16", 0.7))) expect(item.offset).toBeCloseTo(0, 3);
   });
 
-  it.each([2, 3, 4, 5, 6])("shows all %i items by 70%% of the scene", (count) => {
+  it.each([2, 3, 4, 5, 6])("shows all %i items once the cascade has landed, in about the first 1.2 s", (count) => {
     const items = Array.from({ length: count }, (_, i) => `Step ${i + 1}`);
     for (const item of itemStates(render("16:9", 0.7, { items }))) {
       expect(item.opacity).toBeCloseTo(1, 3);
       expect(item.offset).toBeCloseTo(0, 3);
     }
-    const timing = stepListTiming(count);
+    const timing = stepListTiming(neutralTheme, count, true);
     expect(timing).toHaveLength(count);
-    expect(timing[0]![0]).toBeGreaterThanOrEqual(0);
-    expect(timing.at(-1)![1]).toBeLessThanOrEqual(0.7);
+    expect(timing[0]![0]).toBeGreaterThan(neutralTheme.motion.leadMs);
+    expect(timing.at(-1)![1]).toBeLessThanOrEqual(neutralTheme.motion.cascadeMs + 1e-9);
+    for (const item of itemStates(render("16:9", timing.at(-1)![1] / NOMINAL_SCENE_MS, { items }))) {
+      expect(item.opacity).toBeCloseTo(1, 3);
+      expect(item.offset).toBeCloseTo(0, 3);
+    }
   });
 
   it("numbers items by default and draws accent dots on request", () => {

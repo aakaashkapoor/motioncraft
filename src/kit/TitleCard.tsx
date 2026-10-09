@@ -1,9 +1,9 @@
 // A headline card: optional kicker, title, optional subtitle, centered on the
 // frame's optical center above the caption band, no wider than the text column.
-// Long titles step down the type ramp until the card fits. Fades in with a
-// slight rise, holds, then fades out.
+// Long titles step down the type ramp until the card fits. Lands as a whole:
+// fades in with a short `text.in` rise on the scene's lead, holds, then exits
+// fast at the end.
 
-import { interpolate } from "../engine/easing";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
 import type { Rect } from "../layout/frame";
@@ -12,7 +12,8 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole } from "../theme/types";
 import { accentInk, headlineColor } from "../theme/roles";
-import { presence, themeEasing } from "./motion";
+import { useSceneTime } from "./frameContext";
+import { exitOpacity, fade, tween } from "./motion";
 import type { KitProps } from "./types";
 
 export interface TitleCardProps extends KitProps {
@@ -21,9 +22,6 @@ export interface TitleCardProps extends KitProps {
   /** Small label above the title. */
   kicker?: string;
 }
-
-const ENTER = 0.2;
-const EXIT = 0.1;
 
 /** Title steps to try, largest first. */
 const TITLE_STEPS: readonly TypeRole[] = ["display", "headline", "title", "subtitle"];
@@ -71,9 +69,11 @@ export function titleCardBox(theme: Theme, aspect: Aspect, text: TitleText, slot
 
 export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle, kicker }: TitleCardProps) {
   const { box, step } = titleCardBox(theme, aspect, { title, subtitle, kicker }, slot);
-  const easing = themeEasing(theme);
-  const opacity = presence(progress, ENTER, EXIT, easing);
-  const rise = interpolate(progress, [0, ENTER], [theme.spacing.lg, 0], { easing });
+  const time = useSceneTime(progress);
+  const { leadMs, fx } = theme.motion;
+  const textIn = theme.motion["text.in"];
+  const opacity = Math.min(fade(fx, time.ms - leadMs), exitOpacity(theme, time, textIn.ms));
+  const rise = Math.round((1 - tween(textIn, time.ms - leadMs)) * theme.spacing.lg * 100) / 100;
   const { colors, fonts, spacing, type } = theme;
 
   return (

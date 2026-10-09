@@ -23,8 +23,8 @@ import { Handoff } from "./Handoff";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
-export { FlowDiagram, flowDiagramLayout } from "./FlowDiagram";
-export type { FlowArrow, FlowDiagramLayout, FlowDiagramProps } from "./FlowDiagram";
+export { FlowDiagram, flowDiagramLayout, flowDiagramTiming } from "./FlowDiagram";
+export type { FlowArrow, FlowDiagramLayout, FlowDiagramProps, FlowDiagramTiming } from "./FlowDiagram";
 export { pageAt, pageCaption } from "./captionPages";
 export type { CaptionLimits } from "./captionPages";
 export type { CaptionProps } from "./Caption";

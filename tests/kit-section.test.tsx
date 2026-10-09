@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { SANS_FAMILY } from "../src/render/fonts";
-import { ASPECTS, Section, contentArea, kit, lightTheme, neutralTheme, sectionLayout, sectionTiming, type Aspect, type Rect } from "../src/index";
+import { ASPECTS, NOMINAL_SCENE_MS, Section, contentArea, kit, lightTheme, neutralTheme, sectionLayout, sectionTiming, type Aspect, type Rect } from "../src/index";
 
 /** Parses an inline `style="..."` attribute into a map. */
 function parseStyle(style: string): Map<string, string> {
@@ -190,14 +190,32 @@ describe("Section", () => {
   });
 
   it("staggers words and places content then note after them", () => {
-    const timing = sectionTiming(5);
+    const { leadMs, cascadeMs } = neutralTheme.motion;
+    const textIn = neutralTheme.motion["text.in"];
+    const timing = sectionTiming(neutralTheme, 5);
+    expect(timing.eyebrow).toBe(leadMs);
     expect(timing.words).toHaveLength(5);
-    expect(timing.words[0]![0]).toBeGreaterThan(timing.eyebrow[0]);
-    for (let i = 1; i < 5; i++) expect(timing.words[i]![0]).toBeGreaterThan(timing.words[i - 1]![0]);
-    expect(timing.content).toBeGreaterThan(timing.words.at(-1)![0]);
-    expect(timing.note[0]).toBeGreaterThan(timing.content);
-    // Long headlines still finish their entrance well before the scene ends.
-    expect(sectionTiming(30).note[1]).toBeLessThan(0.7);
+    expect(timing.words[0]).toBeGreaterThan(timing.eyebrow);
+    for (let i = 1; i < 5; i++) expect(timing.words[i]! - timing.words[i - 1]!).toBe(textIn.staggerMs);
+    // The content's own lead comes as the last word shows.
+    expect(timing.content + leadMs).toBeGreaterThan(timing.words.at(-1)!);
+    expect(timing.note).toBeGreaterThan(timing.content + leadMs);
+    // Without an eyebrow the headline is the first motion.
+    expect(sectionTiming(neutralTheme, 5, { eyebrow: false }).words[0]).toBe(leadMs);
+    // Long headlines squeeze their stagger so the words land in about the first 1.2 s.
+    expect(sectionTiming(neutralTheme, 30).words.at(-1)! + textIn.ms).toBeLessThanOrEqual(cascadeMs + textIn.lineStaggerMs);
+  });
+
+  it("delays the content's own entrance until the headline lands", () => {
+    const content = { component: "CardRow", props: { cards: [{ title: "A" }, { title: "B" }] } };
+    const timing = sectionTiming(neutralTheme, 2);
+    const cardOpacity = (ms: number) => {
+      const html = renderToStaticMarkup(<Section progress={ms / NOMINAL_SCENE_MS} theme={neutralTheme} aspect="9:16" eyebrow="E" headline="Two words" content={content} />);
+      return parseFloat(/data-card="0"[^>]*?style="[^"]*?opacity:([\d.]+)/.exec(html)![1]!);
+    };
+    const contentLead = timing.content + neutralTheme.motion.leadMs;
+    expect(cardOpacity(contentLead)).toBe(0);
+    expect(cardOpacity(contentLead + neutralTheme.motion.fx.ms / 2)).toBeGreaterThan(0);
   });
 
   it("uses the theme's type ramp and bundled fonts", () => {

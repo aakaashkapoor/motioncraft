@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   ASPECTS,
   ChatWindow,
+  NOMINAL_SCENE_MS,
   chatTiming,
   chatWindowLayout,
   contentArea,
+  exitMs,
   kit,
   lightTheme,
   neutralTheme,
@@ -68,6 +70,14 @@ const render = (aspect: Aspect, progress: number, extra: Partial<ChatWindowProps
     <ChatWindow progress={progress} theme={lightTheme} aspect={aspect} channel="releases" messages={MESSAGES} sidebar={SIDEBAR} {...extra} />,
   );
 
+/** The chat `ms` into a scene, drawn without a clock. */
+const renderAt = (aspect: Aspect, ms: number, extra: Partial<ChatWindowProps> = {}) => render(aspect, ms / NOMINAL_SCENE_MS, extra);
+
+/** A scene of `endMs`, at its start. */
+const scene = (endMs: number) => ({ ms: 0, endMs, leftMs: endMs });
+/** The latest a conversation may end in a scene of `endMs`: a beat before the exit. */
+const latest = (endMs: number) => endMs - exitMs(lightTheme, lightTheme.motion.enter.ms) - lightTheme.motion.beat.ms;
+
 function inside(outer: Rect, inner: Rect) {
   expect(inner.x).toBeGreaterThanOrEqual(outer.x - 0.5);
   expect(inner.y).toBeGreaterThanOrEqual(outer.y - 0.5);
@@ -77,7 +87,7 @@ function inside(outer: Rect, inner: Rect) {
 
 describe("chatTiming", () => {
   it.each([1, 2, 3, 6, 10])("types, then shows each of %i messages in order, all before the exit", (count) => {
-    const timing = chatTiming(count);
+    const timing = chatTiming(lightTheme, count, 0, scene(NOMINAL_SCENE_MS));
     expect(timing).toHaveLength(count);
     let last = 0;
     for (const { typing: t, appear } of timing) {
@@ -87,11 +97,23 @@ describe("chatTiming", () => {
       expect(appear[1]).toBeGreaterThan(appear[0]);
       last = appear[0];
     }
-    expect(timing.at(-1)!.appear[1]).toBeLessThanOrEqual(0.8);
+    expect(timing.at(-1)!.appear[1]).toBeLessThanOrEqual(latest(NOMINAL_SCENE_MS) + 1e-9);
   });
 
-  it("finishes messages earlier when cards follow", () => {
-    expect(chatTiming(3, 2).at(-1)!.appear[1]).toBeLessThan(chatTiming(3).at(-1)!.appear[1]);
+  it("plays at the same pace in any scene it fits, starting once the window has faded in", () => {
+    const { leadMs, fx, beat, enter } = lightTheme.motion;
+    const natural = chatTiming(lightTheme, 3);
+    expect(chatTiming(lightTheme, 3, 0, scene(9000))).toEqual(natural);
+    expect(natural[0]!.typing).toEqual([leadMs + fx.ms, leadMs + fx.ms + beat.ms]);
+    expect(natural[0]!.appear[1] - natural[0]!.appear[0]).toBe(enter.ms);
+    // The next message types once the one before it shows.
+    expect(natural[1]!.typing[0]).toBe(natural[0]!.appear[0] + fx.ms);
+  });
+
+  it("speeds up only to finish before a short scene's exit, and makes room for cards", () => {
+    const short = chatTiming(lightTheme, 3, 0, scene(3000));
+    expect(short.at(-1)!.appear[1]).toBeCloseTo(latest(3000), 6);
+    expect(chatTiming(lightTheme, 3, 2, scene(3000)).at(-1)!.appear[1]).toBeLessThan(short.at(-1)!.appear[1]);
   });
 });
 
@@ -125,11 +147,11 @@ describe("ChatWindow", () => {
     expect(messages(html)).toHaveLength(MESSAGES.length);
   });
 
-  it("shows messages in order as progress advances", () => {
-    const timing = chatTiming(MESSAGES.length);
+  it("shows messages in order as the scene plays", () => {
+    const timing = chatTiming(lightTheme, MESSAGES.length);
     for (let i = 0; i < MESSAGES.length; i++) {
-      const before = messages(render("16:9", timing[i]!.typing[0]));
-      const after = messages(render("16:9", timing[i]!.appear[1]));
+      const before = messages(renderAt("16:9", timing[i]!.typing[0]));
+      const after = messages(renderAt("16:9", timing[i]!.appear[1]));
       expect(before[i]!.opacity).toBeCloseTo(0, 3);
       expect(after[i]!.opacity).toBeCloseTo(1, 3);
       for (let j = 0; j < i; j++) expect(before[j]!.opacity).toBeCloseTo(1, 3);
@@ -138,22 +160,23 @@ describe("ChatWindow", () => {
   });
 
   it("rises each message into place", () => {
-    const { appear } = chatTiming(MESSAGES.length)[0]!;
-    const mid = messages(render("9:16", (appear[0] + appear[1]) / 2))[0]!;
-    expect(mid.opacity).toBeGreaterThan(0);
-    expect(mid.rise).toBeGreaterThan(0);
-    expect(messages(render("9:16", appear[1]))[0]!.rise).toBeCloseTo(0, 3);
+    const { appear } = chatTiming(lightTheme, MESSAGES.length)[0]!;
+    const early = messages(renderAt("9:16", appear[0] + lightTheme.motion.fx.ms / 2))[0]!;
+    expect(early.opacity).toBeGreaterThan(0);
+    expect(early.opacity).toBeLessThan(1);
+    expect(early.rise).toBeGreaterThan(0);
+    expect(messages(renderAt("9:16", appear[1]))[0]!.rise).toBeCloseTo(0, 3);
   });
 
   it("shows a typing indicator before each message, and hides it once the message lands", () => {
-    const timing = chatTiming(MESSAGES.length);
+    const timing = chatTiming(lightTheme, MESSAGES.length);
     for (let i = 0; i < MESSAGES.length; i++) {
       const { typing: t, appear } = timing[i]!;
-      const during = render("9:16", (t[0] + t[1]) / 2);
+      const during = renderAt("9:16", (t[0] + t[1]) / 2);
       expect(typing(during)[i]!.opacity).toBeGreaterThan(0.5);
       expect(messages(during)[i]!.opacity).toBeCloseTo(0, 3);
       for (let j = 0; j < MESSAGES.length; j++) if (j !== i) expect(typing(during)[j]!.opacity).toBeCloseTo(0, 3);
-      expect(typing(render("9:16", appear[1]))[i]!.opacity).toBeCloseTo(0, 3);
+      expect(typing(renderAt("9:16", appear[1]))[i]!.opacity).toBeCloseTo(0, 3);
     }
   });
 
@@ -184,8 +207,8 @@ describe("ChatWindow", () => {
 
   it("slides floating cards in beside the window", () => {
     const cards = [{ author: "Maya Chen", time: "9:41", text: "Shipped!" }];
-    const timing = chatTiming(MESSAGES.length, cards.length);
-    expect(states(render("16:9", timing.at(-1)!.appear[0], { cards }), "data-chat-card")[0]!.opacity).toBeCloseTo(0, 3);
+    const timing = chatTiming(lightTheme, MESSAGES.length, cards.length);
+    expect(states(renderAt("16:9", timing.at(-1)!.appear[0], { cards }), "data-chat-card")[0]!.opacity).toBeCloseTo(0, 3);
     const shown = states(render("16:9", 0.85, { cards }), "data-chat-card");
     expect(shown).toHaveLength(1);
     expect(shown[0]!.opacity).toBeCloseTo(1, 3);

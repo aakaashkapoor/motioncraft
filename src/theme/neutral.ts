@@ -32,6 +32,6 @@ export const neutralTheme: Theme = {
   radius: baseRadius,
   cardShadow: { y: 16, blur: 48, opacity: 0.4 },
   hairline: 2,
-  motion: { ...baseMotion, easing: "easeInOutCubic", enterMs: 400, exitMs: 300 },
+  motion: { ...baseMotion, easing: "easeInOutCubic" },
   safe: DEFAULT_SAFE_PROFILE,
 };

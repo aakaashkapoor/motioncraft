@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   ASPECTS,
   CodeWindow,
+  NOMINAL_SCENE_MS,
   TerminalWindow,
   contentArea,
   contrastRatio,
   darkTheme,
+  exitMs,
   highlightBand,
   highlightCode,
   kit,
@@ -66,6 +68,9 @@ const LINES: TerminalLine[] = [
 const terminal = (progress: number, aspect: Aspect = "9:16", extra: { lines?: TerminalLine[]; shareId?: string; title?: string } = {}) =>
   renderToStaticMarkup(<TerminalWindow progress={progress} theme={lightTheme} aspect={aspect} lines={LINES} title="zsh" {...extra} />);
 
+/** The terminal `ms` into a scene, drawn without a clock. */
+const terminalAt = (ms: number) => terminal(ms / NOMINAL_SCENE_MS);
+
 /** The text each terminal line shows, by line index; lines not shown yet are absent. */
 function terminalTexts(html: string): Map<number, string> {
   return new Map(marked(html, "data-terminal-text").map((m) => [Number(m.value), stripTags(m.inner)]));
@@ -89,37 +94,54 @@ describe("TerminalWindow", () => {
   });
 
   it("schedules prompt lines in order, with outputs appearing the instant the command before them ends", () => {
-    const timing = terminalTiming(LINES);
+    const timing = terminalTiming(lightTheme, LINES);
     expect(timing).toHaveLength(LINES.length);
     for (let i = 1; i < timing.length; i++) expect(timing[i]!.start).toBeGreaterThanOrEqual(timing[i - 1]!.end);
     expect(timing[0]!.end).toBeGreaterThan(timing[0]!.start);
     expect(timing[1]!.start).toBe(timing[1]!.end);
     expect(timing[3]!.start).toBe(timing[4]!.start);
-    expect(timing.at(-1)!.end).toBeLessThanOrEqual(0.75);
     // Longer commands take longer to type.
     expect(timing[2]!.end - timing[2]!.start).toBeGreaterThan(timing[0]!.end - timing[0]!.start);
   });
 
+  it("starts once the window has faded in and types at text.in's per-character step", () => {
+    const { leadMs, fx } = lightTheme.motion;
+    const timing = terminalTiming(lightTheme, LINES);
+    expect(timing[0]!.start).toBe(leadMs + fx.ms);
+    const perChar = lightTheme.motion["text.in"].charStaggerMs;
+    expect(timing[0]!.end - timing[0]!.typeStart).toBeCloseTo(LINES[0]!.text.length * perChar, 6);
+    expect(timing[2]!.end - timing[2]!.typeStart).toBeCloseTo(LINES[2]!.text.length * perChar, 6);
+  });
+
+  it("types at the same speed in any scene that fits it, and speeds up only to finish before a short scene's exit", () => {
+    const natural = terminalTiming(lightTheme, LINES);
+    expect(terminalTiming(lightTheme, LINES, { ms: 0, endMs: 9000, leftMs: 9000 })).toEqual(natural);
+    const endMs = 2000;
+    const short = terminalTiming(lightTheme, LINES, { ms: 0, endMs, leftMs: endMs });
+    expect(short[0]!.start).toBe(natural[0]!.start);
+    expect(short.at(-1)!.end).toBeCloseTo(endMs - exitMs(lightTheme, lightTheme.motion.enter.ms) - lightTheme.motion.beat.ms, 6);
+  });
+
   it("types prompt lines character by character", () => {
-    const [first] = terminalTiming(LINES);
+    const [first] = terminalTiming(lightTheme, LINES);
     const seen: string[] = [];
     for (let i = 1; i < 10; i++) {
-      const progress = first!.start + ((first!.end - first!.start) * i) / 10;
-      const text = terminalTexts(terminal(progress)).get(0) ?? "";
+      const ms = first!.start + ((first!.end - first!.start) * i) / 10;
+      const text = terminalTexts(terminalAt(ms)).get(0) ?? "";
       expect(LINES[0]!.text.startsWith(text)).toBe(true);
       seen.push(text);
     }
     for (let i = 1; i < seen.length; i++) expect(seen[i]!.length).toBeGreaterThanOrEqual(seen[i - 1]!.length);
     expect(seen[0]!.length).toBeLessThan(seen.at(-1)!.length);
     expect(seen.at(-1)!.length).toBeLessThan(LINES[0]!.text.length);
-    expect(terminalTexts(terminal(first!.end + 0.001)).get(0)).toBe(LINES[0]!.text);
+    expect(terminalTexts(terminalAt(first!.end + 1)).get(0)).toBe(LINES[0]!.text);
   });
 
   it("shows output lines only after the command before them has been typed", () => {
-    const timing = terminalTiming(LINES);
-    const before = terminalTexts(terminal(timing[0]!.end - 0.01));
+    const timing = terminalTiming(lightTheme, LINES);
+    const before = terminalTexts(terminalAt(timing[0]!.end - 10));
     expect(before.has(1)).toBe(false);
-    const after = terminalTexts(terminal(timing[1]!.start + 0.001));
+    const after = terminalTexts(terminalAt(timing[1]!.start + 1));
     expect(after.get(1)).toBe(LINES[1]!.text);
     expect(after.has(2)).toBe(true); // the next prompt line has started (perhaps empty)
     expect(after.has(3)).toBe(false);
@@ -128,12 +150,12 @@ describe("TerminalWindow", () => {
   });
 
   it("keeps a solid caret at the end of the line being typed", () => {
-    const timing = terminalTiming(LINES);
+    const timing = terminalTiming(lightTheme, LINES);
     const typing = timing[2]!.start + (timing[2]!.end - timing[2]!.start) / 2;
-    const c = caret(terminal(typing));
+    const c = caret(terminalAt(typing));
     expect(c.line).toBe(2);
     expect(c.opacity).toBe(1);
-    const html = terminal(typing);
+    const html = terminalAt(typing);
     expect(html.indexOf("data-terminal-caret")).toBeGreaterThan(html.indexOf('data-terminal-text="2"'));
   });
 

@@ -3,12 +3,12 @@
 // optional one-line note at the bottom. In 16:9 narrow content sits beside the
 // headline and wide content below it; 9:16 always stacks. Stacked, the text is
 // centered on the frame (design v3); beside, it keeps a left edge. The eyebrow
-// fades in first, the headline rises word by word, then the content and the
-// note arrive.
+// fades in on the scene's lead, the headline rises word by word (`text.in`),
+// the content plays its own entrance as the headline lands, and the note (the
+// takeaway) arrives once the content has built.
 
 import { Fragment } from "react";
 import { stagger } from "../engine/choreography";
-import { expoOut, interpolate } from "../engine/easing";
 import { contentArea, textColumn } from "../layout/caption";
 import type { Rect } from "../layout/frame";
 import { estimateTextHeight } from "../layout/textFit";
@@ -16,8 +16,9 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { headlineColor } from "../theme/roles";
 import type { Theme, TypeSpec } from "../theme/types";
+import { MotionDelay, useSceneTime } from "./frameContext";
 import { kit } from "./index";
-import { themeEasing } from "./motion";
+import { cascadeStep, exitOpacity, fade, tween } from "./motion";
 import type { KitProps } from "./types";
 
 /** A nested kit component: the scene shape, without id or narration. */
@@ -131,39 +132,36 @@ export function sectionLayout(
   };
 }
 
-const EYEBROW_ENTER = 0.12;
-const WORDS_START = 0.06;
-const WORD_ENTER = 0.14;
-/** Gap between word starts, at most; long headlines squeeze into `WORDS_SPAN`. */
-const WORD_STEP = 0.04;
-const WORDS_SPAN = 0.18;
-/** The content starts this long after the last word does. */
-const CONTENT_DELAY = 0.08;
-const NOTE_DELAY = 0.12;
-const NOTE_ENTER = 0.12;
-const EXIT = 0.1;
 /** How far a word rises, in em of the headline size. */
 const WORD_RISE_EM = 0.4;
 
 export interface SectionTiming {
-  eyebrow: [number, number];
-  /** [start, end] of each headline word's rise. */
-  words: Array<[number, number]>;
-  /** When the content starts; it plays out over the rest of the scene. */
+  /** When the eyebrow fades in, in ms from the scene's start. */
+  eyebrow: number;
+  /** When each headline word starts its `text.in` rise. */
+  words: number[];
+  /** How long the content's clock is delayed: its own entrance starts as the headline lands. */
   content: number;
-  note: [number, number];
+  /** When the note fades in: once the content has built (its cascade done), or a beat after the headline. */
+  note: number;
 }
 
-/** When each part enters, as fractions of the scene: eyebrow, headline words, content, note. */
-export function sectionTiming(wordCount: number): SectionTiming {
-  const step = wordCount > 1 ? Math.min(WORD_STEP, WORDS_SPAN / (wordCount - 1)) : 0;
-  const words = Array.from({ length: wordCount }, (_, i): [number, number] => {
-    const start = stagger(i, { start: WORDS_START, step });
-    return [start, start + WORD_ENTER];
-  });
-  const content = (words.at(-1)?.[0] ?? WORDS_START) + CONTENT_DELAY;
-  const noteStart = content + NOTE_DELAY;
-  return { eyebrow: [0, EYEBROW_ENTER], words, content, note: [noteStart, noteStart + NOTE_ENTER] };
+/**
+ * When each part enters, in ms: the eyebrow on the scene's lead, the words a
+ * line after it and `text.in`'s word step apart (tighter for long headlines,
+ * so they land in about the first 1.2 s), the content as the last word
+ * shows, and the note after the content.
+ */
+export function sectionTiming(theme: Theme, wordCount: number, parts: { eyebrow?: boolean; content?: boolean } = {}): SectionTiming {
+  const { leadMs, fx, cascadeMs, beat } = theme.motion;
+  const textIn = theme.motion["text.in"];
+  const first = leadMs + (parts.eyebrow === false ? 0 : textIn.lineStaggerMs);
+  const step = cascadeStep(theme, wordCount, textIn);
+  const words = Array.from({ length: wordCount }, (_, i) => stagger(i, { start: first, step }));
+  const lastWord = words.at(-1) ?? first;
+  const content = lastWord + fx.ms - leadMs;
+  const note = parts.content === false ? lastWord + textIn.ms + beat.ms : content + cascadeMs;
+  return { eyebrow: leadMs, words, content, note };
 }
 
 function nestedComponent(content: SectionContent) {
@@ -181,11 +179,11 @@ const at = (rect: Rect) => ({ position: "absolute" as const, left: rect.x, top: 
 export function Section({ progress, theme, aspect, area, headline, eyebrow, content, contentWidth = "narrow", note }: SectionProps) {
   const layout = sectionLayout(theme, aspect, { headline, eyebrow, note }, contentWidth, area);
   const words = headline.trim().split(/\s+/).filter(Boolean);
-  const timing = sectionTiming(words.length);
-  const easing = themeEasing(theme);
-  const fadeIn = ([start, end]: [number, number], curve = easing) => interpolate(progress, [start, end], [0, 1], { easing: curve });
+  const timing = sectionTiming(theme, words.length, { eyebrow: eyebrow !== undefined, content: content !== undefined });
+  const time = useSceneTime(progress);
+  const { fx } = theme.motion;
+  const textIn = theme.motion["text.in"];
   const Content = content === undefined ? undefined : nestedComponent(content);
-  const contentProgress = interpolate(progress, [timing.content, 1], [0, 1]);
   const { colors, fonts, type } = theme;
   const headlineSpec = type[layout.headlineRole][aspect];
   const eyebrowSpec = type.eyebrow[aspect];
@@ -203,14 +201,14 @@ export function Section({ progress, theme, aspect, area, headline, eyebrow, cont
 
   // A full-frame layer, so nested components position in frame px like a scene.
   return (
-    <div data-section="" style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", opacity: interpolate(progress, [1 - EXIT, 1], [1, 0], { easing }) }}>
+    <div data-section="" style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", opacity: exitOpacity(theme, time, textIn.ms) }}>
       {eyebrow !== undefined && layout.eyebrow !== undefined && (
         <p
           data-section-part="eyebrow"
           style={{
             ...at(layout.eyebrow),
             ...textStyle(eyebrowSpec),
-            opacity: fadeIn(timing.eyebrow),
+            opacity: fade(fx, time.ms - timing.eyebrow),
             fontFamily: fonts.body,
             textTransform: "uppercase",
             color: colors.textMuted,
@@ -230,7 +228,8 @@ export function Section({ progress, theme, aspect, area, headline, eyebrow, cont
         }}
       >
         {words.map((word, i) => {
-          const shown = fadeIn(timing.words[i]!, expoOut);
+          const since = time.ms - timing.words[i]!;
+          const rise = Math.round((1 - tween(textIn, since)) * WORD_RISE_EM * headlineSpec.size * 100) / 100;
           return (
             <Fragment key={i}>
               {i > 0 && " "}
@@ -239,8 +238,8 @@ export function Section({ progress, theme, aspect, area, headline, eyebrow, cont
                 style={{
                   display: "inline-block",
                   maxWidth: "100%",
-                  opacity: shown,
-                  transform: `translateY(${(1 - shown) * WORD_RISE_EM * headlineSpec.size}px)`,
+                  opacity: fade(fx, since),
+                  transform: `translateY(${rise}px)`,
                 }}
               >
                 {word}
@@ -251,13 +250,15 @@ export function Section({ progress, theme, aspect, area, headline, eyebrow, cont
       </h1>
       {Content !== undefined && (
         <div data-section-part="content" style={{ display: "contents" }}>
-          <Content {...content!.props} progress={contentProgress} theme={theme} aspect={aspect} area={layout.content} />
+          <MotionDelay ms={timing.content}>
+            <Content {...content!.props} progress={progress} theme={theme} aspect={aspect} area={layout.content} />
+          </MotionDelay>
         </div>
       )}
       {note !== undefined && layout.note !== undefined && (
         <p
           data-section-part="note"
-          style={{ ...at(layout.note), ...textStyle(noteSpec), opacity: fadeIn(timing.note), fontFamily: fonts.body, color: colors.textMuted }}
+          style={{ ...at(layout.note), ...textStyle(noteSpec), opacity: fade(fx, time.ms - timing.note), fontFamily: fonts.body, color: colors.textMuted }}
         >
           {note}
         </p>

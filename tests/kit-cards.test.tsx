@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ASPECTS,
   Card,
+  NOMINAL_SCENE_MS,
   CardRow,
   FeatureList,
   cardRowLayout,
@@ -48,6 +49,9 @@ const px = (decls: Map<string, string>, key: string): number => {
 };
 
 const opacityOf = (decls: Map<string, string>) => parseFloat(decls.get("opacity") ?? "1");
+
+/** The progress `ms` into a scene drawn without a clock. */
+const atMs = (ms: number) => ms / NOMINAL_SCENE_MS;
 
 function expectInsideArea(html: string, aspect: Aspect, attr: string) {
   const area = contentArea(neutralTheme, aspect);
@@ -120,10 +124,16 @@ describe("Card", () => {
     expect(stylesOf(lit, "data-card-face")[0]!.get("background-color")).toBe(bold.colors.accent);
   });
 
-  it("springs in and fades out", () => {
-    const at = (p: number) => opacityOf(stylesOf(renderToStaticMarkup(<Card progress={p} theme={neutralTheme} aspect="9:16" title="A" />), "data-card=")[0]!);
-    expect(at(0)).toBeCloseTo(0, 3);
-    expect(at(0.5)).toBeCloseTo(1, 3);
+  it("springs in on the scene's lead and fades out", () => {
+    const card = (p: number) => stylesOf(renderToStaticMarkup(<Card progress={p} theme={neutralTheme} aspect="9:16" title="A" />), "data-card=")[0]!;
+    const { leadMs, fx, enter } = neutralTheme.motion;
+    expect(opacityOf(card(0))).toBeCloseTo(0, 3);
+    expect(opacityOf(card(atMs(leadMs)))).toBeCloseTo(0, 3);
+    // Opacity is in after the fx fade; the spring is still moving.
+    expect(opacityOf(card(atMs(leadMs + fx.ms)))).toBeCloseTo(1, 3);
+    expect(card(atMs(leadMs + fx.ms)).get("transform")).not.toBe("translateY(0px) scale(1)");
+    expect(card(atMs(leadMs + enter.ms)).get("transform")).toBe("translateY(0px) scale(1)");
+    expect(opacityOf(card(0.5))).toBeCloseTo(1, 3);
     expect(opacityOf(rootStyle(renderToStaticMarkup(<Card progress={1} theme={neutralTheme} aspect="9:16" title="A" />)))).toBeCloseTo(0, 3);
   });
 });
@@ -167,18 +177,29 @@ describe("CardRow", () => {
   });
 
   it("brings cards in one after another, in order", () => {
-    const opacities = stylesOf(render("16:9", 0.2), "data-card=").map(opacityOf);
+    const timing = cardRowTiming(neutralTheme, 4);
+    const opacities = stylesOf(render("16:9", atMs(timing[1]![0] + 50)), "data-card=").map(opacityOf);
     expect(opacities[0]).toBeGreaterThan(opacities.at(-1)!);
     for (let i = 1; i < opacities.length; i++) expect(opacities[i]).toBeLessThanOrEqual(opacities[i - 1]!);
-    const timing = cardRowTiming(4);
-    for (let i = 1; i < 4; i++) expect(timing[i]![0]).toBeGreaterThan(timing[i - 1]![0]);
+    for (let i = 1; i < 4; i++) expect(timing[i]![0] - timing[i - 1]![0]).toBe(neutralTheme.motion.enter.staggerMs);
     for (const o of stylesOf(render("16:9", 0.7), "data-card=").map(opacityOf)) expect(o).toBeCloseTo(1, 3);
   });
 
-  it("lights the highlighted card only after every card has landed", () => {
+  it("starts the cascade on the scene's lead and lands it in about the first 1.2 s, whatever the count", () => {
+    const { leadMs, cascadeMs, enter } = neutralTheme.motion;
+    for (const count of [2, 3, 4, 5, 6]) {
+      const timing = cardRowTiming(neutralTheme, count);
+      expect(timing[0]![0]).toBe(leadMs);
+      for (const [start, end] of timing) expect(end - start).toBe(enter.ms);
+      expect(timing.at(-1)![1]).toBeLessThanOrEqual(cascadeMs + 1e-9);
+    }
+  });
+
+  it("pops the highlighted card only after every card has landed", () => {
     const lit = (p: number) => [...render("16:9", p, { highlight: 2 }).matchAll(/data-highlighted="(\w+)"/g)].map((m) => m[1]);
-    const landed = Math.max(...cardRowTiming(CARDS.length).map(([, end]) => end));
-    expect(lit(landed - 0.01)).toEqual(["false", "false", "false", "false"]);
+    const landed = Math.max(...cardRowTiming(neutralTheme, CARDS.length).map(([, end]) => end));
+    expect(lit(atMs(landed - 10))).toEqual(["false", "false", "false", "false"]);
+    expect(lit(atMs(landed + neutralTheme.motion.pop.ms))).toEqual(["false", "false", "true", "false"]);
     expect(lit(0.85)).toEqual(["false", "false", "true", "false"]);
     expect(render("16:9", 0.85)).not.toContain('data-highlighted="true"');
   });
@@ -226,13 +247,17 @@ describe("FeatureList", () => {
     }
   });
 
-  it("brings rows in one after another, in order", () => {
-    const opacities = stylesOf(render("9:16", 0.2), "data-feature=").map(opacityOf);
+  it("brings rows in one after another, after the title, in order", () => {
+    const timing = featureListTiming(neutralTheme, ITEMS.length, true);
+    const opacities = stylesOf(render("9:16", atMs(timing[1]![0] + 50)), "data-feature=").map(opacityOf);
     expect(opacities[0]).toBeGreaterThan(opacities.at(-1)!);
     for (let i = 1; i < opacities.length; i++) expect(opacities[i]).toBeLessThanOrEqual(opacities[i - 1]!);
-    const timing = featureListTiming(6);
-    for (let i = 1; i < 6; i++) expect(timing[i]![0]).toBeGreaterThan(timing[i - 1]![0]);
-    expect(timing.at(-1)![1]).toBeLessThanOrEqual(0.7);
+    const { leadMs, cascadeMs } = neutralTheme.motion;
+    expect(timing[0]![0]).toBeGreaterThan(leadMs);
+    expect(featureListTiming(neutralTheme, ITEMS.length)[0]![0]).toBe(leadMs);
+    const six = featureListTiming(neutralTheme, 6, true);
+    for (let i = 1; i < 6; i++) expect(six[i]![0]).toBeGreaterThan(six[i - 1]![0]);
+    expect(six.at(-1)![1]).toBeLessThanOrEqual(cascadeMs + 1e-9);
     for (const o of stylesOf(render("9:16", 0.7), "data-feature=").map(opacityOf)) expect(o).toBeCloseTo(1, 3);
   });
 

@@ -1,10 +1,10 @@
 // A list of 2-6 steps with an optional title, on the frame's optical center
 // above the caption band (or centered in its slot), no wider than the text
-// column. Each item has a numbered or accent-dot marker and appears
-// in turn, fading in and sliding from the left; all are in by ~70% of the
-// scene. An optional highlighted item is drawn in the accent color.
+// column. Each item has a numbered or accent-dot marker. The title rises in on
+// the scene's lead; the items follow it in turn, fading in and sliding from the
+// left, the cascade done in about the first 1.2 s. An optional highlighted item
+// is drawn in the accent color.
 
-import { interpolate, type Easing } from "../engine/easing";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
 import { estimateTextHeight } from "../layout/textFit";
@@ -12,7 +12,8 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { accentInk } from "../theme/roles";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
-import { themeEasing } from "./motion";
+import { useSceneTime } from "./frameContext";
+import { arrive, cascadeStep, exitOpacity, fade, tween } from "./motion";
 import type { KitProps } from "./types";
 
 export interface StepListProps extends KitProps {
@@ -25,13 +26,6 @@ export interface StepListProps extends KitProps {
   marker?: "number" | "dot";
 }
 
-const TITLE_ENTER = 0.2;
-const EXIT = 0.1;
-/** How long one item takes to come in, as a fraction of the scene. */
-const ITEM_ENTER = 0.2;
-/** By this point of the scene every item is fully in. */
-const ITEMS_DONE = 0.65;
-
 /** Item steps to try, largest first. */
 const ITEM_STEPS = ["subtitle", "body", "label"] as const satisfies readonly TypeRole[];
 type ItemStep = (typeof ITEM_STEPS)[number];
@@ -42,10 +36,18 @@ const MARKER_EM = 1.25;
 /** Dot diameter as a fraction of the marker. */
 const DOT_SCALE = 0.4;
 
-/** The [start, end] of each item's entrance, as fractions of the scene: staggered, all done by `ITEMS_DONE`. */
-export function stepListTiming(count: number): Array<[number, number]> {
-  const gap = count > 1 ? (ITEMS_DONE - ITEM_ENTER) / (count - 1) : 0;
-  return Array.from({ length: count }, (_, i) => [i * gap, i * gap + ITEM_ENTER]);
+/**
+ * The [start, end] of each item's entrance, in ms from the scene's start: an
+ * `enter` cascade from the lead, one step behind the title when there is one.
+ */
+export function stepListTiming(theme: Theme, count: number, titled = false): Array<[number, number]> {
+  const { leadMs, enter } = theme.motion;
+  const first = titled ? 1 : 0;
+  const step = cascadeStep(theme, count + first);
+  return Array.from({ length: count }, (_, i) => {
+    const start = leadMs + (i + first) * step;
+    return [start, start + enter.ms];
+  });
 }
 
 interface StepLayout {
@@ -128,11 +130,10 @@ function Marker({ index, kind, layout, theme }: { index: number; kind: "number" 
   );
 }
 
-function itemMotion(progress: number, [start, end]: [number, number], slide: number, easing: Easing) {
-  return {
-    opacity: interpolate(progress, [start, end], [0, 1], { easing }),
-    offset: interpolate(progress, [start, end], [-slide, 0], { easing }),
-  };
+/** An item sliding in from the left as it fades in (see `arrive`). */
+function itemMotion(theme: Theme, ms: number, start: number, slide: number) {
+  const { move, opacity } = arrive(theme, ms, start);
+  return { opacity, offset: Math.round((move - 1) * slide * 100) / 100 };
 }
 
 export function StepList({ progress, theme, aspect, area: slot, items, title, highlight, marker = "number" }: StepListProps) {
@@ -141,11 +142,13 @@ export function StepList({ progress, theme, aspect, area: slot, items, title, hi
   const layout = stepListLayout(theme, aspect, title, items, { ...area, width });
   const height = estimateListHeight(theme, aspect, width, title, items, layout);
   const box = placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot));
-  const easing = themeEasing(theme);
-  const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
-  const titleOpacity = interpolate(progress, [0, TITLE_ENTER], [0, 1], { easing });
-  const titleRise = interpolate(progress, [0, TITLE_ENTER], [theme.spacing.lg, 0], { easing });
-  const timing = stepListTiming(items.length);
+  const time = useSceneTime(progress);
+  const { ms } = time;
+  const { leadMs, fx, enter } = theme.motion;
+  const exit = exitOpacity(theme, time, enter.ms);
+  const titleOpacity = fade(fx, ms - leadMs);
+  const titleRise = Math.round((1 - tween(theme.motion["text.in"], ms - leadMs)) * theme.spacing.lg * 100) / 100;
+  const timing = stepListTiming(theme, items.length, title !== undefined);
   const { colors, fonts, spacing } = theme;
 
   return (
@@ -183,7 +186,7 @@ export function StepList({ progress, theme, aspect, area: slot, items, title, hi
         )}
         <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: spacing.md }}>
           {items.map((item, i) => {
-            const { opacity, offset } = itemMotion(progress, timing[i]!, layout.slide, easing);
+            const { opacity, offset } = itemMotion(theme, ms, timing[i]![0], layout.slide);
             return (
               <li
                 key={i}

@@ -16,9 +16,9 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
 import type { Theme } from "../theme/types";
-import { VisibleRectContext } from "./frameContext";
+import { MotionDelay, useSceneTime, VisibleRectContext } from "./frameContext";
 import { kit } from "./index";
-import { presence, themeEasing } from "./motion";
+import { exitOpacity, fade } from "./motion";
 import type { SlotContent } from "./Slot";
 import type { KitComponent, KitProps } from "./types";
 import { windowWidth } from "./windowLayout";
@@ -53,11 +53,6 @@ export const MIN_PINNED_SHARE = 0.4;
 const DOCK_RATIO: Record<Aspect, number> = { "9:16": 0.9, "16:9": 0.55 };
 /** Docking must leave the content at least this share of the area (its height in 9:16, its width in 16:9); otherwise a chip. */
 const MIN_CONTENT_SHARE = 0.5;
-/** With `arrive: settled`, the pinned component starts this far into its own animation. */
-// Mid-scene: past the entrances (and count-ups) of the kit components.
-const SETTLED_PROGRESS = 0.5;
-const CHIP_ENTER = 0.15;
-const CHIP_EXIT = 0.1;
 
 export interface PinnedLayout {
   /** `dock`: the component itself, scaled. `chip`: an icon chip in its place. */
@@ -187,6 +182,9 @@ function PinnedChip({ spec, label, progress, theme, aspect, box }: { spec: SlotC
   const shareId = typeof spec.props?.shareId === "string" ? spec.props.shareId : undefined;
   const { colors, spacing, radius, cardShadow } = theme;
   const labelSpec = theme.type.label[aspect];
+  const time = useSceneTime(progress);
+  const { leadMs, fx } = theme.motion;
+  const chipOpacity = Math.min(fade(fx, time.ms - leadMs), exitOpacity(theme, time, fx.ms));
   return (
     <div
       data-pinned-chip=""
@@ -199,7 +197,7 @@ function PinnedChip({ spec, label, progress, theme, aspect, box }: { spec: SlotC
         width: box.width,
         height: box.height,
         boxSizing: "border-box",
-        opacity: presence(progress, CHIP_ENTER, CHIP_EXIT, themeEasing(theme)),
+        opacity: chipOpacity,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -225,7 +223,9 @@ export function Pinned({ progress, theme, aspect, area, pinned, content, corner 
   // Checked even when it shows as a chip, so a typo never passes silently.
   const Docked = componentOf(pinned);
   const Content = content === undefined ? undefined : componentOf(content);
-  const pinnedProgress = arrive === "settled" ? Math.max(progress, SETTLED_PROGRESS) : progress;
+  // Settled, the docked component runs a whole scene ahead: past its entrance from the first frame, still leaving with the scene.
+  const { endMs } = useSceneTime(progress);
+  const ahead = arrive === "settled" ? -endMs : 0;
 
   return (
     <div data-pinned={corner} style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }}>
@@ -236,11 +236,13 @@ export function Pinned({ progress, theme, aspect, area, pinned, content, corner 
           </VisibleRectContext.Provider>
         </div>
       )}
-      {layout.mode === "dock" ? (
-        <DockedFrame spec={pinned} Component={Docked} progress={pinnedProgress} theme={theme} aspect={aspect} dock={layout.dock} box={layout.pinned} scale={layout.scale} />
-      ) : (
-        <PinnedChip spec={pinned} label={layout.label} progress={pinnedProgress} theme={theme} aspect={aspect} box={layout.pinned} />
-      )}
+      <MotionDelay ms={ahead}>
+        {layout.mode === "dock" ? (
+          <DockedFrame spec={pinned} Component={Docked} progress={progress} theme={theme} aspect={aspect} dock={layout.dock} box={layout.pinned} scale={layout.scale} />
+        ) : (
+          <PinnedChip spec={pinned} label={layout.label} progress={progress} theme={theme} aspect={aspect} box={layout.pinned} />
+        )}
+      </MotionDelay>
     </div>
   );
 }

@@ -1,9 +1,9 @@
 // 2-6 feature rows, each an icon in a soft accent-tinted circle beside a line
 // of text, with an optional title, on the frame's optical center (or centered
-// in its slot), no wider than the text column. Rows spring in one after
-// another, rising and sliding from the left.
+// in its slot), no wider than the text column. The title rises in on the
+// scene's lead; the rows spring in after it one by one, sliding from the left,
+// the cascade done in about the first 1.2 s.
 
-import { interpolate } from "../engine/easing";
 import { Icon } from "../icons";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
@@ -13,8 +13,8 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
-import { themeEasing } from "./motion";
-import { springIn } from "./springIn";
+import { useSceneTime } from "./frameContext";
+import { arrive, cascadeStep, exitOpacity, fade, tween } from "./motion";
 import type { KitProps } from "./types";
 
 export interface FeatureItem {
@@ -29,12 +29,6 @@ export interface FeatureListProps extends KitProps {
   title?: string;
 }
 
-const TITLE_ENTER = 0.2;
-const EXIT = 0.1;
-const ROW_ENTER = 0.25;
-/** By this point every row is fully in. */
-const ROWS_DONE = 0.65;
-
 /** Row text steps to try, largest first. */
 const ROW_STEPS: readonly TypeRole[] = ["subtitle", "body", "label"];
 /** Icon circle diameter as a multiple of the row font size. */
@@ -44,10 +38,18 @@ const ICON_SCALE = 0.55;
 /** Tint of the icon circle: the accent at this opacity. */
 const TINT = 0.14;
 
-/** The [start, end] of each row's entrance, as fractions of the scene. */
-export function featureListTiming(count: number): Array<[number, number]> {
-  const gap = count > 1 ? (ROWS_DONE - ROW_ENTER) / (count - 1) : 0;
-  return Array.from({ length: count }, (_, i) => [i * gap, i * gap + ROW_ENTER]);
+/**
+ * The [start, end] of each row's entrance, in ms from the scene's start: an
+ * `enter` cascade from the lead, one step behind the title when there is one.
+ */
+export function featureListTiming(theme: Theme, count: number, titled = false): Array<[number, number]> {
+  const { leadMs, enter } = theme.motion;
+  const first = titled ? 1 : 0;
+  const step = cascadeStep(theme, count + first);
+  return Array.from({ length: count }, (_, i) => {
+    const start = leadMs + (i + first) * step;
+    return [start, start + enter.ms];
+  });
 }
 
 interface FeatureLayout {
@@ -87,10 +89,13 @@ export function FeatureList({ progress, theme, aspect, area: slot, items, title 
   const layout = featureListLayout(theme, aspect, title, items, { ...area, width });
   const height = estimateHeight(theme, aspect, width, title, items, layout);
   const box = placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot));
-  const easing = themeEasing(theme);
-  const exit = interpolate(progress, [1 - EXIT, 1], [1, 0], { easing });
-  const titleIn = interpolate(progress, [0, TITLE_ENTER], [0, 1], { easing });
-  const timing = featureListTiming(items.length);
+  const time = useSceneTime(progress);
+  const { ms } = time;
+  const { leadMs, fx, enter } = theme.motion;
+  const exit = exitOpacity(theme, time, enter.ms);
+  const titleOpacity = fade(fx, ms - leadMs);
+  const titleRise = Math.round((1 - tween(theme.motion["text.in"], ms - leadMs)) * theme.spacing.lg * 100) / 100;
+  const timing = featureListTiming(theme, items.length, title !== undefined);
   const { colors, fonts, spacing } = theme;
 
   return (
@@ -114,8 +119,8 @@ export function FeatureList({ progress, theme, aspect, area: slot, items, title 
             style={{
               margin: 0,
               marginBottom: spacing.lg,
-              opacity: titleIn,
-              transform: `translateY(${(1 - titleIn) * spacing.lg}px)`,
+              opacity: titleOpacity,
+              transform: `translateY(${titleRise}px)`,
               fontFamily: fonts.display,
               ...typeCss(theme.type.title[aspect]),
               color: colors.text,
@@ -128,15 +133,14 @@ export function FeatureList({ progress, theme, aspect, area: slot, items, title 
         )}
         <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: spacing.md }}>
           {items.map((item, i) => {
-            const [start, end] = timing[i]!;
-            const s = springIn(progress, start, end - start, theme.motion.springs.enter);
-            const offset = Math.round((s - 1) * layout.slide * 100) / 100;
+            const { move, opacity } = arrive(theme, ms, timing[i]![0]);
+            const offset = Math.round((move - 1) * layout.slide * 100) / 100;
             return (
               <li
                 key={i}
                 data-feature={i}
                 style={{
-                  opacity: Math.min(1, Math.max(0, s)),
+                  opacity,
                   transform: `translateX(${offset}px)`,
                   display: "flex",
                   alignItems: "center",
