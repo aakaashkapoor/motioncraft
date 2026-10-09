@@ -4,6 +4,9 @@ import {
   ASPECTS,
   AppWindow,
   BrowserWindow,
+  CodeWindow,
+  TerminalWindow,
+  TRAFFIC_LIGHTS,
   contentArea,
   darkTheme,
   kit,
@@ -239,5 +242,45 @@ describe("BrowserWindow", () => {
     const outer = element(html, "data-window-content");
     expect(outer).toContain('data-window="app"');
     expect(outer).toContain("First step");
+  });
+});
+
+describe("one window chrome", () => {
+  /** The root's style without its position and size, which depend on the window's content. */
+  const chromeStyle = (html: string) => {
+    const style = parseStyle(/^<[a-z]+[^>]*?style="([^"]*)"/.exec(html)![1]!);
+    for (const key of ["left", "top", "width", "height"]) style.delete(key);
+    return Object.fromEntries(style);
+  };
+  const windows = (aspect: Aspect, progress: number) => {
+    const props = { progress, theme: lightTheme, aspect };
+    return {
+      app: renderToStaticMarkup(<AppWindow {...props} title="Notes" content={CONTENT} />),
+      browser: renderToStaticMarkup(<BrowserWindow {...props} url="example.com" content={CONTENT} />),
+      terminal: renderToStaticMarkup(<TerminalWindow {...props} lines={[{ prompt: true, text: "ls" }]} />),
+      code: renderToStaticMarkup(<CodeWindow {...props} code="const x = 1;" title="x.ts" />),
+    };
+  };
+
+  it.each(ASPECTS.flatMap((aspect) => [0, 0.05, 0.15, 0.5, 0.95, 1].map((p) => [aspect, p] as const)))(
+    "gives all four windows the same motion, border, radius and shadow (%s, progress %s)",
+    (aspect, progress) => {
+      const { app, ...rest } = windows(aspect, progress);
+      for (const html of Object.values(rest)) expect(chromeStyle(html)).toEqual(chromeStyle(app));
+    },
+  );
+
+  it.each(ASPECTS)("gives all four windows the same title bar height (%s)", (aspect) => {
+    const heights = Object.values(windows(aspect, 0.5)).map((html) => styleOf(html, "data-window-titlebar").get("height"));
+    expect(new Set(heights).size).toBe(1);
+    expect(heights[0]).toBe(`${windowLayout(lightTheme, aspect, false).titleBar}px`);
+  });
+
+  it("offers traffic lights in color as a chrome style", () => {
+    const colored = renderToStaticMarkup(<TerminalWindow progress={0.5} theme={lightTheme} aspect="9:16" lines={[]} chrome="color" />);
+    for (const color of TRAFFIC_LIGHTS) expect(colored).toContain(color);
+    const plain = renderToStaticMarkup(<TerminalWindow progress={0.5} theme={lightTheme} aspect="9:16" lines={[]} />);
+    for (const color of TRAFFIC_LIGHTS) expect(plain).not.toContain(color);
+    expect(app("9:16", 0.5, { chrome: "color" })).toContain(TRAFFIC_LIGHTS[0]);
   });
 });

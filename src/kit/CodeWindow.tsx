@@ -1,4 +1,4 @@
-// Syntax-highlighted code in window chrome, with line numbers. Optional
+// Syntax-highlighted code in the shared window chrome, with line numbers. Optional
 // `highlightLines` pick out lines once the code is on screen: they get an
 // accent-tinted band while the others dim. Optional `reveal` brings the lines
 // in one by one. The type shrinks until the longest line and every row fit.
@@ -13,7 +13,7 @@ import { highlightCode, type CodeToken } from "./highlight";
 import { themeEasing } from "./motion";
 import { HIGHLIGHT_TINT, syntaxColors } from "./syntaxColors";
 import type { KitProps } from "./types";
-import { WindowChrome } from "./WindowChrome";
+import { TitleBar, WindowShell, type WindowChromeStyle } from "./AppWindow";
 import { fitMonoSize, MONO_ADVANCE, maxInnerHeight, windowBox, windowMetrics, windowWidth } from "./windowLayout";
 
 export interface CodeWindowProps extends KitProps {
@@ -30,6 +30,7 @@ export interface CodeWindowProps extends KitProps {
   lineNumbers?: boolean;
   /** Element id for shared-element transitions. */
   shareId?: string;
+  chrome?: WindowChromeStyle;
 }
 
 /** With `reveal`, lines come in between these fractions of the scene. */
@@ -72,6 +73,7 @@ export function CodeWindow({
   reveal = false,
   lineNumbers = true,
   shareId,
+  chrome = "traffic",
 }: CodeWindowProps) {
   const lines = highlightCode(code.replace(/\t/g, TAB), language);
   const digits = String(lines.length).length;
@@ -88,7 +90,15 @@ export function CodeWindow({
   const step = lines.length > 1 ? (REVEAL_END - LINE_FADE - REVEAL_START) / (lines.length - 1) : 0;
 
   return (
-    <WindowChrome progress={progress} theme={theme} aspect={aspect} box={box} title={title} shareId={shareId}>
+    <WindowShell
+      progress={progress}
+      theme={theme}
+      aspect={aspect}
+      area={box}
+      kind="code"
+      shareId={shareId}
+      titleBar={<TitleBar theme={theme} aspect={aspect} title={title} chrome={chrome} />}
+    >
       <div style={{ fontFamily: theme.fonts.mono, fontWeight: mono.weight, letterSpacing: `${mono.tracking}em` }}>
         {lines.map((tokens, i) => {
           const number = i + 1;
@@ -135,6 +145,6 @@ export function CodeWindow({
           );
         })}
       </div>
-    </WindowChrome>
+    </WindowShell>
   );
 }

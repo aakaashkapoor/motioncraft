@@ -3,7 +3,7 @@
 // box on the theme surface, with the theme radius, hairline border and card
 // shadow. The window fills its area (the content area by default), enters with a scale-and-rise
 // spring and fades out at the end. `shareId` lets it morph between scenes.
-// `WindowShell` is the chrome itself, shared with `BrowserWindow`.
+// `WindowShell` is the chrome itself, shared by every window component.
 
 import type { ReactNode } from "react";
 import { interpolate } from "../engine/easing";
@@ -16,9 +16,17 @@ import type { Theme } from "../theme/types";
 import { themeEasing } from "./motion";
 import { Slot, type SlotContent } from "./Slot";
 import type { KitProps } from "./types";
+import { windowMetrics } from "./windowLayout";
 
-/** `traffic` (default): three window buttons at the left. `minimal`: the title only. */
-export type WindowChromeStyle = "traffic" | "minimal";
+/**
+ * `traffic` (default): three muted window buttons at the left. `color`: the
+ * same buttons in the conventional close, minimize and zoom colors.
+ * `minimal`: the title only.
+ */
+export type WindowChromeStyle = "traffic" | "color" | "minimal";
+
+/** Close, minimize, zoom: the conventional window-control colors, for the `color` chrome. */
+export const TRAFFIC_LIGHTS = ["#ec6a5e", "#f4bf4f", "#61c554"] as const;
 
 export interface AppWindowProps extends KitProps {
   title?: string;
@@ -37,8 +45,7 @@ const EXIT = 0.1;
 const START_SCALE = 0.9;
 /** Resolution of the enter spring, stretched over `ENTER`. */
 const SPRING_FRAMES = 60;
-/** Title bar and toolbar heights, as multiples of the caption type size. */
-const TITLE_BAR_EM = 2;
+/** Toolbar height, as a multiple of the caption type size. */
 const TOOLBAR_EM = 2.2;
 /** Traffic light diameter, as a multiple of the caption type size. */
 const LIGHT_EM = 0.42;
@@ -58,10 +65,10 @@ export interface WindowLayout {
 export function windowLayout(theme: Theme, aspect: Aspect, toolbar: boolean, area: Rect = contentArea(theme, aspect)): WindowLayout {
   const box = area;
   const em = theme.type.caption[aspect].size;
-  const titleBar = Math.round(em * TITLE_BAR_EM);
+  const titleBar = windowMetrics(theme, aspect).barHeight;
   const toolbarHeight = toolbar ? Math.round(em * TOOLBAR_EM) : 0;
   const top = titleBar + toolbarHeight;
-  const inner = 2 * theme.hairline;
+  const inner = 2 * windowMetrics(theme, aspect).border;
   return {
     box,
     titleBar,
@@ -91,15 +98,16 @@ function lightsMetrics(theme: Theme, aspect: Aspect): { size: number; gap: numbe
   return { size, gap, width: 3 * size + 2 * gap };
 }
 
-export function TrafficLights({ theme, aspect }: { theme: Theme; aspect: Aspect }) {
+export function TrafficLights({ theme, aspect, colored = false }: { theme: Theme; aspect: Aspect; colored?: boolean }) {
   const { size, gap } = lightsMetrics(theme, aspect);
+  const muted = withAlpha(theme.colors.textSubtle, 0.45);
   return (
     <div data-traffic-lights="" style={{ flex: "none", display: "flex", gap }}>
       {[0, 1, 2].map((i) => (
         <div
           key={i}
           data-light=""
-          style={{ width: size, height: size, borderRadius: "50%", backgroundColor: withAlpha(theme.colors.textSubtle, 0.45) }}
+          style={{ width: size, height: size, borderRadius: "50%", backgroundColor: colored ? TRAFFIC_LIGHTS[i] : muted }}
         />
       ))}
     </div>
@@ -109,7 +117,10 @@ export function TrafficLights({ theme, aspect }: { theme: Theme; aspect: Aspect 
 export interface WindowShellProps extends KitProps {
   kind: string;
   shareId?: string;
+  /** A kit component in the content box. */
   content?: SlotContent;
+  /** The window's own body instead of `content`, drawn inside the content padding. */
+  children?: ReactNode;
   /** The title bar's contents. */
   titleBar: ReactNode;
   /** The toolbar's contents; no toolbar when undefined. */
@@ -117,7 +128,7 @@ export interface WindowShellProps extends KitProps {
 }
 
 /** The window chrome: frame, motion, title bar, optional toolbar and the content slot. */
-export function WindowShell({ progress, theme, aspect, area, kind, shareId, content, titleBar, toolbar }: WindowShellProps) {
+export function WindowShell({ progress, theme, aspect, area, kind, shareId, content, children, titleBar, toolbar }: WindowShellProps) {
   const layout = windowLayout(theme, aspect, toolbar !== undefined, area);
   const { opacity, rise, scale } = windowMotion(theme, progress);
   const { colors, spacing, hairline, cardShadow } = theme;
@@ -152,15 +163,33 @@ export function WindowShell({ progress, theme, aspect, area, kind, shareId, cont
           {toolbar}
         </div>
       )}
-      <Slot
-        progress={progress}
-        theme={theme}
-        aspect={aspect}
-        box={layout.content}
-        content={content}
-        backgroundColor={colors.surface}
-        attribute="data-window-content"
-      />
+      {children === undefined ? (
+        <Slot
+          progress={progress}
+          theme={theme}
+          aspect={aspect}
+          box={layout.content}
+          content={content}
+          backgroundColor={colors.surface}
+          attribute="data-window-content"
+        />
+      ) : (
+        <div
+          data-window-content=""
+          style={{
+            position: "absolute",
+            left: layout.content.x,
+            top: layout.content.y,
+            width: layout.content.width,
+            height: layout.content.height,
+            boxSizing: "border-box",
+            padding: windowMetrics(theme, aspect).padding,
+            overflow: "hidden",
+          }}
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -181,8 +210,20 @@ export function chromeText(theme: Theme, aspect: Aspect, color: string) {
   } as const;
 }
 
+/** Lights at the left (unless `minimal`) and the title centered in the bar. */
+export function TitleBar({ theme, aspect, title, chrome }: { theme: Theme; aspect: Aspect; title?: string; chrome: WindowChromeStyle }) {
+  const lights = chrome !== "minimal";
+  return (
+    <>
+      {lights && <TrafficLights theme={theme} aspect={aspect} colored={chrome === "color"} />}
+      <span style={{ ...chromeText(theme, aspect, theme.colors.textMuted), flex: 1, textAlign: "center" }}>{title}</span>
+      {/* Balances the lights so the title sits in the middle of the bar. */}
+      {lights && <div style={{ flex: "none", width: lightsMetrics(theme, aspect).width }} />}
+    </>
+  );
+}
+
 export function AppWindow({ progress, theme, aspect, area, title, chrome = "traffic", content, shareId }: AppWindowProps) {
-  const lights = chrome === "traffic";
   return (
     <WindowShell
       progress={progress}
@@ -192,14 +233,7 @@ export function AppWindow({ progress, theme, aspect, area, title, chrome = "traf
       kind="app"
       shareId={shareId}
       content={content}
-      titleBar={
-        <>
-          {lights && <TrafficLights theme={theme} aspect={aspect} />}
-          <span style={{ ...chromeText(theme, aspect, theme.colors.textMuted), flex: 1, textAlign: "center" }}>{title}</span>
-          {/* Balances the lights so the title sits in the middle of the bar. */}
-          {lights && <div style={{ flex: "none", width: lightsMetrics(theme, aspect).width }} />}
-        </>
-      }
+      titleBar={<TitleBar theme={theme} aspect={aspect} title={title} chrome={chrome} />}
     />
   );
 }

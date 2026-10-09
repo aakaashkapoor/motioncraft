@@ -1,5 +1,5 @@
-// A terminal in window chrome. Prompt lines are typed character by character
-// behind a prompt marker with a caret; output lines appear the instant the
+// A terminal in the shared window chrome. Prompt lines are typed character by
+// character behind a prompt marker with a caret; output lines appear the instant the
 // command before them has been typed. Once everything has run, a fresh prompt
 // waits with a smoothly blinking caret. The window keeps its final size
 // throughout, so lines appear without anything moving.
@@ -11,7 +11,7 @@ import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { syntaxColors } from "./syntaxColors";
 import type { KitProps } from "./types";
-import { WindowChrome } from "./WindowChrome";
+import { TitleBar, WindowShell, type WindowChromeStyle } from "./AppWindow";
 import { fitMonoSize, MONO_ADVANCE, maxInnerHeight, windowBox, windowWidth } from "./windowLayout";
 
 export interface TerminalLine {
@@ -26,6 +26,7 @@ export interface TerminalWindowProps extends KitProps {
   title?: string;
   /** Element id for shared-element transitions. */
   shareId?: string;
+  chrome?: WindowChromeStyle;
 }
 
 /** When a line appears and, for prompt lines, when typing starts and ends, as fractions of the scene. */
@@ -86,7 +87,7 @@ function terminalLayout(theme: Theme, aspect: Aspect, lines: readonly TerminalLi
   return { size, box: windowBox(theme, aspect, heightAt(size), area) };
 }
 
-export function TerminalWindow({ progress, theme, aspect, area, lines, title = "Terminal", shareId }: TerminalWindowProps) {
+export function TerminalWindow({ progress, theme, aspect, area, lines, title = "Terminal", shareId, chrome = "traffic" }: TerminalWindowProps) {
   const { size, box } = terminalLayout(theme, aspect, lines, area ?? contentArea(theme, aspect));
   const timing = terminalTiming(lines);
   const colors = syntaxColors(theme);
@@ -137,7 +138,15 @@ export function TerminalWindow({ progress, theme, aspect, area, lines, title = "
   });
 
   return (
-    <WindowChrome progress={progress} theme={theme} aspect={aspect} box={box} title={title} shareId={shareId}>
+    <WindowShell
+      progress={progress}
+      theme={theme}
+      aspect={aspect}
+      area={box}
+      kind="terminal"
+      shareId={shareId}
+      titleBar={<TitleBar theme={theme} aspect={aspect} title={title} chrome={chrome} />}
+    >
       <div
         style={{
           fontFamily: theme.fonts.mono,
@@ -157,6 +166,6 @@ export function TerminalWindow({ progress, theme, aspect, area, lines, title = "
           </div>
         )}
       </div>
-    </WindowChrome>
+    </WindowShell>
   );
 }
