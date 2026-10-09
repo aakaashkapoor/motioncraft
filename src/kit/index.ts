@@ -3,11 +3,14 @@
 
 import { BigNumber } from "./BigNumber";
 import { Caption, captionLimits } from "./Caption";
+import { FlowDiagram } from "./FlowDiagram";
 import { TitleCard } from "./TitleCard";
 import { asKitComponent, type KitComponent } from "./types";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
+export { FlowDiagram, flowDiagramLayout } from "./FlowDiagram";
+export type { FlowArrow, FlowDiagramLayout, FlowDiagramProps } from "./FlowDiagram";
 export { pageAt, pageCaption } from "./captionPages";
 export type { CaptionLimits } from "./captionPages";
 export type { CaptionProps } from "./Caption";
@@ -20,4 +23,5 @@ export const kit: Record<string, KitComponent> = {
   TitleCard: asKitComponent(TitleCard),
   Caption: asKitComponent(Caption),
   BigNumber: asKitComponent(BigNumber),
+  FlowDiagram: asKitComponent(FlowDiagram),
 };
