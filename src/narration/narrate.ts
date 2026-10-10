@@ -6,12 +6,15 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { TimedWord } from "../kit/captionWords";
 import type { Storyboard } from "../storyboard/types";
-import { KOKORO_REVISION } from "./assets";
+import { KOKORO_REVISION, MISAKI_REVISION } from "./assets";
 import type { Synthesizer } from "./kokoro";
+import { splitForSpeech } from "./pieces";
 import { splitSentences } from "./sentences";
 import { encodeWav } from "./wav";
 import { alignWords } from "./wordTimes";
 
+/** Bump to discard every cached narration when how it is made changes. */
+export const NARRATION_CACHE_VERSION = 1;
 export const DEFAULT_VOICE = "af_heart";
 /** Silence between two sentences of a scene. */
 export const SENTENCE_GAP_MS = 250;
@@ -32,7 +35,8 @@ interface Sidecar {
 
 async function readSidecar(path: string): Promise<Sidecar | undefined> {
   try {
-    return JSON.parse(await readFile(path, "utf8")) as Sidecar;
+    const sidecar = JSON.parse(await readFile(path, "utf8")) as Partial<Sidecar> | null;
+    return typeof sidecar?.audioMs === "number" && Array.isArray(sidecar.words) ? (sidecar as Sidecar) : undefined;
   } catch {
     return undefined;
   }
@@ -60,17 +64,20 @@ async function speakScene(
   const msAt = (samples: number): number => (samples / sampleRate) * 1000;
 
   for (const sentence of splitSentences(text)) {
-    const speech = await synthesizer.speak(sentence, voice);
-    if (sampleRate === 0) sampleRate = speech.sampleRate;
-    if (chunks.length > 0) {
-      const gap = new Float32Array(Math.round((SENTENCE_GAP_MS * sampleRate) / 1000));
-      chunks.push(gap);
-      total += gap.length;
+    // A long sentence is spoken in pieces back to back; only sentences get a gap.
+    for (const [i, piece] of splitForSpeech(sentence).entries()) {
+      const speech = await synthesizer.speak(piece, voice);
+      if (sampleRate === 0) sampleRate = speech.sampleRate;
+      if (i === 0 && chunks.length > 0) {
+        const gap = new Float32Array(Math.round((SENTENCE_GAP_MS * sampleRate) / 1000));
+        chunks.push(gap);
+        total += gap.length;
+      }
+      const startMs = msAt(total);
+      chunks.push(speech.samples);
+      total += speech.samples.length;
+      spans.push({ text: piece, startMs, endMs: msAt(total) });
     }
-    const startMs = msAt(total);
-    chunks.push(speech.samples);
-    total += speech.samples.length;
-    spans.push({ text: sentence, startMs, endMs: msAt(total) });
   }
 
   const samples = new Float32Array(total);
@@ -92,7 +99,9 @@ export async function narrateStoryboard(
 
   for (const scene of storyboard.scenes) {
     if (scene.narration === undefined || splitSentences(scene.narration).length === 0) continue;
-    const key = createHash("sha1").update(KOKORO_REVISION + voice + scene.narration).digest("hex");
+    const key = createHash("sha1")
+      .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, MISAKI_REVISION, voice, scene.narration].join("\0"))
+      .digest("hex");
     const wavPath = join(options.outDir, `${key}.wav`);
     const jsonPath = join(options.outDir, `${key}.json`);
 

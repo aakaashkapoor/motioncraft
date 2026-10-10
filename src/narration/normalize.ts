@@ -70,6 +70,17 @@ function yearTimeOrDecimal(match: string): string {
   return `${head} ${tail}${plural}`;
 }
 
+const ORDINALS: Record<string, string> = {
+  one: "first", two: "second", three: "third", five: "fifth", eight: "eighth", nine: "ninth", twelve: "twelfth",
+};
+
+/** "twenty-one" becomes "twenty-first", "forty" "fortieth". */
+function ordinal(words: string): string {
+  const [, head = "", last = words] = /^(.*?[ -])?([a-z]+)$/.exec(words) ?? [];
+  const word = Object.hasOwn(ORDINALS, last) ? ORDINALS[last]! : last.endsWith("y") ? `${last.slice(0, -1)}ieth` : `${last}th`;
+  return head + word;
+}
+
 function money(match: string): string {
   const unit = match[0] === "$" ? "dollar" : "pound";
   const amount = match.slice(1);
@@ -78,7 +89,9 @@ function money(match: string): string {
   const [whole, fraction] = amount.split(".") as [string, string];
   const cents = parseInt(fraction.padEnd(2, "0"), 10);
   const small = match[0] === "$" ? (cents === 1 ? "cent" : "cents") : cents === 1 ? "penny" : "pence";
-  return `${whole} ${unit}${whole === "1" ? "" : "s"} and ${cents} ${small}`;
+  const dollars = `${whole} ${unit}${whole === "1" ? "" : "s"}`;
+  if (cents === 0) return dollars;
+  return Number(whole) === 0 ? `${cents} ${small}` : `${dollars} and ${cents} ${small}`;
 }
 
 function decimal(match: string): string {
@@ -97,13 +110,20 @@ export function normalizeText(text: string): string {
     .replace(/\b(?:Ms\.|MS\.(?= [A-Z]))/g, "Miss")
     .replace(/\b(?:Mrs\.|MRS\.(?= [A-Z]))/g, "Mrs")
     .replace(/\betc\.(?! [A-Z])/gi, "etc")
-    .replace(/\d*\.\d+|\b\d{4}s?\b|(?<!:)\b(?:[1-9]|1[0-2]):[0-5]\d\b(?!:)/g, yearTimeOrDecimal)
+    .replace(/\d*\.\d+|(?<![$\u00a3])\b\d{4}s?\b|(?<!:)\b(?:[1-9]|1[0-2]):[0-5]\d\b(?!:)/g, yearTimeOrDecimal)
     .replace(/(?<=\d),(?=\d)/g, "")
     .replace(/[$£]\d+(?:\.\d+)?(?: hundred| thousand| (?:[bm]|tr)illion)*\b|[$£]\d+\.\d\d?\b/gi, money)
     .replace(/\d*\.\d+/g, decimal)
     .replace(/(?<=\d)-(?=\d)/g, " to ")
+    .replace(/\b(\d+)(?:st|nd|rd|th)\b/g, (_, digits: string) => ordinal(integerWords(digits)))
+    .replace(/(?<=\d)%/g, " percent")
+    .replace(/(?<=[A-Za-z])(?=\d)/g, " ")
     .replace(/\d+s?\b/g, (match) =>
       match.endsWith("s") ? pluralize(integerWords(match.slice(0, -1))) : integerWords(match),
     )
+    // Digits left stuck to letters ("10x", "MP4", "1080p"): say them as numbers.
+    .replace(/(?<=\d)(?=[A-Za-z])/g, " ")
+    .replace(/\d+/g, (match) => integerWords(match))
+    .replace(/ {2,}/g, " ")
     .trim();
 }

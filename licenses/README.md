@@ -71,3 +71,5 @@ Names for any derivative.
 | Kokoro-82M voice model (`model_quantized.onnx`, `tokenizer.json`, `voices/*.bin`) | revision 1939ad2 | Apache-2.0 | hexgrad — https://huggingface.co/hexgrad/Kokoro-82M, ONNX export https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX. Downloaded once, size- and SHA-256-checked, into `~/.cache/motioncraft`; never bundled. |
 | misaki pronunciation dictionaries (`us_gold.json`, `us_silver.json`) | revision fba1236 | Apache-2.0 | hexgrad — https://github.com/hexgrad/misaki. Downloaded and checked the same way. |
 | English text normalizer (`src/narration/normalize.ts`) | n/a | Apache-2.0 | Ported from kokoro-js (https://github.com/hexgrad/kokoro, hexgrad). kokoro-js itself is not a dependency (its phonemizer bundles GPL eSpeak NG). |
+
+`.npmrc` sets `onnxruntime-node-install-cuda=skip`: onnxruntime-node's install script would otherwise download unpinned CUDA binaries on Linux x64, which breaks the pinned-downloads-only rule in `AGENTS.md`.

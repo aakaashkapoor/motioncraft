@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { kokoroSynthesizer } from "../src/narration/kokoro";
 
@@ -5,6 +8,17 @@ describe("kokoroSynthesizer", () => {
   it("rejects an unknown voice, listing the supported ones, before touching the network", async () => {
     const synth = kokoroSynthesizer({ offline: true, cacheDir: "no-such-cache" });
     await expect(synth.speak("Hi.", "zz_nobody")).rejects.toThrow(/af_heart, af_bella, am_michael/);
+  });
+
+  it("does not remember a failed load: every call reports the real problem", async () => {
+    const cacheDir = await mkdtemp(join(tmpdir(), "mc-empty-"));
+    try {
+      const synth = kokoroSynthesizer({ offline: true, cacheDir });
+      await expect(synth.speak("Hi.", "af_heart")).rejects.toThrow(/run once online to download/);
+      await expect(synth.speak("Hi.", "af_heart")).rejects.toThrow(/run once online to download/);
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
   });
 
   // The real model: downloads ~100 MB once into ~/.cache/motioncraft.

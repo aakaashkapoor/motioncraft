@@ -65,6 +65,8 @@ export const SILVER_FILE = dictionaryFile(
   "de8f67be911bb6c659187b4a65fd966b6a30e56350e0f790d763210b053ac475",
 );
 
+const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
+
 export function defaultCacheDir(): string {
   return join(homedir(), ".cache", "motioncraft");
 }
@@ -96,9 +98,9 @@ export async function ensureFile(
   const target = join(cacheDir, file.path);
   const cached = await cachedCopy(file, target);
   if (cached !== undefined) return cached;
-  if (options.offline) throw new Error(`${file.path} is not cached: run once online to download ${file.path}`);
+  if (options.offline) throw new Error(`not cached while offline: run once online to download ${file.path}`);
 
-  const response = await (options.fetch ?? fetch)(file.url);
+  const response = await (options.fetch ?? fetch)(file.url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`downloading ${file.path} failed: HTTP ${response.status} from ${file.url}`);
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.length !== file.bytes || sha256Of(bytes) !== file.sha256) {

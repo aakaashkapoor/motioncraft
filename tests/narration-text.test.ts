@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { splitForSpeech } from "../src/narration/pieces";
 import { normalizeText } from "../src/narration/normalize";
 import { createPhonemizer, type Lexicon } from "../src/narration/phonemes";
 import { encodePhonemes } from "../src/narration/tokenizer";
@@ -26,6 +27,20 @@ describe("normalizeText", () => {
     ["305", "three hundred five"],
     ["7,000,000", "seven million"],
     ["3,000,000,000", "three billion"],
+    ["$1999", "one thousand nine hundred ninety-nine dollars"],
+    ["the $2024 plan", "the two thousand twenty-four dollars plan"],
+    ["$0.01", "one cent"],
+    ["$1.00", "one dollar"],
+    ["$0.50", "fifty cents"],
+    ["10x faster", "ten x faster"],
+    ["an MP4 file.", "an MP four file."],
+    ["1080p", "one thousand eighty p"],
+    ["24fps", "twenty-four fps"],
+    ["4K and 3D", "four K and three D"],
+    ["the 1st, 2nd, 3rd and 21st", "the first, second, third and twenty-first"],
+    ["the 12th and 40th", "the twelfth and fortieth"],
+    ["50%", "fifty percent"],
+    ["4.8% more", "four point eight percent more"],
   ])("%s", (input, expected) => {
     expect(normalizeText(input)).toBe(expected);
   });
@@ -146,6 +161,13 @@ describe("splitSentences", () => {
     expect(splitSentences('Wait... what?! "Fine." Ok.')).toEqual(["Wait...", "what?!", '"Fine."', "Ok."]);
   });
 
+  it("treats no, st and mt as abbreviations only before a number or name", () => {
+    expect(splitSentences("The answer is no. We move on.")).toEqual(["The answer is no.", "We move on."]);
+    expect(splitSentences("See No. 5 now.")).toEqual(["See No. 5 now."]);
+    expect(splitSentences("Visit St. Louis today.")).toEqual(["Visit St. Louis today."]);
+    expect(splitSentences("It was the 1st. then more")).toEqual(["It was the 1st.", "then more"]);
+  });
+
   it("returns nothing for blank text", () => {
     expect(splitSentences("  ")).toEqual([]);
   });
@@ -170,5 +192,32 @@ describe("alignWords", () => {
     expect(words[1]!.endMs).toBe(1000);
     expect(words[2]).toEqual({ text: "three", startMs: 1500, endMs: 2000 });
     expect(words[0]!.endMs).toBeCloseTo(words[1]!.startMs);
+  });
+});
+
+describe("splitForSpeech", () => {
+  const long = Array.from({ length: 40 }, (_, i) => `clause number ${i} here`).join(", ") + ".";
+
+  it("leaves a short sentence whole", () => {
+    expect(splitForSpeech("Short one, really.")).toEqual(["Short one, really."]);
+  });
+
+  it("splits a long sentence at commas into pieces within budget, losing nothing", () => {
+    const pieces = splitForSpeech(long);
+    expect(pieces.length).toBeGreaterThan(1);
+    for (const piece of pieces) expect(piece.length).toBeLessThanOrEqual(400);
+    expect(pieces.join(" ")).toBe(long);
+    expect(pieces[0]!.endsWith(",")).toBe(true);
+  });
+
+  it("falls back to spaces when there is no punctuation", () => {
+    const words = Array.from({ length: 150 }, () => "word").join(" ");
+    const pieces = splitForSpeech(words);
+    expect(pieces.length).toBeGreaterThan(1);
+    expect(pieces.join(" ")).toBe(words);
+  });
+
+  it("throws when one word alone is too long", () => {
+    expect(() => splitForSpeech(`Start ${"x".repeat(600)}`)).toThrow(/sentence too long to speak \(\d+ phonemes, max 510\): "x+/);
   });
 });

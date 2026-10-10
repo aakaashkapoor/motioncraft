@@ -69,7 +69,9 @@ describe("ensureFile", () => {
 
   it("offline never fetches and says to run once online", async () => {
     const { fetch, calls } = fakeFetch(bytes);
-    await expect(ensureFile(file, cacheDir, { offline: true, fetch })).rejects.toThrow(/run once online to download .*file\.bin/);
+    const error = await ensureFile(file, cacheDir, { offline: true, fetch }).catch((e: Error) => e);
+    expect((error as Error).message).toMatch(/run once online to download .*file\.bin/);
+    expect((error as Error).message.split("file.bin")).toHaveLength(2); // names the file once
     expect(calls).toEqual([]);
   });
 
