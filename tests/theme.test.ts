@@ -201,6 +201,11 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
     // the caret blinks every 1.06 s and a printed line fades in over 120 ms on fx's curve.
     expect(m.typing).toMatchObject({ ms: 120, curve: m.fx.curve, jitter: 0.3, pauseMinMs: 200, pauseMaxMs: 400, blinkMs: 1060 });
     within(m.typing.cps, 30, 45);
+    // The reference's cursor: moves 600 ms ease in-out, clicks with a press 0.92 -> 1 and a soft ring.
+    expect(m.cursor).toMatchObject({ ms: 600, curve: [0.42, 0, 0.58, 1], pressScale: 0.92 });
+    within(m.cursor.ringOpacity, 0, 0.5);
+    // Lift out: the card settles a little larger, its shadow grown as for a lifted card (life #8: blur 64, y 24).
+    expect(m.liftOut).toMatchObject({ scale: 1.04, shadowYPx: 24, shadowBlurPx: 64 });
     // First motion of a scene at 100-200 ms; cascades done in about the first 1.2 s.
     within(m.leadMs, 100, 200);
     within(m.cascadeMs, 1000, 1400);

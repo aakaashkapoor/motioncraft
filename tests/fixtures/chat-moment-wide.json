@@ -1,0 +1,76 @@
+{
+  "title": "Chat moment: a cursor clicks Approve and the message lifts out, 16:9",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "approve",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "deploys",
+        "messages": [
+          {
+            "author": "Monitor",
+            "avatar": {
+              "initials": "!"
+            },
+            "badge": "ALERT",
+            "time": "2:14 PM",
+            "text": "Checkout errors are up to 2.3%.",
+            "highlight": true
+          },
+          {
+            "author": "Deploy Bot",
+            "badge": "APP",
+            "time": "2:15 PM",
+            "text": "Hotfix 2.4.1 is ready to roll out.",
+            "actions": [
+              {
+                "id": "approve",
+                "label": "Approve",
+                "resolved": "Approved by Maya Chen"
+              },
+              {
+                "id": "reject",
+                "label": "Reject"
+              }
+            ],
+            "shareId": "deploy",
+            "lift": {
+              "atMs": 7200
+            }
+          }
+        ],
+        "cursor": {
+          "target": "approve",
+          "atMs": 5000
+        }
+      },
+      "narration": "Checkout errors spike. The deploy bot has a hotfix ready, Maya approves it with one click, and the approval lifts right out of the chat.",
+      "durationMs": 10500,
+      "transition": {
+        "type": "fade",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "shipped",
+      "component": "AppWindow",
+      "props": {
+        "title": "Hotfix 2.4.1",
+        "shareId": "deploy",
+        "content": {
+          "component": "BigNumber",
+          "props": {
+            "value": 100,
+            "suffix": "%",
+            "label": "rolled out"
+          }
+        }
+      },
+      "narration": "Minutes later, it is live everywhere.",
+      "durationMs": 4000
+    }
+  ]
+}
