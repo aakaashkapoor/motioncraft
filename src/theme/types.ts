@@ -243,6 +243,19 @@ export interface BeatToken {
   ms: number;
 }
 
+/**
+ * Cards and list rows lifting in (design v3, life #8): each rises `risePx`
+ * from below and grows from `fromScale` on `enter`, and its shadow grows from
+ * `shadowY` and `shadowBlur` to the theme's card shadow as it lands.
+ */
+export interface LiftToken {
+  risePx: number;
+  fromScale: number;
+  /** The shadow's offset and blur in px as an item sets off. */
+  shadowY: number;
+  shadowBlur: number;
+}
+
 /** Emphasis (design v3, table D): a spring to `scale`. A highlight stays there; a landing number comes back (`pulse`). */
 export interface PopToken extends MotionToken {
   /** The scale an emphasised element pops to, e.g. 1.04. */
@@ -350,6 +363,8 @@ export interface ThemeMotion {
   "text.out": StaggeredToken;
   /** Cards, windows and chips arriving. */
   enter: StaggeredToken;
+  /** How cards and list rows rise in on `enter`, their shadow growing as they lift. */
+  lift: LiftToken;
   /** The one big element of a scene arriving. */
   "enter.hero": MotionToken;
   /** Emphasis: a highlighted card, an active badge, a number landing. */

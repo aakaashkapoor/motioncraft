@@ -97,6 +97,8 @@ export const baseMotion: ThemeMotion = {
   "text.char": { ms: 550, curve: "expoOut", staggerMs: 24 },
   "text.out": { ms: 300, curve: EXIT_CURVE, staggerMs: 20 },
   enter: { ms: 650, curve: { stiffness: 170, damping: 18 }, staggerMs: 90 },
+  // Life #8: from 80 px below and 94%, the shadow growing from close to the ground (y 8, blur 24).
+  lift: { risePx: 80, fromScale: 0.94, shadowY: 8, shadowBlur: 24 },
   "enter.hero": { ms: 900, curve: { stiffness: 120, damping: 20 } },
   pop: { ms: 400, curve: { stiffness: 200, damping: 14 }, scale: 1.04 },
   exit: { share: 0.65, minMs: 300, maxMs: 450, curve: EXIT_CURVE },

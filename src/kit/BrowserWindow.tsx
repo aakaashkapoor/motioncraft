@@ -2,7 +2,8 @@
 // holding back/forward buttons and an address bar showing `url`. The content
 // box holds any kit component. With `typeUrl`, the address bar types the url
 // once the window has arrived (design v3, life #10) and the page loads when it
-// is entered. Generic, not any real browser's brand.
+// is entered. Like AppWindow, it shines once as it lands. Generic, not any
+// real browser's brand.
 
 import type { Seed } from "../engine/random";
 import { Icon } from "../icons";
@@ -123,6 +124,7 @@ export function BrowserWindow({ progress, theme, aspect, area, url, tabs, active
       kind="browser"
       shareId={shareId}
       content={content}
+      shine
       contentDelayMs={typing?.end}
       titleBar={
         <>

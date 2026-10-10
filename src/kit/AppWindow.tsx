@@ -3,6 +3,7 @@
 // box on the theme surface, with the theme radius, hairline border and card
 // shadow. The window fills its area (the content area by default), enters with a scale-and-rise
 // `enter` spring on the scene's lead and exits fast at the end. `shareId` lets it morph between scenes.
+// As it lands, a shine crosses it once (design v3, life #9).
 // `WindowShell` is the chrome itself, shared by every window component.
 
 import type { ReactNode } from "react";
@@ -14,6 +15,7 @@ import { withAlpha } from "../theme/color";
 import type { Theme } from "../theme/types";
 import { MotionDelay, useSceneTime, type SceneTime } from "./frameContext";
 import { arrive, exitOpacity } from "./motion";
+import { Shine } from "./shine";
 import { Slot, type SlotContent } from "./Slot";
 import type { KitProps } from "./types";
 import { windowMetrics, windowWidth } from "./windowLayout";
@@ -76,6 +78,11 @@ export function windowLayout(theme: Theme, aspect: Aspect, toolbar: boolean, are
   };
 }
 
+/** When a window has landed, in scene ms: its `enter` arrival on the lead is over, and its shine sets off. */
+export function windowLandMs(theme: Theme): number {
+  return theme.motion.leadMs + theme.motion.enter.ms;
+}
+
 /** Opacity, upward offset in px and scale of the window at scene time `time`: an `enter` arrival on the lead, a fast exit. Pure. */
 export function windowMotion(theme: Theme, time: SceneTime): { opacity: number; rise: number; scale: number } {
   const { leadMs, enter } = theme.motion;
@@ -124,12 +131,15 @@ export interface WindowShellProps extends KitProps {
   toolbar?: ReactNode;
   /** Holds back the motion of `content` by this many ms, e.g. until a page has loaded. */
   contentDelayMs?: number;
+  /** A shine crosses the window once as it lands. Default false. */
+  shine?: boolean;
 }
 
 /** The window chrome: frame, motion, title bar, optional toolbar and the content slot. */
-export function WindowShell({ progress, theme, aspect, area, kind, shareId, content, children, titleBar, toolbar, contentDelayMs = 0 }: WindowShellProps) {
+export function WindowShell({ progress, theme, aspect, area, kind, shareId, content, children, titleBar, toolbar, contentDelayMs = 0, shine = false }: WindowShellProps) {
   const layout = windowLayout(theme, aspect, toolbar !== undefined, area);
-  const { opacity, rise, scale } = windowMotion(theme, useSceneTime(progress));
+  const time = useSceneTime(progress);
+  const { opacity, rise, scale } = windowMotion(theme, time);
   const { colors, spacing, hairline, cardShadow } = theme;
   const divider = `${hairline}px solid ${colors.border}`;
   const bar = { height: layout.titleBar, display: "flex", alignItems: "center", gap: spacing.xs, padding: `0 ${spacing.md}px`, boxSizing: "border-box" } as const;
@@ -192,6 +202,7 @@ export function WindowShell({ progress, theme, aspect, area, kind, shareId, cont
           {children}
         </div>
       )}
+      {shine && <Shine theme={theme} size={layout.box} elapsedMs={time.ms - windowLandMs(theme)} radius={theme.radius.md} />}
     </div>
   );
 }
@@ -232,6 +243,7 @@ export function AppWindow({ progress, theme, aspect, area, title, chrome = "traf
       kind="app"
       shareId={shareId}
       content={content}
+      shine
       titleBar={<TitleBar theme={theme} aspect={aspect} title={title} chrome={chrome} />}
     />
   );

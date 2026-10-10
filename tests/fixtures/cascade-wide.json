@@ -1,0 +1,204 @@
+{
+  "title": "Card cascade, highlight progression and shine, 16:9 (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "steps",
+      "component": "SceneFrame",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Five steps to a video",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              {
+                "icon": "chat",
+                "title": "Prompt",
+                "subtitle": "One line",
+                "step": 1
+              },
+              {
+                "icon": "code",
+                "title": "Plan",
+                "subtitle": "The scenes",
+                "step": 2
+              },
+              {
+                "icon": "check",
+                "title": "Check",
+                "subtitle": "Every frame",
+                "step": 3
+              },
+              {
+                "icon": "user",
+                "title": "Voice",
+                "subtitle": "Narration",
+                "step": 4
+              },
+              {
+                "icon": "play",
+                "title": "Render",
+                "subtitle": "An MP4",
+                "step": 5
+              }
+            ],
+            "highlight": {
+              "from": 0,
+              "to": 4,
+              "stepMs": 600
+            }
+          }
+        },
+        "footer": "All on your machine"
+      },
+      "narration": "A prompt, a plan, a check, a voice, and the render.",
+      "durationMs": 9500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "row",
+      "component": "CardRow",
+      "props": {
+        "cards": [
+          {
+            "icon": "chat",
+            "title": "Prompt",
+            "subtitle": "One line",
+            "step": 1
+          },
+          {
+            "icon": "code",
+            "title": "Plan",
+            "subtitle": "The scenes",
+            "step": 2
+          },
+          {
+            "icon": "check",
+            "title": "Check",
+            "subtitle": "Every frame",
+            "step": 3
+          }
+        ],
+        "highlight": {
+          "from": 0,
+          "to": 2,
+          "stepMs": 600
+        }
+      },
+      "narration": "Prompt, plan, check.",
+      "durationMs": 5000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "list",
+      "component": "StepList",
+      "props": {
+        "title": "Release day",
+        "items": [
+          "Freeze the branch",
+          "Run every check",
+          "Render the video",
+          "Ship it"
+        ],
+        "highlight": {
+          "from": 0,
+          "to": 3,
+          "stepMs": 600
+        }
+      },
+      "narration": "Freeze, check, render, ship.",
+      "durationMs": 6000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "features",
+      "component": "FeatureList",
+      "props": {
+        "items": [
+          {
+            "icon": "shield",
+            "text": "Runs locally"
+          },
+          {
+            "icon": "code",
+            "text": "Every frame is code"
+          },
+          {
+            "icon": "check",
+            "text": "Checked before render"
+          }
+        ],
+        "highlight": 2
+      },
+      "narration": "Local, code-drawn, and checked.",
+      "durationMs": 4500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "card",
+      "component": "Card",
+      "props": {
+        "icon": "shield",
+        "title": "Signed builds",
+        "subtitle": "Every artifact",
+        "step": 1,
+        "highlighted": true
+      },
+      "narration": "Every build is signed.",
+      "durationMs": 3500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "app",
+      "component": "AppWindow",
+      "props": {
+        "title": "storyboard.json",
+        "content": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Hook",
+              "Steps",
+              "Ending"
+            ],
+            "highlight": 2
+          }
+        }
+      },
+      "narration": "The plan lands in a window.",
+      "durationMs": 3500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "browser",
+      "component": "BrowserWindow",
+      "props": {
+        "url": "https://example.com/launch",
+        "content": {
+          "component": "Card",
+          "props": {
+            "icon": "play",
+            "title": "Watch the launch"
+          }
+        }
+      },
+      "narration": "And the page shows the video.",
+      "durationMs": 3500
+    }
+  ]
+}
