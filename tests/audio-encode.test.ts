@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { aacAudioSpecificConfig, chunkTicks, opusDOps, usToTicks } from "../src/render/audioEncode";
+import { UnsupportedAudioCodecError } from "../src/render/video";
 
 describe("aacAudioSpecificConfig", () => {
   it("is AAC-LC with the sample rate index and channel configuration", () => {
@@ -51,5 +52,13 @@ describe("chunkTicks", () => {
 
   it("gives the last chunk its own duration", () => {
     expect(chunkTicks([{ timestampUs: 0, durationUs: 20_000 }], 48_000)).toEqual([960]);
+  });
+});
+
+describe("UnsupportedAudioCodecError", () => {
+  it("names the browser and what was tried", () => {
+    const error = new UnsupportedAudioCodecError("Microsoft Edge 120.0", ["mp4a.40.2", "opus"]);
+    expect(error.message).toMatch(/^Microsoft Edge 120\.0 cannot encode AAC or Opus audio/);
+    expect(error.message).toContain("mp4a.40.2, opus");
   });
 });

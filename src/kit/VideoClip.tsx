@@ -24,7 +24,7 @@ export interface VideoClipProps extends KitProps {
   fit?: MediaFit;
   /** Playback speed. Default 1. */
   rate?: number;
-  /** Leaves the clip's audio out of the future mix. Default false. */
+  /** Leaves the clip's audio out of the audio mix. Default false. */
   muted?: boolean;
   shareId?: string;
 }

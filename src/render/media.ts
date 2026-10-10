@@ -2,7 +2,7 @@
 // uses, checks them before any browser starts (clear errors for missing or
 // unsupported files and bad props), resolves `durationMs: "clip"`, serves the
 // files to the render page (byte ranges, so the page can seek; never the
-// network), and lays out the clips' audio on the timeline for the future mix.
+// network), and lays out the clips' audio on the timeline for the audio mix (see audioPlan.ts).
 
 import { constants } from "node:fs";
 import { access, open, readFile, stat } from "node:fs/promises";
@@ -224,7 +224,7 @@ export async function prepareMedia(input: MediaInput): Promise<PreparedMedia> {
   };
 }
 
-/** When and how a clip's audio plays in the output, for the future audio mix. */
+/** When and how a clip's audio plays in the output, for the audio mix. */
 export interface ClipAudio {
   sceneId: string;
   src: string;
