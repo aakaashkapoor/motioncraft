@@ -35,15 +35,23 @@ function rootBox(html: string): Box {
 
 interface ItemState {
   opacity: number;
+  /** Horizontal offset in px. */
   offset: number;
+  /** How far below its place, in px. */
+  rise: number;
 }
 
-/** Opacity and horizontal offset of each list item, in order. */
+/** Opacity, horizontal offset and rise of each list item, in order. */
 function itemStates(html: string): ItemState[] {
   return [...html.matchAll(/<li[^>]*?style="([^"]*)"/g)].map((m) => {
     const decls = parseStyle(m[1]!);
     const offset = /translateX\((-?[\d.]+)px\)/.exec(decls.get("transform") ?? "")?.[1];
-    return { opacity: parseFloat(decls.get("opacity") ?? "NaN"), offset: offset === undefined ? 0 : parseFloat(offset) };
+    const rise = /translateY\((-?[\d.]+)px\)/.exec(decls.get("transform") ?? "")?.[1];
+    return {
+      opacity: parseFloat(decls.get("opacity") ?? "NaN"),
+      offset: offset === undefined ? 0 : parseFloat(offset),
+      rise: rise === undefined ? 0 : parseFloat(rise),
+    };
   });
 }
 
@@ -95,17 +103,20 @@ describe("StepList", () => {
     expect(new Set(opacities).size).toBeGreaterThan(1);
   });
 
-  it("slides items in from the left", () => {
+  it("lifts items in from below, like cards (design v3, life #8)", () => {
     const early = itemStates(render("9:16", 0.02));
-    expect(early[0]!.offset).toBeLessThan(0);
-    for (const item of itemStates(render("9:16", 0.7))) expect(item.offset).toBeCloseTo(0, 3);
+    expect(early[0]!.rise).toBe(neutralTheme.motion.lift.risePx);
+    for (const item of itemStates(render("9:16", 0.7))) {
+      expect(item.rise).toBeCloseTo(0, 3);
+      expect(item.offset).toBeCloseTo(0, 3);
+    }
   });
 
   it.each([2, 3, 4, 5, 6])("shows all %i items once the cascade has landed, in about the first 1.2 s", (count) => {
     const items = Array.from({ length: count }, (_, i) => `Step ${i + 1}`);
     for (const item of itemStates(render("16:9", 0.7, { items }))) {
       expect(item.opacity).toBeCloseTo(1, 3);
-      expect(item.offset).toBeCloseTo(0, 3);
+      expect(item.rise).toBeCloseTo(0, 3);
     }
     const timing = stepListTiming(neutralTheme, count, true);
     expect(timing).toHaveLength(count);
@@ -113,7 +124,7 @@ describe("StepList", () => {
     expect(timing.at(-1)![1]).toBeLessThanOrEqual(neutralTheme.motion.cascadeMs + 1e-9);
     for (const item of itemStates(render("16:9", timing.at(-1)![1] / NOMINAL_SCENE_MS, { items }))) {
       expect(item.opacity).toBeCloseTo(1, 3);
-      expect(item.offset).toBeCloseTo(0, 3);
+      expect(item.rise).toBeCloseTo(0, 3);
     }
   });
 

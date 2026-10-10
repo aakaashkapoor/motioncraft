@@ -20,6 +20,7 @@ export type {
   CaptionMotionToken,
   DriftToken,
   GridBreatheToken,
+  LiftToken,
   MeshSpec,
   CubicBezier,
   CurveName,
@@ -108,6 +109,7 @@ export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMes
 export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, pointAlong, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps, type Point } from "./kit/Arrow";
 export { FlowDotMark, flowDot, flowGlow, type FlowDot } from "./kit/flow";
 export { Shine, shineBand, shineGradient, shineText, type ShineBand, type ShineProps } from "./kit/shine";
+export { highlightAt, highlightLevel, highlightShineMs, highlightStops, type HighlightProgression, type HighlightSpec, type HighlightStop } from "./kit/progression";
 export { Card, CardFace, cardHeight, cardMetrics, type CardData, type CardProps } from "./kit/Card";
 export { CardRow, cardRowLayout, cardRowTiming, type CardRowLayout, type CardRowProps } from "./kit/CardRow";
 export { FeatureList, featureListTiming, type FeatureItem, type FeatureListProps } from "./kit/FeatureList";

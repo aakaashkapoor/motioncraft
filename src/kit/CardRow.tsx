@@ -1,8 +1,10 @@
 // 2-6 cards: in one row when the area is wide enough (the 16:9 content area);
 // otherwise a vertical stack (up to 3) or a 2-column grid (4-6), as in 9:16 or
-// a narrow Section slot. Cards spring in one after another, the cascade done in
-// about the first 1.2 s; once they have all landed, an optional `highlight`
-// card pops in the accent.
+// a narrow Section slot. Cards lift in one after another (design v3, life #8),
+// the cascade done in about the first 1.2 s; once they have all landed, an
+// optional `highlight` card pops in the accent, or the highlight moves along
+// the cards and comes to rest on the last (the owner's reference: "the accent
+// lands on step 5"). The card it rests on shines once.
 
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
@@ -24,14 +26,18 @@ import {
   type CardOrientation,
 } from "./Card";
 import { useSceneTime } from "./frameContext";
-import { arrive, cascadeStep, exitOpacity, tween } from "./motion";
+import { arrive, cascadeStep, exitOpacity } from "./motion";
+import { highlightLevel, highlightShineMs, highlightStops, type HighlightSpec } from "./progression";
 import type { KitProps } from "./types";
 
 export interface CardRowProps extends KitProps {
   /** 2-6 cards, in arrival order. */
   cards: CardData[];
-  /** Index of a card to light up in the accent after the others land. */
-  highlight?: number;
+  /**
+   * A card to light up in the accent once they have all landed (its index),
+   * or the highlight moving along them, `{ from, to, stepMs }`, coming to rest on `to`.
+   */
+  highlight?: HighlightSpec;
 }
 
 export const MIN_CARDS = 2;
@@ -115,8 +121,7 @@ export function CardRow({ progress, theme, aspect, area: slot, cards, highlight 
   const time = useSceneTime(progress);
   const timing = cardRowTiming(theme, cards.length);
   const exit = exitOpacity(theme, time, theme.motion.enter.ms);
-  const landed = timing.at(-1)![1];
-  const lit = tween(theme.motion.pop, time.ms - landed);
+  const stops = highlightStops(theme, highlight, cards.length, timing.at(-1)![1], time);
 
   return (
     <div style={{ position: "absolute", left: area.x, top: area.y, width: area.width, height: area.height, opacity: exit }}>
@@ -128,9 +133,17 @@ export function CardRow({ progress, theme, aspect, area: slot, cards, highlight 
             key={i}
             data-card={i}
             data-block="CardRow"
-            style={{ position: "absolute", left: cell.x, top: cell.y, width: cell.width, height: cell.height, ...entrance }}
+            style={{ position: "absolute", left: cell.x, top: cell.y, width: cell.width, height: cell.height, ...entrance.style }}
           >
-            <CardFace theme={theme} metrics={layout.metrics} highlight={i === highlight ? lit : 0} {...card} />
+            <CardFace
+              theme={theme}
+              metrics={layout.metrics}
+              highlight={highlightLevel(theme, stops, i, time.ms)}
+              lift={entrance.lift}
+              shineMs={highlightShineMs(stops, i, time.ms)}
+              size={cell}
+              {...card}
+            />
           </div>
         );
       })}
