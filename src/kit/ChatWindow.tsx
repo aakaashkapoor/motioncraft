@@ -117,15 +117,10 @@ export interface ChatTiming {
 
 /** Widest the window grows in 16:9 when it stands alone. */
 const MAX_WINDOW_WIDTH = 1500;
-/** Share of the 16:9 width the window takes when cards sit beside it. */
+/** Share of the 16:9 width the window takes when cards (or a lifted card) sit beside it: about 1080 px, as in the reference. */
 const WINDOW_SHARE_WITH_CARDS = 0.62;
-/** Narrowest share of the 16:9 width the window shrinks to, so a lifted card fits beside it at full size. */
-const MIN_WINDOW_SHARE_WITH_LIFT = 0.45;
-const SHARE_STEP = 0.01;
 /** How far a button's fill moves away from its label's colour as the cursor arrives. */
 const HOVER_TINT = 0.12;
-/** Stacked, at least this share of a lifted card's height sits below the window; the rest floats in front of it. */
-const LIFT_BELOW_SHARE = 0.5;
 /** Share of the 9:16 height the window takes when cards sit below it. */
 const WINDOW_SHARE_TALL = 0.66;
 const SIDEBAR_SHARE = 0.26;
@@ -245,8 +240,16 @@ export function chatMoments(theme: Theme, { messages, cursor, cards }: MomentsIn
   return { clickMs, liftMs };
 }
 
-/** A lifting message's card: where it lifts from and settles (frame px), and its unscaled size (the height is an estimate). */
+/**
+ * A lifting message's card: where it lifts from and settles (frame px), and
+ * its unscaled size once settled (the height is an estimate). It leaves
+ * `fromWidth` wide, holding the message at its width in the list, and reflows
+ * to `width` as it settles.
+ */
 export interface ChatLift extends LiftEnds {
+  fromWidth: number;
+  /** How far the list closes up as the message leaves it, in px (its estimated height and a gap); 0 where it stays as a ghost. */
+  collapse: number;
   width: number;
   height: number;
 }
@@ -267,6 +270,18 @@ export interface ChatWindowLayout {
   composerHeight: number;
   /** Each lifting message's card; undefined for those that stay. */
   lifts: Array<ChatLift | undefined>;
+  /**
+   * How far right of `window.x` the window waits, in px, until a message
+   * lifts out: in 16:9 it waits centered and slides to its place beside the
+   * card as the card lifts. 0 when nothing lifts beside it.
+   */
+  windowShift: number;
+  /**
+   * How much shorter the window gets as its lifting messages leave, in px:
+   * in 9:16 the list closes up over them so the card settles below the window,
+   * clear of its composer. 0 in 16:9, where they stay as ghosts.
+   */
+  windowCollapse: number;
 }
 
 type LayoutInput = Pick<ChatWindowProps, "messages" | "sidebar" | "cards">;
@@ -314,10 +329,10 @@ function messageHeight(theme: Theme, m: ChatMessage, width: number, text: TypeSp
  * center (see `blockCenterY`). Stacked, it is a window's width, centered. If
  * no size fits, the smallest: the window then overflows visibly and the
  * layer-1 checks report it. A lifting message settles where cards go: beside
- * the window in a wide area (the window narrows until the card fits there at
- * full size); otherwise below it, the two centered together, and where the
- * room runs out the card floats in front of the window's bottom edge rather
- * than shrinking.
+ * the window in a wide area (the window waits centered, then slides aside as
+ * the card reflows into the room beside it, its text unshrunk); otherwise
+ * below it, the two centered together, the list closing up over the message
+ * as it leaves so the card clears the composer.
  */
 export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sidebar, cards }: LayoutInput, slot?: Rect): ChatWindowLayout {
   const area = slot ?? contentArea(theme, aspect);
@@ -330,17 +345,13 @@ export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sideb
   const wide = aspect === "16:9" && area.width >= area.height * WIDE_RATIO;
   const pad = liftPadding(theme, aspect);
   const sidebarFor = (w: number) => (wide && sidebar ? Math.min(MAX_SIDEBAR_WIDTH, Math.floor(w * SIDEBAR_SHARE)) : 0);
-  // A lifted card holds the message at its width in the list.
+  // A lifted card leaves holding the message at its width in the list.
   const cardWidthFor = (w: number) => w - sidebarFor(w) - 2 * spacing.md + 2 * pad;
-  const sideWidth = (share: number) => Math.floor((area.width - gap) * share);
-  let width = !wide ? windowWidth(theme, aspect, area).width : side ? sideWidth(WINDOW_SHARE_WITH_CARDS) : Math.min(area.width, MAX_WINDOW_WIDTH);
-  if (wide && hasLift) {
-    for (let share = WINDOW_SHARE_WITH_CARDS; share >= MIN_WINDOW_SHARE_WITH_LIFT; share -= SHARE_STEP) {
-      width = sideWidth(share);
-      if (cardWidthFor(width) * theme.motion.liftOut.scale <= area.width - gap - width) break;
-    }
-  }
+  const width = !wide ? windowWidth(theme, aspect, area).width : side ? Math.floor((area.width - gap) * WINDOW_SHARE_WITH_CARDS) : Math.min(area.width, MAX_WINDOW_WIDTH);
   const x = wide && side ? area.x : area.x + Math.floor((area.width - width) / 2);
+  // Beside a 16:9 window, the lifted card reflows to fill the room left at the lift token's scale, its text unshrunk.
+  const sideRoom = area.x + area.width - (x + width + gap);
+  const settledWidth = wide ? Math.min(cardWidthFor(width), Math.floor(sideRoom / theme.motion.liftOut.scale)) : cardWidthFor(width);
   // Stacked cards take their share of the height; a lifted card floats in front of the window instead.
   const room = !wide && hasCards ? Math.floor((area.height - gap) * WINDOW_SHARE_TALL) : area.height;
   const sidebarWidth = sidebarFor(width);
@@ -352,13 +363,20 @@ export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sideb
   const candidates = TEXT_ROLES.map((role) => sizesFor(theme, aspect, role, typedTexts, composerWidth));
   type Sizes = (typeof candidates)[number];
   const heightsOf = (s: Sizes) => messages.map((m) => messageHeight(theme, m, listWidth, s.text, s.meta, s.avatarSize));
-  const cardSizeOf = (s: Sizes, i: number) => ({ width: cardWidthFor(width), height: Math.ceil(heightsOf(s)[i]! + 2 * pad + 2 * hairline) });
-  // Stacked, a lifted card's scale: it may float over the window, so it has the whole area.
+  // A settled card holds the message at its own width, inside its padding and border.
+  const cardSizeOf = (s: Sizes, i: number) => ({
+    width: settledWidth,
+    height: Math.ceil(messageHeight(theme, messages[i]!, settledWidth - 2 * pad - 2 * hairline, s.text, s.meta, s.avatarSize) + 2 * pad + 2 * hairline),
+  });
+  // Stacked, a lifted card's scale: it has the whole area's width.
   const stackedScale = (size: Size) => liftScale(theme, size, area);
-  const shownBelow = (s: Sizes, share: number) =>
-    wide ? 0 : Math.max(0, ...messages.map((m, i) => (m.lift === undefined ? 0 : share * cardSizeOf(s, i).height * stackedScale(cardSizeOf(s, i)))));
-  // Stacked with a lifted card, the window leaves room for the card's lower part.
-  const roomFor = (s: Sizes) => (wide || !hasLift ? room : room - gap - Math.ceil(shownBelow(s, LIFT_BELOW_SHARE)));
+  const shownBelow = (s: Sizes) =>
+    wide ? 0 : Math.max(0, ...messages.map((m, i) => (m.lift === undefined ? 0 : cardSizeOf(s, i).height * stackedScale(cardSizeOf(s, i)))));
+  // Stacked, the list closes up over each lifting message as it leaves.
+  const collapseOf = (s: Sizes, i: number) => (wide || messages[i]!.lift === undefined ? 0 : Math.floor(heightsOf(s)[i]! + spacing.xs));
+  const collapsed = (s: Sizes) => messages.reduce((sum, _, i) => sum + collapseOf(s, i), 0);
+  // Stacked with a lifted card, the window leaves room for the whole card below it once closed up, clear of its composer.
+  const roomFor = (s: Sizes) => (wide || !hasLift ? room : room - gap - Math.ceil(shownBelow(s)) + collapsed(s));
   const needed = (s: Sizes) => {
     const list = heightsOf(s).reduce((sum, h) => sum + h, 0);
     const chat = list + spacing.xs * (Math.max(0, messages.length - 1) + 2) + s.headerHeight + s.composerHeight;
@@ -370,8 +388,10 @@ export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sideb
   const height = Math.min(windowRoom, Math.max(Math.ceil(needed(sizes) * CONTENT_SLACK), Math.floor(windowRoom * MIN_HEIGHT_SHARE)));
   const heights = heightsOf(sizes);
   const cardSize = (i: number) => cardSizeOf(sizes, i);
-  const below = shownBelow(sizes, 1);
-  const block = { width, height: below > 0 ? Math.min(area.height, height + gap + below) : height };
+  const below = shownBelow(sizes);
+  const windowCollapse = collapsed(sizes);
+  // Stacked with a lifted card, the block is the closed-up window and the card below it.
+  const block = { width, height: below > 0 ? Math.min(area.height, height - windowCollapse + gap + below) : height };
   // Alone, the window is centered; stacked with cards it sits on top and the cards follow it.
   const y = !wide && hasCards ? area.y : Math.floor(placeBlock(area, block, blockCenterY(theme, aspect, slot)).y);
   const window = { x, y, width, height };
@@ -382,22 +402,27 @@ export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sideb
     const half = Math.min(middle - area.y, area.y + area.height - middle);
     region = { x: x + width + gap, y: middle - half, width: area.x + area.width - (x + width + gap), height: 2 * half };
   }
-  if (side && !wide) region = { x, y: y + height + gap, width, height: area.y + area.height - (y + height + gap) };
+  if (side && !wide) {
+    const top = y + height - windowCollapse + gap;
+    region = { x, y: top, width, height: area.y + area.height - top };
+  }
 
   // The list is bottom-aligned: a message's bottom is the list's, less the messages under it.
   const listBottom = y + height - hairline - sizes.composerHeight - spacing.xs;
+  // In 16:9 the window waits centered until the card lifts, so the frame is never half empty.
+  const windowShift = wide && hasLift ? Math.floor((area.width - width) / 2) - (x - area.x) : 0;
   const lifts = messages.map((m, i): ChatLift | undefined => {
     if (m.lift === undefined || region === undefined) return undefined;
     const size = cardSize(i);
     const under = heights.slice(i + 1).reduce((sum, h) => sum + h + spacing.xs, 0);
-    const from = { x: x + sidebarWidth + spacing.md - pad, bottom: listBottom - under + pad + hairline };
+    const from = { x: x + windowShift + sidebarWidth + spacing.md - pad, bottom: listBottom - under + pad + hairline };
     const scale = wide ? liftScale(theme, size, region) : stackedScale(size);
     const shown = { width: size.width * scale, height: size.height * scale };
     const bottom = wide ? y + height / 2 + shown.height / 2 : Math.min(area.y + area.height, region.y + shown.height);
     const to = { x: region.x + (region.width - shown.width) / 2, bottom };
-    return { from, to, scale, ...size };
+    return { from, to, scale, fromWidth: cardWidthFor(width), collapse: collapseOf(sizes, i), ...size };
   });
-  return { window, cards: hasCards ? region : undefined, sidebarWidth, ...sizes, lifts };
+  return { window, cards: hasCards ? region : undefined, sidebarWidth, ...sizes, lifts, windowShift, windowCollapse };
 }
 
 function initialsOf(name: string): string {
@@ -819,6 +844,11 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
   const { messages: timing, composer, cards: cardTimes, pace } = chatSequence(theme, messages, cards?.length ?? 0, time, seed);
   const { clickMs, liftMs } = chatMoments(theme, { messages, cursor, cards }, time, seed);
   const poses = layout.lifts.map((lift, i) => (lift === undefined ? undefined : liftPose(theme, ms, liftMs[i]!, lift)));
+  // How far each lift has gone, on the `enter` spring: its card reflows to its width, and the window slides over with the first.
+  const liftMove = (i: number) => (liftMs[i] === undefined || ms < liftMs[i]! ? 0 : Math.min(1, tween(theme.motion.enter, ms - liftMs[i]!)));
+  const firstLift = layout.lifts.findIndex((lift) => lift !== undefined);
+  const shift = firstLift < 0 ? 0 : Math.round(layout.windowShift * (1 - liftMove(firstLift)) * 100) / 100;
+  const closedUp = layout.lifts.reduce((sum, lift, i) => sum + (lift === undefined ? 0 : lift.collapse * liftMove(i)), 0);
   const pad = liftPadding(theme, aspect);
   const shadow = `0 ${cardShadow.y}px ${cardShadow.blur}px ${withAlpha(colors.shadow, cardShadow.opacity)}`;
   const at = (rect: Rect): CSSProperties => ({ position: "absolute", left: rect.x - area.x, top: rect.y - area.y, width: rect.width, height: rect.height });
@@ -832,7 +862,7 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
         data-share-id={shareId}
         data-block="chat window"
         style={{
-          ...at(layout.window),
+          ...at({ ...layout.window, x: layout.window.x + shift, height: Math.round((layout.window.height - closedUp) * 100) / 100 }),
           opacity: enter.opacity,
           transform: `translateY(${Math.round((1 - enter.move) * spacing.lg * 100) / 100}px)`,
           backgroundColor: colors.surface,
@@ -866,12 +896,19 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
               const share = message.shareId !== undefined && !pose?.lifted ? { "data-share-id": message.shareId } : {};
               // The dots pulse only while the indicator shows.
               const local = Math.min(1, Math.max(0, (ms - typing[0]) / (typing[1] - typing[0])));
+              // Where the list closes up over a lifted message, its ghost fades as its place closes.
+              const lift = layout.lifts[i];
+              const closing = lift !== undefined && lift.collapse > 0 && pose?.lifted ? liftMove(i) : 0;
+              const closeStyle: CSSProperties =
+                closing > 0
+                  ? { height: Math.round(Math.max(0, lift!.collapse - spacing.xs) * (1 - closing) * 100) / 100, marginTop: -Math.round(spacing.xs * closing * 100) / 100, overflow: "hidden" }
+                  : {};
               return (
-                <div key={i} style={{ position: "relative" }}>
+                <div key={i} style={{ position: "relative", ...closeStyle }}>
                   <div
                     data-chat-message={i}
                     {...share}
-                    style={{ ...messageStyle(theme, message), opacity: Math.round(shown.opacity * (pose?.ghost ?? 1) * 10000) / 10000, transform: `translateY(${shown.offset}px)` }}
+                    style={{ ...messageStyle(theme, message), opacity: Math.round(shown.opacity * (pose?.ghost ?? 1) * (1 - closing) * 10000) / 10000, transform: `translateY(${shown.offset}px)` }}
                   >
                     <MessageBody message={message} layout={layout} theme={theme} aspect={aspect} actions={actionsOf(message, !pose?.lifted)} />
                   </div>
@@ -901,7 +938,7 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
               position: "absolute",
               left: Math.round((lift.to.x - area.x) * 100) / 100,
               bottom: Math.round((area.y + area.height - lift.to.bottom) * 100) / 100,
-              width: lift.width,
+              width: Math.round((lift.fromWidth + (lift.width - lift.fromWidth) * liftMove(i)) * 100) / 100,
               padding: pad,
               boxSizing: "border-box",
               backgroundColor: colors.surface,

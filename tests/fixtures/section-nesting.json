@@ -394,6 +394,22 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "prompt",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A prompt in the slot",
+        "content": {
+          "component": "PromptCard",
+          "props": {
+            "text": "A launch video for motioncraft"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

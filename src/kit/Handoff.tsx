@@ -2,8 +2,9 @@
 // card) and a receiver (`to`, such as a window), joined by an Arrow that draws
 // from the source into the receiver. The source arrives on the scene's lead,
 // the arrow sweeps out of it once it shows, and the receiver arrives as the
-// arrow lands, all in about the first 1.2 s. Side by side when the area is
-// wide, stacked when it is tall, so it lays out in 9:16, 16:9 and inside a Section slot. The arrow
+// arrow lands, all in about the first 1.2 s. Side by side when a 16:9 area is
+// wide, stacked when it is tall and always in 9:16, so it lays out in both
+// aspects and inside a Section or SceneFrame slot. The arrow
 // runs between the two boxes' facing edges; receivers that fill their box
 // (AppWindow, BrowserWindow) meet its head exactly. Under a moving camera
 // (design v3, life #12) the source floats a little nearer than the receiver
@@ -28,6 +29,8 @@ export interface HandoffProps extends KitProps {
   to: SlotContent;
   /** A short label on the arrow. */
   label?: string;
+  /** The source's share of the area along the direction of travel, 0.2-0.5, e.g. for a prompt card that needs the room. Default 0.34 side by side, 0.26 stacked. */
+  fromShare?: number;
 }
 
 export interface HandoffLayout {
@@ -39,23 +42,26 @@ export interface HandoffLayout {
   end: Point;
 }
 
-/** Side by side only when the area is clearly wider than tall. */
+/** Side by side only when the area is clearly wider than tall (and never in 9:16, where the column is the frame's width). */
 const ROW_RATIO = 1.3;
 /** The source's share of the area along the direction of travel. */
 const FROM_SHARE = { row: 0.34, column: 0.26 } as const;
+/** The gap the arrow runs across, in `xxl` spacing steps: long side by side, shorter stacked, where height is scarce. */
+const GAP_STEPS = { row: 2.5, column: 1.5 } as const;
 
 /** Where the source, the receiver and the arrow go inside `area`. Pure. */
-export function handoffLayout(theme: Theme, aspect: Aspect, area: Rect = contentArea(theme, aspect)): HandoffLayout {
-  const direction = area.width >= area.height * ROW_RATIO ? "row" : "column";
-  const gap = theme.spacing.xxl * 2.5;
+export function handoffLayout(theme: Theme, aspect: Aspect, area: Rect = contentArea(theme, aspect), fromShare?: number): HandoffLayout {
+  const direction = aspect === "16:9" && area.width >= area.height * ROW_RATIO ? "row" : "column";
+  const gap = theme.spacing.xxl * GAP_STEPS[direction];
+  const share = fromShare ?? FROM_SHARE[direction];
   if (direction === "row") {
-    const width = Math.round((area.width - gap) * FROM_SHARE.row);
+    const width = Math.round((area.width - gap) * share);
     const from = { x: area.x, y: area.y, width, height: area.height };
     const to = { x: area.x + width + gap, y: area.y, width: area.width - width - gap, height: area.height };
     const y = area.y + area.height / 2;
     return { direction, from, to, start: { x: from.x + from.width, y }, end: { x: to.x, y } };
   }
-  const height = Math.round((area.height - gap) * FROM_SHARE.column);
+  const height = Math.round((area.height - gap) * share);
   const from = { x: area.x, y: area.y, width: area.width, height };
   const to = { x: area.x, y: area.y + height + gap, width: area.width, height: area.height - height - gap };
   const x = area.x + area.width / 2;
@@ -77,9 +83,9 @@ function HandoffArrow({ start, ...props }: Omit<ArrowProps, "from"> & { start: P
   return <Arrow {...props} from={useLayerPoint(start, "floating")} />;
 }
 
-export function Handoff({ progress, theme, aspect, area, from, to, label }: HandoffProps) {
+export function Handoff({ progress, theme, aspect, area, from, to, label, fromShare }: HandoffProps) {
   const box = area ?? contentArea(theme, aspect);
-  const layout = handoffLayout(theme, aspect, box);
+  const layout = handoffLayout(theme, aspect, box, fromShare);
   const common = { theme, aspect };
   // The arrow starts once the source has faded in; the receiver arrives so it shows as the arrow lands. Both still exit with the scene.
   const { fx, mark } = theme.motion;

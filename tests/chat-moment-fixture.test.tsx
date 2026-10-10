@@ -95,11 +95,11 @@ describe.each(ASPECTS)("tests/fixtures/chat-moment (%s)", (aspect) => {
     expect(opacityOf(clicked, "data-chat-resolved=")).toBeCloseTo(1, 3);
     expect(clicked).not.toContain("data-chat-lift");
 
-    // Lifted: the card floats, settled, carrying the shareId; the message is a ghost.
+    // Lifted: the card floats, settled, carrying the shareId; the message is a ghost (16:9) or gone, the list closed up over it (9:16).
     const lifted = at(liftMs + theme.motion.enter.ms + 100);
     expect(lifted).toMatch(/data-chat-lift="1"[^>]*data-share-id="deploy"/);
     expect(styleOf(lifted, 'data-chat-lift="1"')!.get("transform")).toMatch(/^translate\(0px, 0px\) scale\(1\.04\)$/);
-    expect(opacityOf(lifted, 'data-chat-message="1"')).toBeCloseTo(theme.motion.liftOut.ghostOpacity, 3);
+    expect(opacityOf(lifted, 'data-chat-message="1"')).toBeCloseTo(aspect === "16:9" ? theme.motion.liftOut.ghostOpacity : 0, 3);
     expect(lifted).not.toContain("data-cursor=");
   });
 

@@ -5,15 +5,118 @@
   "theme": "light",
   "scenes": [
     {
-      "id": "open",
-      "component": "TitleCard",
+      "id": "hook",
+      "component": "SceneFrame",
       "props": {
-        "title": "Videos from a prompt",
-        "subtitle": "Code-drawn, rendered locally"
+        "headline": "Videos from a prompt",
+        "headlineMotion": "words",
+        "mark": "prompt",
+        "content": {
+          "component": "PromptCard",
+          "props": {
+            "text": "A launch video for motioncraft",
+            "shareId": "prompt",
+            "seed": 3
+          }
+        }
       },
-      "narration": "motioncraft turns a prompt into a video.",
+      "narration": "Type one prompt, and get a finished video.",
+      "durationMs": 4200,
       "transition": {
-        "type": "zoomBlur",
+        "type": "fade",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "plan",
+      "component": "SceneFrame",
+      "props": {
+        "headline": "Prompt to plan",
+        "content": {
+          "component": "Handoff",
+          "props": {
+            "from": {
+              "component": "PromptCard",
+              "props": {
+                "text": "A launch video for motioncraft",
+                "shareId": "prompt",
+                "typed": false
+              }
+            },
+            "to": {
+              "component": "CodeWindow",
+              "props": {
+                "title": "storyboard.json",
+                "language": "json",
+                "reveal": true,
+                "lineNumbers": false,
+                "highlightLines": [
+                  3
+                ],
+                "code": "\"hook\",\n\"plan\",\n\"render\""
+              }
+            },
+            "label": "plan"
+          }
+        },
+        "eyebrow": "The plan"
+      },
+      "narration": "The agent turns it into a storyboard, one scene at a time.",
+      "durationMs": 6300,
+      "transition": {
+        "type": "slide",
+        "direction": "left",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "steps",
+      "component": "SceneFrame",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Four steps",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              {
+                "icon": "chat",
+                "title": "Prompt",
+                "subtitle": "One line",
+                "step": 1
+              },
+              {
+                "icon": "file",
+                "title": "Plan",
+                "subtitle": "Scenes",
+                "step": 2
+              },
+              {
+                "icon": "check",
+                "title": "Check",
+                "subtitle": "Frames",
+                "step": 3
+              },
+              {
+                "icon": "play",
+                "title": "Render",
+                "subtitle": "MP4",
+                "step": 4
+              }
+            ],
+            "highlight": {
+              "from": 0,
+              "to": 3,
+              "stepMs": 950
+            }
+          }
+        },
+        "footer": "All local"
+      },
+      "narration": "Four steps: prompt, plan, check every frame, then render.",
+      "durationMs": 6600,
+      "transition": {
+        "type": "fade",
         "durationMs": 600
       }
     },
@@ -26,163 +129,73 @@
           {
             "author": "Maya",
             "time": "9:41",
-            "text": "Intro video for launch?"
+            "text": "Ship it today?",
+            "typed": true
           },
           {
-            "author": "Agent",
-            "badge": "BOT",
+            "author": "motioncraft",
+            "badge": "APP",
             "time": "9:42",
-            "text": "On it.",
-            "highlight": true
-          }
-        ],
-        "shareId": "chat"
-      },
-      "narration": "It starts in chat: someone asks for a video.",
-      "durationMs": 6500,
-      "transition": {
-        "type": "fade",
-        "durationMs": 800
-      }
-    },
-    {
-      "id": "plan",
-      "component": "Pinned",
-      "props": {
-        "pinned": {
-          "component": "ChatWindow",
-          "props": {
-            "channel": "launch",
-            "messages": [
+            "text": "8 scenes, ready.",
+            "actions": [
               {
-                "author": "Maya",
-                "time": "9:41",
-                "text": "Intro video for launch?"
+                "id": "render",
+                "label": "Render",
+                "resolved": "Approved"
               },
               {
-                "author": "Agent",
-                "badge": "BOT",
-                "time": "9:42",
-                "text": "On it.",
-                "highlight": true
+                "id": "edit",
+                "label": "Edit"
               }
             ],
-            "shareId": "chat"
-          }
-        },
-        "content": {
-          "component": "CardRow",
-          "props": {
-            "cards": [
-              {
-                "icon": "file",
-                "title": "Write"
-              },
-              {
-                "icon": "check",
-                "title": "Check"
-              },
-              {
-                "icon": "play",
-                "title": "Render"
-              }
-            ],
-            "highlight": 1
-          }
-        }
-      },
-      "narration": "The agent writes a storyboard, checks every frame, then renders.",
-      "durationMs": 7300,
-      "transition": {
-        "type": "slide",
-        "direction": "left",
-        "durationMs": 600
-      }
-    },
-    {
-      "id": "prompt",
-      "component": "Handoff",
-      "props": {
-        "from": {
-          "component": "Card",
-          "props": {
-            "icon": "chat",
-            "title": "The prompt",
-            "subtitle": "A launch intro"
-          }
-        },
-        "to": {
-          "component": "AppWindow",
-          "props": {
-            "title": "storyboard.json",
-            "shareId": "board",
-            "content": {
-              "component": "StepList",
-              "props": {
-                "items": [
-                  "Hook",
-                  "Ask",
-                  "Plan",
-                  "Demo"
-                ],
-                "marker": "dot"
-              }
+            "shareId": "render",
+            "lift": {
+              "atMs": 5600
             }
           }
-        },
-        "label": "plan"
+        ],
+        "cursor": {
+          "target": "render",
+          "atMs": 4300
+        }
       },
-      "narration": "One prompt becomes a plan, scene by scene.",
-      "durationMs": 4800,
+      "narration": "It checks in with you in chat. One click approves the plan, and the approval lifts right out.",
+      "durationMs": 8000,
       "transition": {
         "type": "fade",
-        "durationMs": 800
+        "durationMs": 700
       }
     },
     {
       "id": "render",
-      "component": "Pinned",
+      "component": "SceneFrame",
       "props": {
-        "pinned": {
-          "component": "AppWindow",
-          "props": {
-            "title": "storyboard.json",
-            "shareId": "board",
-            "content": {
-              "component": "StepList",
-              "props": {
-                "items": [
-                  "Hook",
-                  "Ask",
-                  "Plan",
-                  "Demo"
-                ],
-                "marker": "dot"
-              }
-            }
-          }
-        },
+        "eyebrow": "One command",
+        "headline": "Rendered locally",
         "content": {
           "component": "TerminalWindow",
           "props": {
-            "title": "terminal",
+            "title": "launch",
+            "shareId": "render",
+            "seed": 2,
             "lines": [
               {
                 "prompt": true,
-                "text": "npx tsx scripts/render.ts intro.json"
+                "text": "npx motioncraft render launch.json"
               },
               {
-                "text": "checks passed"
+                "text": "checked 1,200 frames"
               },
               {
-                "text": "wrote intro.mp4"
+                "text": "wrote launch.mp4"
               }
             ]
           }
-        }
+        },
+        "footer": "No upload"
       },
-      "narration": "Then one command checks it, and another renders it.",
-      "durationMs": 5500,
+      "narration": "One command checks it and renders it, right on your machine.",
+      "durationMs": 6000,
       "transition": {
         "type": "slide",
         "direction": "left",
@@ -190,70 +203,61 @@
       }
     },
     {
-      "id": "features",
-      "component": "Section",
+      "id": "checks",
+      "component": "SceneFrame",
       "props": {
-        "headline": "Made for agents",
+        "eyebrow": "Before it renders",
+        "headline": "Nothing ships unseen",
         "content": {
           "component": "FeatureList",
           "props": {
             "items": [
               {
-                "icon": "lock",
-                "text": "Runs locally"
+                "icon": "search",
+                "text": "Big enough to read"
               },
               {
-                "icon": "code",
-                "text": "Every frame is code"
+                "icon": "shield",
+                "text": "Clear of the UI"
               },
               {
                 "icon": "check",
-                "text": "Checked before render"
+                "text": "Centered"
               }
-            ]
+            ],
+            "highlight": {
+              "from": 0,
+              "to": 2,
+              "stepMs": 1050
+            }
           }
-        }
+        },
+        "footer": "Every frame checked"
       },
-      "narration": "Local, code-drawn, and checked before it renders.",
-      "durationMs": 4800,
+      "narration": "Every frame is checked before it ships.",
+      "durationMs": 6000,
       "transition": {
-        "type": "wipe",
-        "direction": "up",
+        "type": "fade",
         "durationMs": 600
       }
     },
     {
       "id": "stat",
-      "component": "BigNumber",
+      "component": "SceneFrame",
       "props": {
-        "value": 100,
-        "suffix": "%",
-        "label": "code-drawn frames"
-      },
-      "narration": "No stock footage, no generated images.",
-      "durationMs": 2800,
-      "transition": {
-        "type": "slide",
-        "direction": "left",
-        "durationMs": 600
-      }
-    },
-    {
-      "id": "demo",
-      "component": "AppWindow",
-      "props": {
-        "title": "sample.mp4",
+        "eyebrow": "No stock footage",
+        "headline": "Drawn in code",
         "content": {
-          "component": "VideoClip",
+          "component": "BigNumber",
           "props": {
-            "src": "media/sample.mp4",
-            "fit": "contain",
-            "muted": true
+            "value": 100,
+            "suffix": "%",
+            "label": "of every frame"
           }
         }
       },
-      "narration": "Real footage plays frame-accurately inside any window.",
-      "durationMs": 3500,
+      "narration": "No stock footage, no generated images. Every frame is code.",
+      "durationMs": 4500,
       "transition": {
         "type": "fade",
         "durationMs": 600
@@ -261,13 +265,22 @@
     },
     {
       "id": "end",
-      "component": "TitleCard",
+      "component": "EndCard",
       "props": {
-        "title": "motioncraft",
-        "subtitle": "Prompt in, video out"
+        "name": "motioncraft",
+        "line": "Prompt in, video out",
+        "accent": "Open source",
+        "icon": "play",
+        "card": {
+          "component": "PromptCard",
+          "props": {
+            "text": "A launch video for motioncraft",
+            "seed": 7
+          }
+        }
       },
-      "narration": "Prompt in, video out.",
-      "durationMs": 2800
+      "narration": "motioncraft. Prompt in, video out.",
+      "durationMs": 5000
     }
   ]
 }
