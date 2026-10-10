@@ -197,4 +197,39 @@ describe("missingNarrationNotice", () => {
     expect(missingNarrationNotice({ scenes: { a: scene }, missing: [] })).toBeUndefined();
     expect(missingNarrationNotice({ scenes: {}, missing: [] })).toBeUndefined();
   });
+
+  it("trims the silence around each piece so words and gaps line up with the sound", async () => {
+    // 300 ms silence + 1 s tone + 200 ms silence per piece, as Kokoro returns it.
+    const padded: Synthesizer = {
+      async speak() {
+        const samples = new Float32Array(1500 * 24);
+        samples.fill(0.5, 300 * 24, 1300 * 24);
+        return { samples, sampleRate: SAMPLE_RATE };
+      },
+    };
+    const scene = (await narrateStoryboard(board(), { synthesizer: padded, outDir }))["a"]!;
+    const wav = decodeWav(new Uint8Array(await readFile(scene.wavPath)));
+
+    // 30 ms lead + 1000 tone + 60 tail = 1090; 250 gap; again 1090.
+    expect(wav.samples).toHaveLength((1090 + 250 + 1090) * 24);
+    expect(scene.audioMs).toBe(2430);
+    const firstTone = wav.samples.findIndex((x) => Math.abs(x) >= 0.01);
+    expect(firstTone / 24).toBeCloseTo(30, 0);
+    const secondTone = wav.samples.findIndex((x, i) => i > 1090 * 24 && Math.abs(x) >= 0.01);
+    expect(secondTone / 24 - (30 + 1000)).toBeCloseTo(60 + 250 + 30, 0);
+
+    const words = scene.words;
+    expect(words[0]!.startMs).toBeCloseTo(30, 0);
+    expect(words[1]!.endMs).toBeCloseTo(1030, 0);
+    expect(words[2]!.startMs).toBeCloseTo(firstTone / 24 + 1000 + 340, 0);
+    expect(words[3]!.endMs).toBeCloseTo(2370, 0);
+  });
+
+  it("keeps the words of an all-silent piece at a point instead of losing them", async () => {
+    const mute: Synthesizer = { async speak() { return { samples: new Float32Array(2400), sampleRate: SAMPLE_RATE }; } };
+    const scene = (await narrateStoryboard(board({}, "Hello there."), { synthesizer: mute, outDir }))["a"]!;
+    expect(scene.audioMs).toBe(0);
+    expect(scene.words.map((w) => w.text)).toEqual(["Hello", "there."]);
+    expect(scene.words.every((w) => w.startMs === 0 && w.endMs === 0)).toBe(true);
+  });
 });

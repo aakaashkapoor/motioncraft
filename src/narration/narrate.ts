@@ -11,11 +11,12 @@ import type { Synthesizer } from "./kokoro";
 import type { CachedNarration, SceneNarration } from "./types";
 import { splitForSpeech } from "./pieces";
 import { splitSentences } from "./sentences";
+import { trimSilence } from "./silence";
 import { encodeWav } from "./wav";
 import { alignWords } from "./wordTimes";
 
 /** Bump to discard every cached narration when how it is made changes. */
-export const NARRATION_CACHE_VERSION = 1;
+export const NARRATION_CACHE_VERSION = 2;
 export const DEFAULT_VOICE = "af_heart";
 /** Silence between two sentences of a scene. */
 export const SENTENCE_GAP_MS = 250;
@@ -66,18 +67,21 @@ async function speakScene(
 
   for (const sentence of splitSentences(text)) {
     // A long sentence is spoken in pieces back to back; only sentences get a gap.
+    // Each piece is trimmed of the silence around it, so word times match the sound.
     for (const [i, piece] of splitForSpeech(sentence).entries()) {
       const speech = await synthesizer.speak(piece, voice);
       if (sampleRate === 0) sampleRate = speech.sampleRate;
+      const { samples: sound, leadSamples, tailSamples } = trimSilence(speech.samples, speech.sampleRate);
       if (i === 0 && chunks.length > 0) {
         const gap = new Float32Array(Math.round((SENTENCE_GAP_MS * sampleRate) / 1000));
         chunks.push(gap);
         total += gap.length;
       }
       const startMs = msAt(total);
-      chunks.push(speech.samples);
-      total += speech.samples.length;
-      spans.push({ text: piece, startMs, endMs: msAt(total) });
+      chunks.push(sound);
+      total += sound.length;
+      // Words span the sound itself, not the margins kept around it.
+      spans.push({ text: piece, startMs: startMs + msAt(leadSamples), endMs: msAt(total - tailSamples) });
     }
   }
 
