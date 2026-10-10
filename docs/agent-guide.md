@@ -449,6 +449,29 @@ takes `emphasis`, `mark` and `markStyle` like a `Headline`.
 }
 ```
 
+#### `EndCard`
+
+The calm closing card from the owner's reference: a logo mark (`icon`, default
+`play`) with the product `name`, one `line` under it, an `accent` line in the
+accent under that, and an optional `card` carried in below, usually the
+opening `PromptCard` again. Centered in both aspects; the mark sits beside the
+name in 16:9 and above it in 9:16. The lines land one after another, then the
+card arrives.
+
+```json
+{
+  "id": "end",
+  "component": "EndCard",
+  "props": {
+    "name": "motioncraft",
+    "line": "Prompt in, video out",
+    "accent": "Open source",
+    "card": { "component": "PromptCard", "props": { "text": "A launch video for motioncraft" } }
+  },
+  "narration": "motioncraft. Prompt in, video out."
+}
+```
+
 #### `Headline`
 
 One line of big text on its own: a hook, an end line, or a statement in
@@ -735,8 +758,10 @@ The interface moment from the owner's reference: a message can carry
 by its `id` and clicks it (`atMs`, the click, defaults to a beat after the
 message lands). The buttons then resolve to the action's `resolved` text with
 a check. A message with `lift` leaves the window at `lift.atMs` (default: once
-the cursor has gone) and settles as a floating card beside it (in front of the
-window's bottom in 9:16); give it a `shareId` and the next scene's element with
+the cursor has gone) and settles as a floating card: in 16:9 beside the window,
+which waits centered and slides aside as the card reflows into the room next to
+it; in 9:16 below the window, which closes up over the message, so the card
+never covers the composer. Give it a `shareId` and the next scene's element with
 the same `shareId` takes it over. `lift` and `cards` don't mix. All times are
 ms on the chat's own clock. A chat with a click needs about 10 s on screen.
 
@@ -788,8 +813,11 @@ Once drawn, an accent dot flows along it every 1.4 s.
 One thing handed to another: a source component `from` (a prompt `Card`, say)
 and a receiver `to` (a window), joined by an `Arrow` that draws from one into
 the other, with an optional `label`. The source arrives, the arrow draws, then
-the receiver arrives. Side by side in 16:9, stacked in 9:16, so no points to
-work out. Give the receiver a `shareId` to carry it into the next scene.
+the receiver arrives. Side by side in a wide 16:9 area, always stacked in 9:16,
+so no points to work out. `fromShare` (0.2-0.5) gives the source more of the
+area when it needs it, such as a `PromptCard` in 9:16. Give the receiver a
+`shareId` to carry it into the next scene. A window that fills its box (an
+`AppWindow`) meets the arrow exactly; a shorter one (`CodeWindow`) centers in it.
 Under a moving camera the source floats a little nearer than the receiver.
 
 ```json
@@ -818,6 +846,23 @@ centered as a block.
   "component": "Card",
   "props": { "icon": "shield", "title": "Signed builds", "subtitle": "Every artifact", "highlighted": true },
   "narration": "Every build is signed."
+}
+```
+
+#### `PromptCard`
+
+The prompt itself, on a wide white card under a small "Prompt" `label` (with
+an `icon`). Once the card lands, a caret blinks and the `text` types in, then a
+shine crosses the card; `"typed": false` shows it whole. A `shareId` carries
+it across a boundary (a prompt typed in the hook becomes a `Handoff`'s `from`
+in the next scene). Its text steps down the ramp to fit, never below `label`.
+
+```json
+{
+  "id": "prompt",
+  "component": "PromptCard",
+  "props": { "text": "A launch video for motioncraft", "shareId": "prompt" },
+  "narration": "Type one prompt, and get a finished video."
 }
 ```
 

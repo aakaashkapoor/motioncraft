@@ -39,6 +39,29 @@ describe("handoffLayout", () => {
     }
   });
 
+  it("always stacks in 9:16, even in a slot wider than tall, so the source keeps the column's width", () => {
+    const slot = { x: 120, y: 500, width: 840, height: 600 };
+    const layout = handoffLayout(theme, "9:16", slot);
+    expect(layout.direction).toBe("column");
+    expect(layout.from.width).toBe(840);
+  });
+
+  it("stacks with a shorter arrow than it runs side by side", () => {
+    const tall = handoffLayout(theme, "9:16");
+    const wide = handoffLayout(theme, "16:9");
+    expect(tall.end.y - tall.start.y).toBeLessThan(wide.end.x - wide.start.x);
+    expect(tall.end.y - tall.start.y).toBeGreaterThanOrEqual(theme.spacing.xxl);
+  });
+
+  it("gives the source the share of the area a storyboard asks for", () => {
+    const area = contentArea(theme, "9:16");
+    const plain = handoffLayout(theme, "9:16", area);
+    const roomy = handoffLayout(theme, "9:16", area, 0.42);
+    expect(roomy.from.height).toBeGreaterThan(plain.from.height);
+    expect(roomy.from.height + roomy.to.height).toBeCloseTo(plain.from.height + plain.to.height, 0);
+    expect(roomy.from.height / (roomy.from.height + roomy.to.height)).toBeCloseTo(0.42, 2);
+  });
+
   it("follows the shape of its area, not the aspect: a near-square slot stacks", () => {
     const slot = sectionLayout(theme, "16:9", { headline: "A tall slot" }).content;
     const layout = handoffLayout(theme, "16:9", slot);

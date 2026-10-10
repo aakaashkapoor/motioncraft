@@ -157,7 +157,51 @@ describe("ChatWindow lift out", () => {
     expect(cardHtml).not.toContain("data-cursor=");
   });
 
-  it.each(ASPECTS)("settles beside the window (beside in 16:9; lower, in front of it, in 9:16), inside the content area, unshrunk (%s)", (aspect) => {
+  it("in 16:9 keeps the window as big as the reference's (~1080 px) and the window and card centered together", () => {
+    const layout = chatWindowLayout(theme, "16:9", { messages: MESSAGES });
+    const lift = layout.lifts[1]!;
+    const area = contentArea(theme, "16:9");
+    const w = layout.window;
+    expect(w.width).toBeGreaterThanOrEqual(1040);
+    const cardRight = lift.to.x + lift.width * lift.scale;
+    // The pair fills the content area: as much room left of the window as right of the card.
+    expect(w.x - area.x).toBeCloseTo(area.x + area.width - cardRight, -1);
+    // The card reflows to the room beside the window instead of shrinking its text.
+    expect(lift.scale).toBeGreaterThanOrEqual(1);
+    expect(lift.width).toBeLessThan(lift.fromWidth);
+    // Until the card lifts, the window waits centered on the area, then slides over with it.
+    expect(Math.abs(w.x + layout.windowShift + w.width / 2 - (area.x + area.width / 2))).toBeLessThanOrEqual(1);
+    expect(lift.from.x - layout.windowShift).toBeGreaterThanOrEqual(w.x);
+  });
+
+  it("slides the window from the center to its place as the card lifts out (16:9)", () => {
+    const left = (html: string) => parseFloat(styleOf(html, 'data-block="chat window"')!.get("left")!);
+    const layout = chatWindowLayout(theme, "16:9", { messages: MESSAGES });
+    const area = contentArea(theme, "16:9");
+    expect(left(renderAt("16:9", LIFT - 20)) + area.x).toBeCloseTo(layout.window.x + layout.windowShift, 0);
+    expect(left(renderAt("16:9", LIFT + 3000)) + area.x).toBeCloseTo(layout.window.x, 0);
+  });
+
+  it("in 9:16 settles the card clear of the window's composer", () => {
+    const layout = chatWindowLayout(theme, "9:16", { messages: MESSAGES });
+    const lift = layout.lifts[1]!;
+    const top = lift.to.bottom - lift.height * lift.scale;
+    // The message leaves the list as it lifts, and the window closes up over the room it took.
+    expect(layout.windowCollapse).toBeGreaterThan(0);
+    expect(top).toBeGreaterThanOrEqual(layout.window.y + layout.window.height - layout.windowCollapse + theme.spacing.md - 0.5);
+    expect(lift.to.bottom).toBeLessThanOrEqual(contentArea(theme, "9:16").y + contentArea(theme, "9:16").height + 0.5);
+    expect(layout.windowShift).toBe(0);
+  });
+
+  it("in 9:16 closes the window up over the lifted message as the card leaves", () => {
+    const height = (html: string) => parseFloat(styleOf(html, 'data-block="chat window"')!.get("height")!);
+    const layout = chatWindowLayout(theme, "9:16", { messages: MESSAGES });
+    expect(height(renderAt("9:16", LIFT - 20))).toBeCloseTo(layout.window.height, 0);
+    expect(height(renderAt("9:16", LIFT + 3000))).toBeCloseTo(layout.window.height - layout.windowCollapse, 0);
+    expect(chatWindowLayout(theme, "16:9", { messages: MESSAGES }).windowCollapse).toBe(0);
+  });
+
+  it.each(ASPECTS)("settles beside the window (beside in 16:9, below it in 9:16), inside the content area, unshrunk (%s)", (aspect) => {
     const layout = chatWindowLayout(theme, aspect, { messages: MESSAGES });
     const lift = layout.lifts[1]!;
     expect(layout.lifts[0]).toBeUndefined();

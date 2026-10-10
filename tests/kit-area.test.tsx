@@ -18,7 +18,7 @@ const theme = neutralTheme;
  * SceneFrame, and Pinned, which docks other components), and the caption,
  * which owns the caption band.
  */
-const NOT_NESTED = ["Section", "SceneFrame", "Pinned", "Caption"];
+const NOT_NESTED = ["Section", "SceneFrame", "Pinned", "Caption", "EndCard"];
 
 const FIXTURES: Record<Aspect, string> = { "9:16": "section-nesting.json", "16:9": "section-nesting-wide.json" };
 /** 16:9 puts narrow content beside the headline; 9:16 puts it below. */

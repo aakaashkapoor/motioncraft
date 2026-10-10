@@ -22,6 +22,8 @@ import { VideoClip } from "./VideoClip";
 import { Handoff } from "./Handoff";
 import { Headline } from "./Headline";
 import { SceneFrame } from "./SceneFrame";
+import { PromptCard } from "./PromptCard";
+import { EndCard } from "./EndCard";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -64,4 +66,6 @@ export const kit: Record<string, KitComponent> = {
   Handoff: asKitComponent(Handoff),
   Headline: asKitComponent(Headline),
   SceneFrame: asKitComponent(SceneFrame),
+  PromptCard: asKitComponent(PromptCard),
+  EndCard: asKitComponent(EndCard),
 };
