@@ -193,7 +193,8 @@ one audio frame.
 - `scripts/render.ts`: narrate by default (Task 1's `narrateStoryboard` with `kokoroSynthesizer()`,
   cache in `<storyboard dir>/.motioncraft/narration/`), then render with
   narration durations, words and the audio track. `--no-narration` keeps
-  today's silent render with estimated timings. `--voice <name>` overrides.
+  today's silent render with estimated timings. The voice comes from the
+  storyboard (`voice`, default `af_heart`); there is no `--voice` flag.
   Print the audio codec in the summary line. Update `src/render/args.ts`.
 - `examples/showcase/storyboard*.json`: add `"voice": "af_heart"`; make sure
   every scene's narration still fits (drop explicit `durationMs` on narrated

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { KOKORO_REVISION, MISAKI_REVISION } from "../src/narration/assets";
-import { NARRATION_CACHE_VERSION, loadCachedNarration, narrateStoryboard } from "../src/narration/narrate";
+import { NARRATION_CACHE_VERSION, loadCachedNarration, missingNarrationNotice, narrateStoryboard } from "../src/narration/narrate";
 import type { Synthesizer } from "../src/narration/kokoro";
 import { decodeWav } from "../src/narration/wav";
 import { validateStoryboard } from "../src/index";
@@ -154,30 +154,47 @@ describe("loadCachedNarration", () => {
   it("returns narrated scenes already on disk without speaking", async () => {
     const spoken = await narrateStoryboard(board(), { synthesizer: fakeSynth(), outDir });
     const cached = await loadCachedNarration(board(), { outDir });
-    expect(cached).toEqual(spoken);
+    expect(cached).toEqual({ scenes: spoken, missing: [] });
   });
 
   it("omits scenes that were never narrated, and an empty folder is empty", async () => {
-    expect(await loadCachedNarration(board(), { outDir })).toEqual({});
-    expect(await loadCachedNarration(board(), { outDir: join(outDir, "missing") })).toEqual({});
+    expect(await loadCachedNarration(board(), { outDir })).toEqual({ scenes: {}, missing: ["a"] });
+    expect((await loadCachedNarration(board(), { outDir: join(outDir, "missing") })).missing).toEqual(["a"]);
   });
 
   it("misses when the text or voice changed", async () => {
     await narrateStoryboard(board(), { synthesizer: fakeSynth(), outDir });
-    expect(await loadCachedNarration(board({}, "Different words."), { outDir })).toEqual({});
-    expect(await loadCachedNarration(board(), { outDir, voice: "am_adam" })).toEqual({});
+    expect((await loadCachedNarration(board({}, "Different words."), { outDir })).scenes).toEqual({});
+    expect((await loadCachedNarration(board(), { outDir, voice: "am_adam" })).scenes).toEqual({});
   });
 
   it("treats an invalid sidecar or a missing wav as a miss", async () => {
     const spoken = await narrateStoryboard(board(), { synthesizer: fakeSynth(), outDir });
     const wav = spoken["a"]!.wavPath;
     const json = wav.replace(/\.wav$/, ".json");
+    const misses = async () => (await loadCachedNarration(board(), { outDir })).missing;
     await writeFile(json, "{ not json");
-    expect(await loadCachedNarration(board(), { outDir })).toEqual({});
+    expect(await misses()).toEqual(["a"]);
     await writeFile(json, JSON.stringify({ audioMs: "long", words: [] }));
-    expect(await loadCachedNarration(board(), { outDir })).toEqual({});
-    await writeFile(json, JSON.stringify({ audioMs: 5, words: [] }));
+    expect(await misses()).toEqual(["a"]);
+    await writeFile(json, JSON.stringify({ audioMs: 5, words: [{ text: "hi", startMs: 0 }] }));
+    expect(await misses()).toEqual(["a"]);
+    await writeFile(json, JSON.stringify({ audioMs: 5, words: [{ text: 3, startMs: 0, endMs: 1 }] }));
+    expect(await misses()).toEqual(["a"]);
+    await writeFile(json, JSON.stringify({ audioMs: 5, words: [{ text: "hi", startMs: 0, endMs: 5 }] }));
+    expect(await misses()).toEqual([]);
     await rm(wav);
-    expect(await loadCachedNarration(board(), { outDir })).toEqual({});
+    expect(await misses()).toEqual(["a"]);
+  });
+});
+
+describe("missingNarrationNotice", () => {
+  const scene = { sceneId: "x", wavPath: "x.wav", audioMs: 1, words: [] };
+  it("says how many scenes are cached, and nothing when all or none are needed", () => {
+    expect(missingNarrationNotice({ scenes: { a: scene, b: scene, c: scene }, missing: ["d", "e"] })).toBe(
+      "narration: 3 of 5 scenes cached; run scripts/narrate.ts for timing from audio",
+    );
+    expect(missingNarrationNotice({ scenes: { a: scene }, missing: [] })).toBeUndefined();
+    expect(missingNarrationNotice({ scenes: {}, missing: [] })).toBeUndefined();
   });
 });

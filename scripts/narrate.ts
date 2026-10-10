@@ -1,5 +1,5 @@
 // Speaks a storyboard's narration locally (Kokoro) into <storyboard dir>/.motioncraft/narration/.
-//   npx tsx scripts/narrate.ts <storyboard.json> [--voice name] [--offline]
+//   npx tsx scripts/narrate.ts <storyboard.json> [--offline]
 
 import { readFile } from "node:fs/promises";
 import { kokoroSynthesizer } from "../src/narration/kokoro";
@@ -19,7 +19,6 @@ async function main(argv: string[]): Promise<void> {
   const narrations = await narrateStoryboard(validation.storyboard, {
     synthesizer: kokoroSynthesizer({ offline: args.offline }),
     outDir,
-    ...(args.voice === undefined ? {} : { voice: args.voice }),
   });
   for (const { sceneId, audioMs, words } of Object.values(narrations)) {
     console.log(`${sceneId}  ${(audioMs / 1000).toFixed(2)} s  ${words.length} words`);

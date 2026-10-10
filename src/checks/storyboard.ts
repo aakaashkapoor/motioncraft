@@ -7,7 +7,9 @@ import { HEX_COLOR } from "../theme/color";
 import { resolveTheme } from "../theme/resolve";
 import type { Theme } from "../theme/types";
 import { fileProblem, mediaUses } from "../render/media";
-import type { SceneNarration } from "../narration/narrate";
+import { ownValue } from "../engine/timeline";
+import type { SceneNarration } from "../narration/types";
+import { narrationTailMs } from "../render/durations";
 import type { Storyboard } from "../storyboard/types";
 
 export const STORYBOARD_CHECK_NAMES = ["transition", "theme-color", "media", "narration-fit"] as const;
@@ -122,23 +124,25 @@ export interface CheckStoryboardOptions {
   narration?: Record<string, Pick<SceneNarration, "audioMs">>;
 }
 
-/** Errors on a scene whose `durationMs` ends before its narration audio does (the scene lead, then the audio). */
+/** Errors on a scene whose `durationMs` is shorter than its lead, narration audio and tail (see `narrationTailMs`). */
 export function checkNarrationFit(
   storyboard: Storyboard,
   narration: Record<string, Pick<SceneNarration, "audioMs">>,
   theme: Theme = resolveTheme(storyboard),
 ): StoryboardIssue[] {
   const issues: StoryboardIssue[] = [];
-  for (const scene of storyboard.scenes) {
-    const audio = Object.hasOwn(narration, scene.id) ? narration[scene.id] : undefined;
+  for (const [i, scene] of storyboard.scenes.entries()) {
+    const audio = ownValue(narration, scene.id);
     if (typeof scene.durationMs !== "number" || audio === undefined) continue;
-    const neededMs = theme.motion.leadMs + audio.audioMs;
+    const { leadMs } = theme.motion;
+    const tailMs = narrationTailMs(storyboard, i, theme);
+    const neededMs = leadMs + audio.audioMs + tailMs;
     if (scene.durationMs >= neededMs) continue;
     issues.push({
       check: "narration-fit",
       severity: "error",
       sceneId: scene.id,
-      message: `durationMs ${scene.durationMs} is shorter than the narration needs: ${theme.motion.leadMs} ms lead + ${audio.audioMs} ms audio = ${neededMs} ms; lengthen it or remove durationMs to follow the audio`,
+      message: `durationMs ${scene.durationMs} is shorter than the narration needs: ${leadMs} ms lead + ${audio.audioMs} ms audio + ${tailMs} ms tail = ${neededMs} ms; lengthen it or remove durationMs to follow the audio`,
     });
   }
   return issues;

@@ -12,7 +12,7 @@ import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
 import type { FrameMeasurement } from "../checks/types";
 import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type SceneDurations, type Timeline } from "../engine/timeline";
 import { Caption, kit } from "../kit";
-import type { TimedWord } from "../kit/captionWords";
+import type { PageNarration } from "../narration/types";
 import { SceneClockContext } from "../kit/frameContext";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
@@ -35,7 +35,7 @@ export interface PageInput {
   /** Where relative media paths (`src`) resolve; the working directory by default. Used by Node, not the page. */
   mediaDir?: string;
   /** Measured word times per scene id, on the scene's audio clock (0 = start of its audio). Captions use them instead of even spacing. */
-  narration?: Record<string, { words: TimedWord[] }>;
+  narration?: PageNarration;
 }
 
 export const INPUT_ELEMENT_ID = "motioncraft-input";

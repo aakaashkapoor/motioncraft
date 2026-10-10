@@ -62,11 +62,10 @@ ${RENDER_USAGE}`);
   return { storyboard: positionals[0]!, out: values.out };
 }
 
-export const NARRATE_USAGE = "usage: npx tsx scripts/narrate.ts <storyboard.json> [--voice name] [--offline]";
+export const NARRATE_USAGE = "usage: npx tsx scripts/narrate.ts <storyboard.json> [--offline]";
 
 export interface NarrateArgs {
   storyboard: string;
-  voice?: string;
   offline: boolean;
 }
 
@@ -75,14 +74,10 @@ export function parseNarrateArgs(argv: readonly string[]): NarrateArgs {
   const { values, positionals } = parseArgs({
     args: [...argv],
     allowPositionals: true,
-    options: { voice: { type: "string" }, offline: { type: "boolean" } },
+    options: { offline: { type: "boolean" } },
   });
 
   if (positionals.length !== 1) throw new Error(`expected one storyboard file
 ${NARRATE_USAGE}`);
-  if (values.voice === "") throw new Error(`--voice needs a voice name
-${NARRATE_USAGE}`);
-  const args: NarrateArgs = { storyboard: positionals[0]!, offline: values.offline === true };
-  if (values.voice !== undefined) args.voice = values.voice;
-  return args;
+  return { storyboard: positionals[0]!, offline: values.offline === true };
 }

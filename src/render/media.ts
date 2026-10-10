@@ -136,6 +136,11 @@ export interface PreparedMedia {
   sourceDurationsMs: Record<string, number>;
 }
 
+/** Only the words of each scene narration go to the page: no disk paths or other fields. */
+function pageNarration(narration: NonNullable<PageInput["narration"]>): NonNullable<PageInput["narration"]> {
+  return Object.fromEntries(Object.entries(narration).map(([id, { words }]) => [id, { words }]));
+}
+
 /** How long a clip plays: from trimStart to trimEnd (or the end of the file), at its rate. */
 function clipLengthMs(props: Record<string, unknown>, sourceMs: number | undefined): number | undefined {
   const start = isNumber(props.trimStartMs) ? props.trimStartMs : 0;
@@ -195,7 +200,7 @@ export async function prepareMedia(input: PageInput): Promise<PreparedMedia> {
 
   const { storyboard, theme, mediaDir, narration } = input;
   return {
-    input: { storyboard, theme, durations, ...(mediaDir === undefined ? {} : { mediaDir }), ...(narration === undefined ? {} : { narration }) },
+    input: { storyboard, theme, durations, ...(mediaDir === undefined ? {} : { mediaDir }), ...(narration === undefined ? {} : { narration: pageNarration(narration) }) },
     sourceDurationsMs,
   };
 }

@@ -3,13 +3,13 @@ import { parseNarrateArgs } from "../src/render/args";
 import { validateStoryboard } from "../src/index";
 
 describe("parseNarrateArgs", () => {
-  it("takes one storyboard, with optional --voice and --offline", () => {
+  it("takes one storyboard, with optional --offline", () => {
     expect(parseNarrateArgs(["board.json"])).toEqual({ storyboard: "board.json", offline: false });
-    expect(parseNarrateArgs(["board.json", "--voice", "af_bella", "--offline"])).toEqual({
-      storyboard: "board.json",
-      voice: "af_bella",
-      offline: true,
-    });
+    expect(parseNarrateArgs(["board.json", "--offline"])).toEqual({ storyboard: "board.json", offline: true });
+  });
+
+  it("has no --voice flag: the voice comes from the storyboard", () => {
+    expect(() => parseNarrateArgs(["board.json", "--voice", "af_bella"])).toThrow();
   });
 
   it("rejects a missing storyboard", () => {

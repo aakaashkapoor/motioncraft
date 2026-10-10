@@ -44,7 +44,7 @@ export function captionLimits(theme: Theme, aspect: Aspect, style: ShownCaptionS
 
 /**
  * The caption's words and the pages they make. With measured `spoken` words
- * (on the audio clock) they start at the scene's lead; otherwise they are
+ * (on the audio clock, one per word of `text`) they start at the scene's lead; otherwise they are
  * spread evenly from the lead until the exit begins (the scene's last frame
  * is at `endMs`).
  */
@@ -58,7 +58,7 @@ export function captionTrack(
 ): { words: TimedWord[]; pages: TimedPage[] } {
   const { leadMs } = theme.motion;
   const words =
-    spoken !== undefined && spoken.length > 0
+    spoken !== undefined && spoken.length > 0 && spoken.length === text.split(/\s+/).filter(Boolean).length
       ? spoken.map((word) => ({ ...word, startMs: word.startMs + leadMs, endMs: word.endMs + leadMs }))
       : evenWordTimes(text, leadMs, endMs - exitMs(theme, theme.motion.fx.ms));
   return { words, pages: timedPages(words, captionLimits(theme, aspect, style)) };

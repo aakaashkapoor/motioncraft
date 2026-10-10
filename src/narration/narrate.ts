@@ -8,6 +8,7 @@ import type { TimedWord } from "../kit/captionWords";
 import type { Storyboard } from "../storyboard/types";
 import { KOKORO_REVISION, MISAKI_REVISION } from "./assets";
 import type { Synthesizer } from "./kokoro";
+import type { CachedNarration, SceneNarration } from "./types";
 import { splitForSpeech } from "./pieces";
 import { splitSentences } from "./sentences";
 import { encodeWav } from "./wav";
@@ -19,14 +20,7 @@ export const DEFAULT_VOICE = "af_heart";
 /** Silence between two sentences of a scene. */
 export const SENTENCE_GAP_MS = 250;
 
-export interface SceneNarration {
-  sceneId: string;
-  wavPath: string;
-  /** Length of the audio, in ms. */
-  audioMs: number;
-  /** When each word is spoken, in ms from the start of the scene's audio. */
-  words: TimedWord[];
-}
+export type { CachedNarration, SceneNarration } from "./types";
 
 interface Sidecar {
   audioMs: number;
@@ -36,7 +30,14 @@ interface Sidecar {
 async function readSidecar(path: string): Promise<Sidecar | undefined> {
   try {
     const sidecar = JSON.parse(await readFile(path, "utf8")) as Partial<Sidecar> | null;
-    return typeof sidecar?.audioMs === "number" && Array.isArray(sidecar.words) ? (sidecar as Sidecar) : undefined;
+    const valid =
+      typeof sidecar?.audioMs === "number" &&
+      Number.isFinite(sidecar.audioMs) &&
+      Array.isArray(sidecar.words) &&
+      sidecar.words.every(
+        (w) => typeof w?.text === "string" && Number.isFinite(w.startMs) && Number.isFinite(w.endMs),
+      );
+    return valid ? (sidecar as Sidecar) : undefined;
   } catch {
     return undefined;
   }
@@ -121,19 +122,27 @@ async function readCached(file: SceneFiles): Promise<SceneNarration | undefined>
 }
 
 /**
- * The scenes whose narration is already on disk (a wav and a valid sidecar).
- * Never speaks and never needs the model; scenes not yet narrated are absent.
+ * The scenes whose narration is already on disk (a wav and a valid sidecar),
+ * and the narrated scenes that are not. Never speaks and never needs the model.
  */
 export async function loadCachedNarration(
   storyboard: Storyboard,
   options: { outDir: string; voice?: string },
-): Promise<Record<string, SceneNarration>> {
-  const result: Record<string, SceneNarration> = {};
+): Promise<CachedNarration> {
+  const result: CachedNarration = { scenes: {}, missing: [] };
   for (const file of sceneFiles(storyboard, options.outDir, options.voice).files) {
     const cached = await readCached(file);
-    if (cached !== undefined) result[file.sceneId] = cached;
+    if (cached === undefined) result.missing.push(file.sceneId);
+    else result.scenes[file.sceneId] = cached;
   }
   return result;
+}
+
+/** A line telling that some narrated scenes have no audio yet, or undefined when all (or none) are cached. */
+export function missingNarrationNotice(cached: CachedNarration): string | undefined {
+  if (cached.missing.length === 0) return undefined;
+  const total = Object.keys(cached.scenes).length + cached.missing.length;
+  return `narration: ${total - cached.missing.length} of ${total} scenes cached; run scripts/narrate.ts for timing from audio`;
 }
 
 export async function narrateStoryboard(

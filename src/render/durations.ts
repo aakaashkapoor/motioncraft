@@ -1,7 +1,8 @@
 // Scene durations for narrated scenes without a `durationMs`: from the
 // measured audio when it exists, else an estimate from the word count.
 
-import type { SceneNarration } from "../narration/narrate";
+import { ownValue, outgoingTransition } from "../engine/timeline";
+import type { SceneNarration } from "../narration/types";
 import type { Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 
@@ -26,8 +27,22 @@ export function estimateDurations(storyboard: Storyboard): Record<string, number
   return durations;
 }
 
-/** Silence after the last word of a narrated scene. */
+/** Least silence after the last word of a narrated scene. */
 export const NARRATION_TAIL_MS = 500;
+/** Silence between the end of a scene voice and the next scene lead when a transition overlaps them. */
+const TRANSITION_GAP_MS = 250;
+
+/**
+ * Silence after scene `sceneIndex` audio: the next scene starts a transition
+ * early, so the tail covers the outgoing transition plus a gap (never less
+ * than `NARRATION_TAIL_MS`). A cut, or the last scene, gets the plain tail.
+ */
+export function narrationTailMs(storyboard: Storyboard, sceneIndex: number, theme: Theme): number {
+  const scene = storyboard.scenes[sceneIndex];
+  if (scene === undefined || sceneIndex === storyboard.scenes.length - 1) return NARRATION_TAIL_MS;
+  const { ms } = outgoingTransition(scene, theme);
+  return ms === 0 ? NARRATION_TAIL_MS : Math.max(NARRATION_TAIL_MS, ms + TRANSITION_GAP_MS);
+}
 
 /**
  * Durations (ms) for narrated scenes without `durationMs` that have audio: the
@@ -39,10 +54,10 @@ export function narrationDurations(
   theme: Theme,
 ): Record<string, number> {
   const durations: Record<string, number> = {};
-  for (const scene of storyboard.scenes) {
-    const audio = Object.hasOwn(narration, scene.id) ? narration[scene.id] : undefined;
+  for (const [i, scene] of storyboard.scenes.entries()) {
+    const audio = ownValue(narration, scene.id);
     if (scene.durationMs !== undefined || audio === undefined) continue;
-    const ms = theme.motion.leadMs + audio.audioMs + NARRATION_TAIL_MS;
+    const ms = theme.motion.leadMs + audio.audioMs + narrationTailMs(storyboard, i, theme);
     durations[scene.id] = (Math.ceil((ms * storyboard.fps) / 1000 - 1e-9) * 1000) / storyboard.fps;
   }
   return durations;

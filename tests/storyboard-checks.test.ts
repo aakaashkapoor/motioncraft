@@ -12,6 +12,7 @@ import {
   type StoryboardIssue,
 } from "../src/checks";
 import { validateStoryboard, type Storyboard } from "../src/index";
+import { narrationTailMs } from "../src/render/durations";
 import { resolveTheme } from "../src/render/themes";
 
 function storyboard(input: Record<string, unknown>): Storyboard {
@@ -156,17 +157,21 @@ describe("checkStoryboard", () => {
 
 describe("checkNarrationFit", () => {
   const sb = storyboard({ scenes: [title("short", { durationMs: 2000 }), title("fits", { durationMs: 5000 }), { id: "auto", component: "TitleCard", props: { title: "auto" }, narration: "Spoken." }, title("quiet")] });
-  const lead = resolveTheme(sb).motion.leadMs;
+  const theme = resolveTheme(sb);
+  const lead = theme.motion.leadMs;
+  const tail = (i: number) => narrationTailMs(sb, i, theme);
 
   it("errors when durationMs ends before the lead and the audio, naming both numbers", () => {
     const issues = checkNarrationFit(sb, { short: { audioMs: 4000 }, fits: { audioMs: 4000 }, auto: { audioMs: 99999 } });
     expect(issues.map((i) => [i.check, i.severity, i.sceneId])).toEqual([["narration-fit", "error", "short"]]);
     expect(issues[0]!.message).toContain("2000");
-    expect(issues[0]!.message).toContain(String(lead + 4000));
+    const message = issues[0]!.message;
+    for (const n of [lead, 4000, tail(0), lead + 4000 + tail(0)]) expect(message).toContain(String(n));
   });
 
   it("passes when the scene is exactly long enough, and checkStoryboard only runs it with narration", async () => {
-    expect(checkNarrationFit(sb, { short: { audioMs: 2000 - lead } })).toEqual([]);
+    expect(checkNarrationFit(sb, { short: { audioMs: 2000 - lead - tail(0) } })).toEqual([]);
+    expect(checkNarrationFit(sb, { short: { audioMs: 2001 - lead - tail(0) } })).toHaveLength(1);
     const narration = { short: { audioMs: 4000 } };
     expect((await checkStoryboard(sb, { narration })).map((i) => i.check)).toContain("narration-fit");
     expect((await checkStoryboard(sb)).map((i) => i.check)).not.toContain("narration-fit");

@@ -74,10 +74,25 @@ export interface TransitionDefaults {
   motion: Pick<ThemeMotion, "transition" | "transitionMs">;
 }
 
+/** `record[key]` if it is the record's own property, else undefined. */
+export function ownValue<T>(record: Readonly<Record<string, T>>, key: string): T | undefined {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
+}
+
 function lookup(durations: SceneDurations, id: string): number | undefined {
   if (durations instanceof Map) return durations.get(id);
-  const record = durations as Readonly<Record<string, number>>;
-  return Object.hasOwn(record, id) ? record[id] : undefined;
+  return ownValue(durations as Readonly<Record<string, number>>, id);
+}
+
+/** The transition out of `scene`, as the timeline resolves it: its type and length in ms (0 for a cut). */
+export function outgoingTransition(
+  scene: Pick<Storyboard["scenes"][number], "transition">,
+  theme?: TransitionDefaults,
+): { type: TransitionType; ms: number } {
+  const spec = scene.transition;
+  const type = spec?.type ?? theme?.motion.transition ?? "cut";
+  const ms = spec?.durationMs ?? theme?.motion.transitionMs ?? DEFAULT_TRANSITION_MS;
+  return { type, ms: type === "cut" ? 0 : ms };
 }
 
 /**
@@ -132,9 +147,8 @@ export function buildTimeline(storyboard: Storyboard, durations: SceneDurations,
     result.push({ id: scene.id, startFrame, frames: frames[i]! });
     if (i === scenes.length - 1) return;
     const spec = scene.transition;
-    const type = spec?.type ?? theme?.motion.transition ?? "cut";
-    const transitionMs = spec?.durationMs ?? theme?.motion.transitionMs ?? DEFAULT_TRANSITION_MS;
-    const wanted = type === "cut" ? 0 : Math.round((transitionMs * fps) / 1000);
+    const { type, ms: transitionMs } = outgoingTransition(scene, theme);
+    const wanted = Math.round((transitionMs * fps) / 1000);
     const overlap = Math.max(0, Math.min(wanted, frames[i]! - previousOverlap - 1, frames[i + 1]! - 1));
     startFrame += frames[i]! - overlap;
     transitions.push({ type, startFrame, frames: overlap, direction: spec?.direction ?? DEFAULT_SLIDE_DIRECTION });

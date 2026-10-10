@@ -7,7 +7,7 @@
 import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { checkStoryboard, formatIssue, formatProblem, runChecks } from "../src/checks";
-import { loadCachedNarration, narrationDir } from "../src/narration/narrate";
+import { loadCachedNarration, missingNarrationNotice, narrationDir } from "../src/narration/narrate";
 import { sceneDurations } from "../src/render/durations";
 import { resolveTheme } from "../src/render/themes";
 import { validateStoryboard } from "../src/storyboard/validate";
@@ -27,7 +27,10 @@ async function main(argv: string[]): Promise<void> {
   const mediaDir = dirname(file);
 
   // Narration already spoken (scripts/narrate.ts) sets the scene lengths and caption timing; none is ever made here.
-  const narration = await loadCachedNarration(storyboard, { outDir: narrationDir(file) });
+  const cached = await loadCachedNarration(storyboard, { outDir: narrationDir(file) });
+  const notice = missingNarrationNotice(cached);
+  if (notice !== undefined) console.log(notice);
+  const narration = cached.scenes;
   const issues = await checkStoryboard(storyboard, { theme, mediaDir, narration });
   for (const issue of issues) console.log(formatIssue(issue));
   const errors = issues.filter((issue) => issue.severity === "error").length;

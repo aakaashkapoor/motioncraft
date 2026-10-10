@@ -506,6 +506,12 @@ describe("measured word times", () => {
     expect(activeWordAt(track.words, leadMs + 1500)).toBeUndefined();
   });
 
+  it("captionTrack ignores measured words that do not match the text word for word", () => {
+    const even = captionTrack(lightTheme, "9:16", text, "standard", endMs);
+    expect(captionTrack(lightTheme, "9:16", text, "standard", endMs, spoken.slice(0, 5))).toEqual(even);
+    expect(captionTrack(lightTheme, "9:16", text + " Now", "standard", endMs, spoken).words).toHaveLength(7);
+  });
+
   it("captionTrack falls back to even times without measured words", () => {
     const even = captionTrack(lightTheme, "9:16", text, "standard", endMs);
     expect(captionTrack(lightTheme, "9:16", text, "standard", endMs, [])).toEqual(even);
