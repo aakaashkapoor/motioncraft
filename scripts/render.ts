@@ -1,6 +1,6 @@
 // Renders a storyboard to an MP4 in the installed Chrome or Edge. The narration
 // is spoken locally first (cached beside the storyboard) and mixed in as the
-// audio track; --no-narration renders silent with estimated timings.
+// audio track; --no-narration renders without a voice, with estimated timings.
 //   npx tsx scripts/render.ts <storyboard.json> --out <file.mp4> [--no-narration]
 
 import { readFile } from "node:fs/promises";

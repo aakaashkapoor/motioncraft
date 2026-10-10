@@ -39,7 +39,6 @@ export interface AudioPlan {
 
 /** The audio plan for a video: narration first, then unmuted clips. (The timeline already carries the storyboard's scenes.) */
 export function audioPlan(
-  _storyboard: Storyboard,
   timeline: Timeline,
   theme: Theme,
   narration: Readonly<Record<string, Pick<SceneNarration, "audioMs">>>,

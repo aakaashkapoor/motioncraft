@@ -18,6 +18,7 @@ import {
 import { sceneComponents } from "./components";
 import { shotsErrors } from "./shots";
 import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
+import { STOCK_VOICES } from "../narration/voices";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
 const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "voice", "scenes"]);
@@ -171,7 +172,10 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   }
 
   const { voice } = input;
-  if (voice !== undefined && !isNonEmptyString(voice)) errors.push(`voice must be a non-empty string (got ${describe(voice)})`);
+  if (voice !== undefined) {
+    if (!isNonEmptyString(voice)) errors.push(`voice must be a non-empty string (got ${describe(voice)})`);
+    else if (!(STOCK_VOICES as readonly string[]).includes(voice)) errors.push(`voice must be one of ${STOCK_VOICES.join(", ")} (got ${describe(voice)})`);
+  }
 
   const scenes = validateScenes(input.scenes, errors);
 

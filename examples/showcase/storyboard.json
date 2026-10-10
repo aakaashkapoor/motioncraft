@@ -252,7 +252,7 @@
         }
       },
       "narration": "No stock footage, no generated images. Every frame is code.",
-      "durationMs": 5200,
+      "durationMs": 5400,
       "transition": {
         "type": "fade",
         "durationMs": 600

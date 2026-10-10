@@ -1,4 +1,5 @@
-// Layer-1 checks: the storyboard checks (transitions, theme colors, media files),
+// Layer-1 checks: the storyboard checks (transitions, theme colors, media files,
+// and narration-fit when the narration is spoken),
 // then the start, middle and end frame of every scene (overflow, safe area,
 // contrast, readability, and the type-scale warning). Prints the problems and
 // warnings and exits non-zero on any error or frame problem; warnings alone pass.

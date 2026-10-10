@@ -35,6 +35,25 @@ describe("planRender", () => {
     expect(plan.ok && plan.durations.a).toBeGreaterThan(0);
   });
 
+  it("stops on a missing media file before speaking anything", async () => {
+    const storyboard = board([
+      { id: "a", component: "Image", props: { src: "no-such-file.png" }, narration: "Hello there." },
+    ]);
+    let spoke = false;
+    const plan = await planRender({
+      storyboard,
+      theme: resolveTheme(storyboard),
+      mediaDir: ".",
+      narrate: async () => {
+        spoke = true;
+        return {};
+      },
+    });
+    expect(plan.ok).toBe(false);
+    expect(!plan.ok && plan.errors.join()).toMatch(/no-such-file\.png/);
+    expect(spoke).toBe(false);
+  });
+
   it("stops with the errors when an explicit duration is too short for the audio", async () => {
     const storyboard = board([{ id: "a", component: "Title", props: { text: "x" }, narration: "Hello there.", durationMs: 2000 }]);
     const plan = await planRender({ storyboard, theme: resolveTheme(storyboard), mediaDir: ".", narrate: async () => ({ a: spoken(5000) }) });

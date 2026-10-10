@@ -11,7 +11,7 @@ function plan(scenes: Record<string, unknown>[], narrated: string[]) {
   const timeline = buildTimeline(storyboard, {}, neutralTheme);
   const narration = Object.fromEntries(narrated.map((id) => [id, { audioMs: 1500 }]));
   const make = (n: Record<string, { audioMs: number }> = narration) =>
-    audioPlan(storyboard, timeline, neutralTheme, n, clipAudioPlan(storyboard, timeline, "media"));
+    audioPlan(timeline, neutralTheme, n, clipAudioPlan(storyboard, timeline, "media"));
   return { timeline, make };
 }
 

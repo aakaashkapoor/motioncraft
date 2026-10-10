@@ -43,7 +43,7 @@ export const RENDER_USAGE = "usage: npx tsx scripts/render.ts <storyboard.json> 
 export interface RenderArgs {
   storyboard: string;
   out: string;
-  /** Speak the narration and mix it in (the default); false renders silent with estimated timings. */
+  /** Speak the narration and mix it in (the default); false renders without a voice, with estimated timings. */
   narration: boolean;
 }
 

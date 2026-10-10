@@ -9,7 +9,7 @@ import { access, open, readFile, stat } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import type { Page } from "playwright-core";
 import type { Timeline } from "../engine/timeline";
-import { MEDIA_URL_PREFIX, mediaSrc, NARRATION_URL_PREFIX, narrationFile, narrationFileName, narrationUrl } from "../kit/mediaSource";
+import { MEDIA_URL_PREFIX, mediaSrc, NARRATION_URL_PREFIX, narrationFile, narrationFileName } from "../kit/mediaSource";
 import type { SceneNarration } from "../narration/types";
 import { sceneComponents } from "../storyboard/components";
 import type { Storyboard } from "../storyboard/types";
@@ -140,25 +140,13 @@ export interface PreparedMedia {
   sourceDurationsMs: Record<string, number>;
 }
 
-/**
- * What the page gets of each scene narration: its words, audio length and the
- * served WAV URL when there is a file. Never a disk path.
- */
+/** What the page gets of each scene narration: its words. The audio is mixed outside the page. */
 function pageNarration(narration: Record<string, PageNarrationSource>): NonNullable<PageInput["narration"]> {
-  return Object.fromEntries(
-    Object.entries(narration).map(([id, { words, audioMs, wavPath }]) => [
-      id,
-      {
-        words,
-        ...(audioMs === undefined ? {} : { audioMs }),
-        ...(wavPath === undefined ? {} : { src: narrationUrl(narrationFileName(id)) }),
-      },
-    ]),
-  );
+  return Object.fromEntries(Object.entries(narration).map(([id, { words }]) => [id, { words }]));
 }
 
-/** A scene narration as `prepareMedia` receives it: the page fields, plus the WAV on disk when there is one. */
-type PageNarrationSource = Partial<Pick<SceneNarration, "wavPath" | "audioMs">> & Pick<SceneNarration, "words">;
+/** A scene narration as `prepareMedia` receives it (extra fields, such as the audio length and WAV path, are ignored). */
+type PageNarrationSource = Pick<SceneNarration, "words">;
 
 /** How long a clip plays: from trimStart to trimEnd (or the end of the file), at its rate. */
 function clipLengthMs(props: Record<string, unknown>, sourceMs: number | undefined): number | undefined {

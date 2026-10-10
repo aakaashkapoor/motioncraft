@@ -28,7 +28,7 @@ export interface VideoProgress {
 }
 
 export interface VideoOptions extends Omit<PageInput, "narration"> {
-  /** Each narrated scene's audio, words and WAV file (see `loadCachedNarration`). Voices the video. */
+  /** Each narrated scene's audio, words and WAV file (see `narrateStoryboard`). Voices the video. */
   narration?: Record<string, SceneNarration>;
   /** The .mp4 file to write. */
   out: string;
@@ -117,7 +117,7 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
   const { input, sourceDurationsMs } = await prepareMedia(options);
   const { storyboard, durations, theme } = input;
   const timeline = buildTimeline(storyboard, durations, theme);
-  const plan = audioPlan(storyboard, timeline, theme, options.narration ?? {}, clipAudioPlan(storyboard, timeline, input.mediaDir, sourceDurationsMs));
+  const plan = audioPlan(timeline, theme, options.narration ?? {}, clipAudioPlan(storyboard, timeline, input.mediaDir, sourceDurationsMs));
   const { fps, totalFrames } = timeline;
   const { width, height } = frameSize(storyboard.aspect);
   await mkdir(dirname(out), { recursive: true });

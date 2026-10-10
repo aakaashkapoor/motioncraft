@@ -107,18 +107,21 @@ New folder `src/narration/`, one responsibility per file:
   For each scene with `narration`: split into sentences, speak each, join with
   250 ms of silence, then write
   `<outDir>/<sha1([NARRATION_CACHE_VERSION, KOKORO_REVISION, MISAKI_REVISION, voice, text].join("\0"))>.wav`
-  (`NARRATION_CACHE_VERSION = 1`, exported) and a sidecar `.json`
+  (`NARRATION_CACHE_VERSION = 2`, exported) and a sidecar `.json`
   `{ audioMs, words }` (word times from the start of the scene's audio). Reuse
   both when present and the sidecar has the right shape (no synthesis).
   A sentence whose phoneme estimate (one per normalized character) exceeds ~400
   is split again at `,` `;` `:`, then at spaces (`pieces.ts`); the pieces are
   spoken back to back with no extra gap, and words are aligned over each piece's
   own span. A piece over 510 phonemes throws `sentence too long to speak (N
-  phonemes, max 510): "<first words>…"`. Voice:
+  phonemes, max 510): "<first words>…"`. Each spoken piece is trimmed of the
+  silence the voice leaves around it (`silence.ts`: samples under 0.01 are silence;
+  30 ms kept before the first sound and 60 ms after the last), so word times match
+  the sound and the gap between sentences is the 250 ms we add. Voice:
   `options.voice ?? storyboard.voice ?? "af_heart"`.
 - Storyboard: optional top-level `voice?: string` in `src/storyboard/types.ts`,
-  validated as a non-empty string in `validate.ts`.
-- `scripts/narrate.ts <storyboard.json> [--voice name] [--offline]`: narrates
+  validated in `validate.ts` as one of the stock voices (`src/narration/voices.ts`: `af_heart`, `af_bella`, `am_michael`).
+- `scripts/narrate.ts <storyboard.json> [--offline]` (no `--voice`: the voice comes from the storyboard): narrates
   into `<storyboard dir>/.motioncraft/narration/` and prints `id  3.42 s  12 words`
   per scene. Add `.motioncraft/` to `.gitignore`.
 - `package.json`: `npm install --save-exact onnxruntime-node@1.21.0`, then
@@ -139,8 +142,9 @@ with `af_heart` and expects 24 kHz and 1.5 to 6 s of audio.
 
 - `src/render/durations.ts`: add
   `narrationDurations(storyboard, narration: Record<string, SceneNarration>, theme): Record<string, number>`:
-  for each narrated scene without `durationMs`: `theme.motion.leadMs + audioMs + 500`
-  (tail), rounded up to a whole frame at the storyboard fps. Keep
+  for each narrated scene without `durationMs`: `theme.motion.leadMs + audioMs + tail`,
+  where the tail is `narrationTailMs` (`max(500, outgoing transition ms + 250)`, 500 for a cut
+  or the last scene), rounded up to a whole frame at the storyboard fps. Keep
   `estimateDurations` for when there is no audio.
 - `PageInput` (`src/render/page.tsx`): optional
   `narration?: Record<string, { words: TimedWord[] }>` (word times on the
@@ -174,8 +178,10 @@ fetched from the network.
   `https://motioncraft.localhost/narration/<file>.wav` answering only the WAV
   files of this render's narration (404 for anything else). Widen
   `PageNarration` per scene to `{ words, audioMs?, src? }` where `src` is that
-  served URL (never a disk path); `prepareMedia` fills it when a `wavPath`
-  exists. Pure URL helpers next to `mediaUrl` (`narrationUrl`, `narrationFile`).
+  served URL (never a disk path). (As built, the page only needs the words, so
+  `PageNarration` stayed `{ words }`; the WAVs are served for the mix, and the
+  audio plan carries the URLs.) Pure URL helpers next to `mediaUrl`
+  (`narrationUrl`, `narrationFile`).
 - **Audio plan (Node, pure):** `src/render/audioPlan.ts`:
   `audioPlan(storyboard, timeline, theme, narration, clipAudio): AudioPlan`,
   `AudioPlan = { durationMs; sampleRate: 48000; sources: AudioSource[] }`,
@@ -194,7 +200,11 @@ fetched from the network.
   the codec string, the decoder config `description` (AudioSpecificConfig for
   AAC; for Opus build `dOps` from the encoder's config/description or the
   standard Opus header defaults), and the chunks (data, timestamp, duration),
-  base64 like the video chunks. If neither codec is supported, throw a clear
+  base64 like the video chunks. The encoder delay is handled with an edit list
+  (`elst`): for AAC, the priming is measured by encoding and decoding an impulse
+  (0 samples in the Chrome used here, which compensates itself); for Opus the
+  PreSkip stays in `dOps` only, with `elst` media_time 0, because Chrome's
+  ffmpeg-based demuxer already applies it. If neither codec is supported, throw a clear
   error naming the browser (like `UnsupportedCodecError`).
 - **MP4 writer** (`src/render/mp4.ts`): an optional second track. `soun`
   handler (`hdlr`), `smhd`, sample entry `mp4a` + `esds` (from the
@@ -228,9 +238,10 @@ WebCodecs `AudioDecoder` or `decodeAudioData` on the MP4 to confirm it plays).
   today's silent render with estimated timings. The voice comes from the
   storyboard (`voice`, default `af_heart`); there is no `--voice` flag.
   Print the audio codec in the summary line. Update `src/render/args.ts`.
-- `examples/showcase/storyboard*.json`: add `"voice": "af_heart"`; make sure
-  every scene's narration still fits (drop explicit `durationMs` on narrated
-  scenes where the audio should drive length).
+- `examples/showcase/storyboard*.json`: add `"voice": "af_heart"`. The showcases keep
+  their explicit `durationMs` values, because the choreography (cursor click, typing,
+  highlight walks) is timed inside them; raise a scene's `durationMs` only when
+  `narration-fit` reports an error.
 - `docs/agent-guide.md`: a short "Narration" section (voice field, stock voices,
   audio-driven timing, `narration-fit`, `--no-narration`). README: one line.
 - Render both showcases with narration; check the scenes still look right in

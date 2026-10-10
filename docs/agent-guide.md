@@ -247,7 +247,7 @@ The storyboard's `voice` picks it:
   scene or remove `durationMs`.
 - `npx tsx scripts/narrate.ts <storyboard.json>` speaks the narration ahead of
   time, so `scripts/check.ts` and `scripts/stills.ts` use the real timings.
-  `scripts/render.ts` narrates by itself; `--no-narration` renders silent, with
+  `scripts/render.ts` narrates by itself; `--no-narration` renders without a voice, with
   timings estimated from the word count.
 
 ```json
@@ -426,8 +426,11 @@ Brand colors on a light base:
 
 ## 4. Checks
 
-Run `npx tsx scripts/check.ts <storyboard.json>` after writing the storyboard
-and after every fix. Storyboard checks run first, then the frame checks.
+If the storyboard has narration, run `npx tsx scripts/narrate.ts <storyboard.json>`
+first, so the checks (and `scripts/stills.ts`) use the real audio timing and not
+estimates. Then run `npx tsx scripts/check.ts <storyboard.json>` after writing
+the storyboard and after every fix. Storyboard checks run first, then the frame
+checks.
 
 - **Storyboard checks.**
   - `transition` (warn): a boundary has no chosen transition.
@@ -436,6 +439,9 @@ and after every fix. Storyboard checks run first, then the frame checks.
   - `media` (error): a `VideoClip` or `Image` file is missing or unreadable.
     Paths resolve from the storyboard's folder. Frames are not checked until
     these are fixed.
+  - `narration-fit` (error): a scene's `durationMs` is shorter than its lead
+    + narration audio + tail (needs the narration spoken first). Lengthen the
+    scene or remove `durationMs`.
 - **Frame checks** on the start, middle and end of every scene: `overflow`
   (text clipped or off frame), `safe-area` (inside the `safe` profile's UI-free
   zone, with text also off the 9:16 button rail), `contrast` (WCAG) and
