@@ -321,6 +321,38 @@ export interface TypingToken extends MotionToken {
 }
 
 /**
+ * A scripted cursor (the owner's reference): it fades in `travelPx` from its
+ * target, moves there over `ms` on `curve`, and clicks: it presses to
+ * `pressScale` and comes back to 1 over `pressMs`, while a soft ring in the
+ * text colour grows to `ringPx` across and fades from `ringOpacity` over `ringMs`.
+ */
+export interface CursorToken extends MotionToken {
+  /** Height of the pointer, in px. */
+  sizePx: number;
+  /** How far from its target the cursor starts, in px. */
+  travelPx: number;
+  pressScale: number;
+  pressMs: number;
+  ringPx: number;
+  ringMs: number;
+  /** Opacity of the ring as the click lands, 0..1. */
+  ringOpacity: number;
+}
+
+/**
+ * An element lifting out of its window as a floating card (the owner's
+ * reference). It moves with `enter`; at rest it is `scale` times its size
+ * (less if the room beside the window is smaller) under a shadow `shadowYPx`
+ * down and `shadowBlurPx` wide, and the place it left keeps `ghostOpacity`.
+ */
+export interface LiftOutToken {
+  scale: number;
+  shadowYPx: number;
+  shadowBlurPx: number;
+  ghostOpacity: number;
+}
+
+/**
  * Word-highlight captions (design v3, life #4): each page enters over `ms`
  * from `fromScale` and `risePx` below its place; the word being spoken turns
  * accent and scales to `wordScale` over `wordMs` (4 frames at 30 fps), or over
@@ -391,6 +423,10 @@ export interface ThemeMotion {
   flow: FlowToken;
   /** Text typed with a caret: terminal commands, a chat composer, an address bar. */
   typing: TypingToken;
+  /** A cursor moving to a button and clicking it. */
+  cursor: CursorToken;
+  /** An element leaving its window to float as a card beside it. */
+  liftOut: LiftOutToken;
   /** A band of light crossing an element once: a card lighting up, a number landing. */
   shine: ShineToken;
   /** A caption page entering and the spoken word lighting up. */

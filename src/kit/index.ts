@@ -38,6 +38,8 @@ export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./
 export { Ground, groundStyle, type GroundProps } from "./Ground";
 export { grainSeed, gridBreath, meshBlobs, type MeshBlob } from "./groundMotion";
 export { Shine, shineBand, shineGradient, shineText, type ShineBand, type ShineProps } from "./shine";
+export { Cursor, cursorAt, cursorTiming, type CursorProps, type CursorState, type CursorTiming } from "./cursor";
+export { liftPose, liftScale, liftShadow, type LiftEnds, type LiftPlace, type LiftPose } from "./liftOut";
 export { AppWindow, BrowserWindow, slotTransform, windowLayout, type AppWindowProps, type BrowserWindowProps, type SlotContent } from "./windows";
 
 export const kit: Record<string, KitComponent> = {

@@ -21,8 +21,10 @@ export type {
   DriftToken,
   GridBreatheToken,
   LiftToken,
+  LiftOutToken,
   MeshSpec,
   CubicBezier,
+  CursorToken,
   CurveName,
   ExitToken,
   FlowToken,
@@ -105,11 +107,13 @@ export { Ground, groundStyle, type GroundProps } from "./kit";
 export { grainSeed, gridBreath, meshBlobs, type MeshBlob } from "./kit";
 export { Section, sectionLayout, sectionTiming, type SectionContent, type SectionLayout, type SectionProps } from "./kit/Section";
 export * from "./kit/windows";
-export { ChatWindow, chatTiming, chatWindowLayout, type ChatAvatar, type ChatMessage, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";
+export { ChatWindow, chatMoments, chatTiming, chatWindowLayout, type ChatAction, type ChatAvatar, type ChatCursor, type ChatLift, type ChatMessage, type ChatMoments, type ChatReaction, type ChatSidebar, type ChatTiming, type ChatWindowLayout, type ChatWindowProps } from "./kit/ChatWindow";
 export { AnchorProvider, Arrow, anchorPoint, arrowGeometry, arrowTiming, pointAlong, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type ArrowProps, type Point } from "./kit/Arrow";
 export { FlowDotMark, flowDot, flowGlow, type FlowDot } from "./kit/flow";
 export { Shine, shineBand, shineGradient, shineText, type ShineBand, type ShineProps } from "./kit/shine";
 export { highlightAt, highlightLevel, highlightShineMs, highlightStops, type HighlightProgression, type HighlightSpec, type HighlightStop } from "./kit/progression";
+export { Cursor, cursorAt, cursorTiming, type CursorProps, type CursorState, type CursorTiming } from "./kit/cursor";
+export { liftPose, liftScale, liftShadow, type LiftEnds, type LiftPlace, type LiftPose } from "./kit/liftOut";
 export { Card, CardFace, cardHeight, cardMetrics, type CardData, type CardProps } from "./kit/Card";
 export { CardRow, cardRowLayout, cardRowTiming, type CardRowLayout, type CardRowProps } from "./kit/CardRow";
 export { FeatureList, featureListTiming, type FeatureItem, type FeatureListProps } from "./kit/FeatureList";

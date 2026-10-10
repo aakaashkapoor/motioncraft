@@ -8,12 +8,18 @@
 // conversation plays at the same pace in any scene, speeding up only when a
 // scene is too short to fit it. In 9:16 the sidebar collapses into the header;
 // in a narrow 16:9 area (a Section slot) the window stacks over its cards as in 9:16.
+// The owner's reference's interface moment: a message can carry actions
+// (Approve / Reject); a scripted `cursor` moves to one and clicks it, and the
+// buttons resolve ("Approved by ..." with a check). A message can then lift
+// out of the window and settle as a floating card where cards go (see
+// `liftOut`), carrying its `shareId` into the next scene.
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { Seed } from "../engine/random";
+import { Icon } from "../icons";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import type { Rect, Size } from "../layout/frame";
 import { estimateLines, estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
@@ -22,7 +28,9 @@ import { contrastRatio } from "../theme/contrast";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { useSceneTime, type SceneTime } from "./frameContext";
 import { Caret } from "./Caret";
-import { arrive, exitOpacity, fade, fitSequence, tween, type Timed } from "./motion";
+import { Cursor, cursorAt, cursorTiming } from "./cursor";
+import { liftPose, liftScale, liftShadow, type LiftEnds } from "./liftOut";
+import { arrive, exitOpacity, fade, fitSequence, pulse, tween, type Timed } from "./motion";
 import type { KitProps } from "./types";
 import { caretBlink, typedText, typingSpan, type TypingSpan } from "./typing";
 import { windowWidth } from "./windowLayout";
@@ -39,6 +47,15 @@ export interface ChatReaction {
   count?: number;
 }
 
+/** A button under a message, such as Approve or Reject. */
+export interface ChatAction {
+  /** What a `cursor` targets. Unique within the window. */
+  id: string;
+  label: string;
+  /** Shown with a check in place of the buttons once this action is clicked, e.g. "Approved by Maya Chen". Default: the label. */
+  resolved?: string;
+}
+
 export interface ChatMessage {
   author: string;
   /** Default: the author's initials on a theme color. */
@@ -52,6 +69,20 @@ export interface ChatMessage {
   highlight?: boolean;
   /** Type it into the composer, then send it (the viewer's own message), instead of showing a typing indicator. */
   typed?: boolean;
+  /** Buttons under the text; the first is the filled, primary one. */
+  actions?: ChatAction[];
+  /** Morphs the message (or, once it has lifted out, its card) across a shared-element transition. */
+  shareId?: string;
+  /** Lift the message out of the window to float as a card beside it, at `atMs` on the chat's clock (default: a beat after it lands or, if the cursor clicks one of its actions, once the cursor has gone). */
+  lift?: { atMs?: number };
+}
+
+/** A scripted click on an action. */
+export interface ChatCursor {
+  /** The `id` of an action in the messages. */
+  target: string;
+  /** When it clicks, in ms on the chat's clock (from the scene's start, less any delay a slot puts on its content). Default: once the action's message has landed, a beat has passed and the cursor has moved in. */
+  atMs?: number;
 }
 
 export interface ChatSidebar {
@@ -71,6 +102,8 @@ export interface ChatWindowProps extends KitProps {
   shareId?: string;
   /** Varies the composer's typing rhythm; the same seed types the same way every time. Default 0. */
   seed?: Seed;
+  /** A cursor that moves to an action and clicks it, resolving it. */
+  cursor?: ChatCursor;
 }
 
 export interface ChatTiming {
@@ -86,6 +119,13 @@ export interface ChatTiming {
 const MAX_WINDOW_WIDTH = 1500;
 /** Share of the 16:9 width the window takes when cards sit beside it. */
 const WINDOW_SHARE_WITH_CARDS = 0.62;
+/** Narrowest share of the 16:9 width the window shrinks to, so a lifted card fits beside it at full size. */
+const MIN_WINDOW_SHARE_WITH_LIFT = 0.45;
+const SHARE_STEP = 0.01;
+/** How far a button's fill moves away from its label's colour as the cursor arrives. */
+const HOVER_TINT = 0.12;
+/** Stacked, at least this share of a lifted card's height sits below the window; the rest floats in front of it. */
+const LIFT_BELOW_SHARE = 0.5;
 /** Share of the 9:16 height the window takes when cards sit below it. */
 const WINDOW_SHARE_TALL = 0.66;
 const SIDEBAR_SHARE = 0.26;
@@ -169,6 +209,48 @@ export function chatTiming(theme: Theme, messages: number | readonly Typed[], ca
   return chatSequence(theme, messages, cardCount, time, seed).messages;
 }
 
+export interface ChatMoments {
+  /** When the cursor clicks its target, if there is one. */
+  clickMs?: number;
+  /** When each message lifts out; undefined for those that stay. */
+  liftMs: Array<number | undefined>;
+}
+
+type MomentsInput = Pick<ChatWindowProps, "messages" | "cursor" | "cards">;
+
+/** The message holding the action `target`; throws, naming the actions there are, if none does. */
+function targetMessage(messages: readonly ChatMessage[], target: string): number {
+  const index = messages.findIndex((m) => m.actions?.some((a) => a.id === target));
+  if (index >= 0) return index;
+  const known = messages.flatMap((m) => m.actions?.map((a) => a.id) ?? []);
+  throw new Error(`ChatWindow: cursor target "${target}" is not an action in the messages (actions: ${known.length ? known.join(", ") : "none"})`);
+}
+
+/**
+ * The interface moments, in ms: the cursor clicks once its target's message
+ * has landed and a beat has passed (it fades in then and moves over the
+ * `cursor` token); a message lifts out once the cursor has gone from a click
+ * on it, or a beat after it lands. Times a storyboard gives are kept.
+ */
+export function chatMoments(theme: Theme, { messages, cursor, cards }: MomentsInput, time?: SceneTime, seed: Seed = 0): ChatMoments {
+  const { beat, fx } = theme.motion;
+  const timing = chatSequence(theme, messages, cards?.length ?? 0, time, seed).messages;
+  const target = cursor === undefined ? undefined : targetMessage(messages, cursor.target);
+  const clickMs = cursor === undefined ? undefined : (cursor.atMs ?? timing[target!]!.appear[1] + beat.ms + fx.ms + theme.motion.cursor.ms);
+  const liftMs = messages.map((m, i) => {
+    if (m.lift === undefined) return undefined;
+    if (m.lift.atMs !== undefined) return m.lift.atMs;
+    return i === target ? cursorTiming(theme, clickMs!).leaveMs[1] : timing[i]!.appear[1] + beat.ms;
+  });
+  return { clickMs, liftMs };
+}
+
+/** A lifting message's card: where it lifts from and settles (frame px), and its unscaled size (the height is an estimate). */
+export interface ChatLift extends LiftEnds {
+  width: number;
+  height: number;
+}
+
 export interface ChatWindowLayout {
   window: Rect;
   /** Where the cards stack, when there are any. */
@@ -183,9 +265,14 @@ export interface ChatWindowLayout {
   avatarSize: number;
   headerHeight: number;
   composerHeight: number;
+  /** Each lifting message's card; undefined for those that stay. */
+  lifts: Array<ChatLift | undefined>;
 }
 
 type LayoutInput = Pick<ChatWindowProps, "messages" | "sidebar" | "cards">;
+
+/** A lifted card's padding: a card's (see `cardMetrics`). */
+const liftPadding = (theme: Theme, aspect: Aspect) => (aspect === "9:16" ? theme.spacing.md : Math.round(theme.spacing.md * 0.8));
 
 /** Height of one line of text in a ramp step, in px. */
 const lineOf = (spec: TypeSpec) => spec.size * spec.lineHeight;
@@ -206,12 +293,16 @@ function sizesFor(theme: Theme, aspect: Aspect, textRole: TypeRole, typedTexts: 
   return { textRole, text, meta, avatarSize, headerHeight, composerHeight };
 }
 
+/** Height of an action button (and of what it resolves to). */
+const actionHeight = (theme: Theme, meta: TypeSpec) => lineOf(meta) + 2 * theme.spacing.xxs + 2 * theme.hairline;
+
 /** Estimated height of one message with message text `text`, in a list `width` px wide. */
 function messageHeight(theme: Theme, m: ChatMessage, width: number, text: TypeSpec, meta: TypeSpec, avatarSize: number): number {
   const { spacing } = theme;
   const textWidth = width - avatarSize - spacing.xs - 2 * spacing.xs;
   let height = lineOf(meta) + spacing.xxs + estimateTextHeight(m.text, textWidth, text);
   if (m.reactions?.length) height += spacing.xxs + lineOf(meta) + spacing.xs;
+  if (m.actions?.length) height += spacing.xs + actionHeight(theme, meta);
   return Math.max(avatarSize, height) + 2 * spacing.xxs;
 }
 
@@ -222,44 +313,91 @@ function messageHeight(theme: Theme, m: ChatMessage, width: number, text: TypeSp
  * `MIN_HEIGHT_SHARE` of the room); alone, it centers on the frame's optical
  * center (see `blockCenterY`). Stacked, it is a window's width, centered. If
  * no size fits, the smallest: the window then overflows visibly and the
- * layer-1 checks report it.
+ * layer-1 checks report it. A lifting message settles where cards go: beside
+ * the window in a wide area (the window narrows until the card fits there at
+ * full size); otherwise below it, the two centered together, and where the
+ * room runs out the card floats in front of the window's bottom edge rather
+ * than shrinking.
  */
 export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sidebar, cards }: LayoutInput, slot?: Rect): ChatWindowLayout {
   const area = slot ?? contentArea(theme, aspect);
-  const { spacing } = theme;
+  const { spacing, hairline } = theme;
   const gap = spacing.md;
   const hasCards = (cards?.length ?? 0) > 0;
+  const hasLift = messages.some((m) => m.lift !== undefined);
+  if (hasCards && hasLift) throw new Error("ChatWindow: a message that lifts out settles where the cards go; give it cards or a lift, not both");
+  const side = hasCards || hasLift;
   const wide = aspect === "16:9" && area.width >= area.height * WIDE_RATIO;
-  const width = !wide ? windowWidth(theme, aspect, area).width : hasCards ? Math.floor((area.width - gap) * WINDOW_SHARE_WITH_CARDS) : Math.min(area.width, MAX_WINDOW_WIDTH);
-  const x = wide && hasCards ? area.x : area.x + Math.floor((area.width - width) / 2);
+  const pad = liftPadding(theme, aspect);
+  const sidebarFor = (w: number) => (wide && sidebar ? Math.min(MAX_SIDEBAR_WIDTH, Math.floor(w * SIDEBAR_SHARE)) : 0);
+  // A lifted card holds the message at its width in the list.
+  const cardWidthFor = (w: number) => w - sidebarFor(w) - 2 * spacing.md + 2 * pad;
+  const sideWidth = (share: number) => Math.floor((area.width - gap) * share);
+  let width = !wide ? windowWidth(theme, aspect, area).width : side ? sideWidth(WINDOW_SHARE_WITH_CARDS) : Math.min(area.width, MAX_WINDOW_WIDTH);
+  if (wide && hasLift) {
+    for (let share = WINDOW_SHARE_WITH_CARDS; share >= MIN_WINDOW_SHARE_WITH_LIFT; share -= SHARE_STEP) {
+      width = sideWidth(share);
+      if (cardWidthFor(width) * theme.motion.liftOut.scale <= area.width - gap - width) break;
+    }
+  }
+  const x = wide && side ? area.x : area.x + Math.floor((area.width - width) / 2);
+  // Stacked cards take their share of the height; a lifted card floats in front of the window instead.
   const room = !wide && hasCards ? Math.floor((area.height - gap) * WINDOW_SHARE_TALL) : area.height;
-  const sidebarWidth = wide && sidebar ? Math.min(MAX_SIDEBAR_WIDTH, Math.floor(width * SIDEBAR_SHARE)) : 0;
+  const sidebarWidth = sidebarFor(width);
   const listWidth = width - sidebarWidth - 2 * spacing.md;
   // The composer's text: inside its padding, its border and the text box's own padding.
-  const composerWidth = width - sidebarWidth - 4 * spacing.xs - 2 * theme.hairline;
+  const composerWidth = width - sidebarWidth - 4 * spacing.xs - 2 * hairline;
   const typedTexts = messages.filter((m) => m.typed).map((m) => m.text);
 
   const candidates = TEXT_ROLES.map((role) => sizesFor(theme, aspect, role, typedTexts, composerWidth));
-  const needed = (s: (typeof candidates)[number]) => {
-    const list = messages.reduce((sum, m) => sum + messageHeight(theme, m, listWidth, s.text, s.meta, s.avatarSize), 0);
+  type Sizes = (typeof candidates)[number];
+  const heightsOf = (s: Sizes) => messages.map((m) => messageHeight(theme, m, listWidth, s.text, s.meta, s.avatarSize));
+  const cardSizeOf = (s: Sizes, i: number) => ({ width: cardWidthFor(width), height: Math.ceil(heightsOf(s)[i]! + 2 * pad + 2 * hairline) });
+  // Stacked, a lifted card's scale: it may float over the window, so it has the whole area.
+  const stackedScale = (size: Size) => liftScale(theme, size, area);
+  const shownBelow = (s: Sizes, share: number) =>
+    wide ? 0 : Math.max(0, ...messages.map((m, i) => (m.lift === undefined ? 0 : share * cardSizeOf(s, i).height * stackedScale(cardSizeOf(s, i)))));
+  // Stacked with a lifted card, the window leaves room for the card's lower part.
+  const roomFor = (s: Sizes) => (wide || !hasLift ? room : room - gap - Math.ceil(shownBelow(s, LIFT_BELOW_SHARE)));
+  const needed = (s: Sizes) => {
+    const list = heightsOf(s).reduce((sum, h) => sum + h, 0);
     const chat = list + spacing.xs * (Math.max(0, messages.length - 1) + 2) + s.headerHeight + s.composerHeight;
-    const side = sidebarWidth > 0 && sidebar ? 2 * spacing.md + (sidebar.channels.length + 1) * (lineOf(s.meta) + 2 * spacing.xxs) + spacing.xs : 0;
-    return Math.max(chat, side);
+    const sideBar = sidebarWidth > 0 && sidebar ? 2 * spacing.md + (sidebar.channels.length + 1) * (lineOf(s.meta) + 2 * spacing.xxs) + spacing.xs : 0;
+    return Math.max(chat, sideBar);
   };
-  const sizes = candidates.find((s) => needed(s) <= room) ?? candidates.at(-1)!;
-  const height = Math.min(room, Math.max(Math.ceil(needed(sizes) * CONTENT_SLACK), Math.floor(room * MIN_HEIGHT_SHARE)));
+  const sizes = candidates.find((s) => needed(s) <= roomFor(s)) ?? candidates.at(-1)!;
+  const windowRoom = roomFor(sizes);
+  const height = Math.min(windowRoom, Math.max(Math.ceil(needed(sizes) * CONTENT_SLACK), Math.floor(windowRoom * MIN_HEIGHT_SHARE)));
+  const heights = heightsOf(sizes);
+  const cardSize = (i: number) => cardSizeOf(sizes, i);
+  const below = shownBelow(sizes, 1);
+  const block = { width, height: below > 0 ? Math.min(area.height, height + gap + below) : height };
   // Alone, the window is centered; stacked with cards it sits on top and the cards follow it.
-  const y = !wide && hasCards ? area.y : Math.floor(placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot)).y);
+  const y = !wide && hasCards ? area.y : Math.floor(placeBlock(area, block, blockCenterY(theme, aspect, slot)).y);
   const window = { x, y, width, height };
-  let cardsRect: Rect | undefined;
-  if (hasCards && wide) {
+  let region: Rect | undefined;
+  if (side && wide) {
     // A band centered on the window, as tall as the area allows, so the cards center on it.
     const middle = y + height / 2;
     const half = Math.min(middle - area.y, area.y + area.height - middle);
-    cardsRect = { x: x + width + gap, y: middle - half, width: area.x + area.width - (x + width + gap), height: 2 * half };
+    region = { x: x + width + gap, y: middle - half, width: area.x + area.width - (x + width + gap), height: 2 * half };
   }
-  if (hasCards && !wide) cardsRect = { x, y: y + height + gap, width, height: area.y + area.height - (y + height + gap) };
-  return { window, cards: cardsRect, sidebarWidth, ...sizes };
+  if (side && !wide) region = { x, y: y + height + gap, width, height: area.y + area.height - (y + height + gap) };
+
+  // The list is bottom-aligned: a message's bottom is the list's, less the messages under it.
+  const listBottom = y + height - hairline - sizes.composerHeight - spacing.xs;
+  const lifts = messages.map((m, i): ChatLift | undefined => {
+    if (m.lift === undefined || region === undefined) return undefined;
+    const size = cardSize(i);
+    const under = heights.slice(i + 1).reduce((sum, h) => sum + h + spacing.xs, 0);
+    const from = { x: x + sidebarWidth + spacing.md - pad, bottom: listBottom - under + pad + hairline };
+    const scale = wide ? liftScale(theme, size, region) : stackedScale(size);
+    const shown = { width: size.width * scale, height: size.height * scale };
+    const bottom = wide ? y + height / 2 + shown.height / 2 : Math.min(area.y + area.height, region.y + shown.height);
+    const to = { x: region.x + (region.width - shown.width) / 2, bottom };
+    return { from, to, scale, ...size };
+  });
+  return { window, cards: hasCards ? region : undefined, sidebarWidth, ...sizes, lifts };
 }
 
 function initialsOf(name: string): string {
@@ -310,7 +448,7 @@ function Avatar({ message, size, meta, theme }: { message: ChatMessage; size: nu
   );
 }
 
-function MessageBody({ message, layout, theme, aspect }: { message: ChatMessage; layout: ChatWindowLayout; theme: Theme; aspect: Aspect }) {
+function MessageBody({ message, layout, theme, aspect, actions }: { message: ChatMessage; layout: ChatWindowLayout; theme: Theme; aspect: Aspect; actions?: ReactNode }) {
   const { colors, fonts, spacing, radius, weights } = theme;
   const { text, meta } = layout;
   return (
@@ -337,6 +475,7 @@ function MessageBody({ message, layout, theme, aspect }: { message: ChatMessage;
           <span style={{ color: colors.textMuted }}>{message.time}</span>
         </div>
         <div style={{ color: colors.text, fontFamily: fonts.body, ...typeCss(text), overflowWrap: "break-word" }}>{message.text}</div>
+        {actions}
         {message.reactions !== undefined && message.reactions.length > 0 && (
           <div style={{ display: "flex", gap: spacing.xxs }}>
             {message.reactions.map((reaction, i) => (
@@ -363,6 +502,99 @@ function MessageBody({ message, layout, theme, aspect }: { message: ChatMessage;
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Where a message's actions are: which was clicked, how far they have resolved, and the cursor if it is on its way to one. */
+interface ActionsState {
+  /** The clicked action, from the click on. */
+  clicked?: string;
+  /** 0..1: the buttons giving way to the resolved line. */
+  resolved: number;
+  /** The resolved line's `pop` as it lands, 0 at rest. */
+  pop: number;
+  /** The action the cursor targets, and 0..1 how far it is lit as the cursor arrives. */
+  target?: string;
+  hover: number;
+  /** The cursor, drawn in its target's place. */
+  cursor?: ReactNode;
+}
+
+function actionStyle(theme: Theme, layout: ChatWindowLayout, primary: boolean, hover: number): CSSProperties {
+  const { colors, fonts, spacing, radius, hairline, weights } = theme;
+  const fill = primary ? colors.accent : colors.surface;
+  const label = primary ? colors.accentText : colors.text;
+  // Lit as the cursor arrives: tinted away from the label, so it reads at least as well.
+  const away = contrastRatio(label, colors.surface) >= contrastRatio(label, colors.text) ? colors.surface : colors.text;
+  return {
+    padding: `${spacing.xxs}px ${spacing.sm}px`,
+    borderRadius: radius.sm,
+    border: `${hairline}px solid ${primary ? colors.accent : colors.border}`,
+    backgroundColor: hover > 0 ? mixColors(fill, away, HOVER_TINT * hover) : fill,
+    color: label,
+    fontFamily: fonts.body,
+    ...typeCss(layout.meta),
+    fontWeight: weights.semibold,
+    whiteSpace: "nowrap",
+  };
+}
+
+/**
+ * A message's buttons and, once one is clicked, the line they resolve to (a
+ * check and, say, "Approved by Maya Chen"), in the same place. The cursor
+ * draws in a hidden copy of the buttons, so it lands on its target exactly
+ * and stays while the buttons fade.
+ */
+function Actions({ actions, layout, theme, state }: { actions: ChatAction[]; layout: ChatWindowLayout; theme: Theme; state: ActionsState }) {
+  const { colors, fonts, spacing, radius, hairline, weights } = theme;
+  const cell: CSSProperties = { gridArea: "1 / 1", display: "flex", gap: spacing.xs, alignItems: "center" };
+  const clicked = actions.find((a) => a.id === state.clicked);
+  return (
+    <div style={{ display: "grid", justifyItems: "start", marginTop: spacing.xs - spacing.xxs }}>
+      <div data-chat-actions="" style={{ ...cell, opacity: 1 - state.resolved }}>
+        {actions.map((action, i) => (
+          <div key={action.id} data-chat-action={action.id} style={actionStyle(theme, layout, i === 0, action.id === state.target ? state.hover : 0)}>
+            {action.label}
+          </div>
+        ))}
+      </div>
+      {clicked !== undefined && (
+        <div
+          data-chat-resolved={clicked.id}
+          style={{
+            ...cell,
+            gap: spacing.xxs,
+            opacity: state.resolved,
+            transform: `scale(${Math.round((1 + (theme.motion.pop.scale - 1) * state.pop) * 1000) / 1000})`,
+            transformOrigin: "0 50%",
+            padding: `${spacing.xxs}px ${spacing.sm}px ${spacing.xxs}px ${spacing.xs}px`,
+            borderRadius: radius.pill,
+            border: `${hairline}px solid ${colors.border}`,
+            backgroundColor: colors.surfaceAlt,
+            color: colors.text,
+            fontFamily: fonts.body,
+            ...typeCss(layout.meta),
+            fontWeight: weights.semibold,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <Icon name="check" size={Math.round(layout.meta.size)} color={colors.accent} strokeWidth={3} />
+          {clicked.resolved ?? clicked.label}
+        </div>
+      )}
+      {state.cursor !== undefined && (
+        <div aria-hidden style={{ ...cell, visibility: "hidden" }}>
+          {actions.map((action, i) => (
+            <div key={action.id} {...(action.id === state.target ? { "data-cursor-target": action.id } : {})} style={{ ...actionStyle(theme, layout, i === 0, 0), position: "relative" }}>
+              {action.label}
+              {action.id === state.target && (
+                <div style={{ position: "absolute", left: "50%", top: "60%", visibility: "visible" }}>{state.cursor}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -534,6 +766,17 @@ function Composer({ channel, layout, theme, typing }: { channel: string; layout:
   );
 }
 
+/** A message's own box in the list: a highlighted one is tinted and marked with the accent. */
+function messageStyle(theme: Theme, message: ChatMessage): CSSProperties {
+  const { colors, spacing, radius } = theme;
+  return {
+    padding: spacing.xxs,
+    borderRadius: radius.sm,
+    borderLeft: `${spacing.xxs / 2}px solid ${message.highlight ? colors.accent : "transparent"}`,
+    backgroundColor: message.highlight ? mixColors(colors.surface, colors.accent, 0.08) : "transparent",
+  };
+}
+
 /** A message or card rising `distance` px into place over its window: it moves on `enter`'s curve and fades in with `fx` (both at the sequence's pace). */
 function rise(theme: Theme, ms: number, [start, end]: [number, number], distance: number, pace: number) {
   const fx: Timed = { ...theme.motion.fx, ms: theme.motion.fx.ms * pace };
@@ -548,7 +791,24 @@ function typingOpacity(theme: Theme, ms: number, [start, end]: [number, number],
   return Math.min(fade(fast, ms - start), 1 - fade(fast, ms - (end - fast.ms)));
 }
 
-export function ChatWindow({ progress, theme, aspect, area: slot, channel, messages, sidebar, cards, shareId, seed = 0 }: ChatWindowProps) {
+/** The actions of message `index` at `ms`: resolving from the click on, lit as the cursor arrives, with the cursor if it targets one of them. */
+function actionsAt(theme: Theme, ms: number, message: ChatMessage, cursor: ChatCursor | undefined, clickMs: number | undefined, withCursor: boolean): ActionsState {
+  const fast = theme.motion["fx.fast"];
+  const target = cursor !== undefined && message.actions?.some((a) => a.id === cursor.target) ? cursor.target : undefined;
+  if (target === undefined || clickMs === undefined) return { resolved: 0, pop: 0, hover: 0 };
+  const clicked = ms >= clickMs;
+  return {
+    clicked: clicked ? target : undefined,
+    resolved: clicked ? fade(fast, ms - clickMs) : 0,
+    pop: clicked ? Math.max(0, pulse(theme.motion.pop, ms - clickMs)) : 0,
+    target,
+    hover: clicked ? 0 : fade(fast, ms - (clickMs - fast.ms)),
+    // Only while it shows: its copy of the buttons is text too.
+    cursor: withCursor && cursorAt(theme, ms, clickMs).opacity > 0 ? <Cursor theme={theme} ms={ms} clickMs={clickMs} /> : undefined,
+  };
+}
+
+export function ChatWindow({ progress, theme, aspect, area: slot, channel, messages, sidebar, cards, shareId, seed = 0, cursor }: ChatWindowProps) {
   const area = slot ?? contentArea(theme, aspect);
   const layout = chatWindowLayout(theme, aspect, { messages, sidebar, cards }, slot);
   const { colors, spacing, radius, cardShadow } = theme;
@@ -557,9 +817,14 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
   const enter = arrive(theme, ms, theme.motion.leadMs);
   const exit = exitOpacity(theme, time, theme.motion.enter.ms);
   const { messages: timing, composer, cards: cardTimes, pace } = chatSequence(theme, messages, cards?.length ?? 0, time, seed);
+  const { clickMs, liftMs } = chatMoments(theme, { messages, cursor, cards }, time, seed);
+  const poses = layout.lifts.map((lift, i) => (lift === undefined ? undefined : liftPose(theme, ms, liftMs[i]!, lift)));
+  const pad = liftPadding(theme, aspect);
   const shadow = `0 ${cardShadow.y}px ${cardShadow.blur}px ${withAlpha(colors.shadow, cardShadow.opacity)}`;
   const at = (rect: Rect): CSSProperties => ({ position: "absolute", left: rect.x - area.x, top: rect.y - area.y, width: rect.width, height: rect.height });
   const slide = spacing.md;
+  const actionsOf = (message: ChatMessage, withCursor: boolean) =>
+    message.actions?.length ? <Actions actions={message.actions} layout={layout} theme={theme} state={actionsAt(theme, ms, message, cursor, clickMs, withCursor)} /> : undefined;
 
   return (
     <div style={{ position: "absolute", left: area.x, top: area.y, width: area.width, height: area.height, opacity: exit }}>
@@ -596,22 +861,19 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
             {messages.map((message, i) => {
               const { typing, appear } = timing[i]!;
               const shown = rise(theme, ms, appear, spacing.xs * 1.5, pace);
+              const pose = poses[i];
+              // Once lifted, the card carries the shareId and this is the ghost of where it was.
+              const share = message.shareId !== undefined && !pose?.lifted ? { "data-share-id": message.shareId } : {};
               // The dots pulse only while the indicator shows.
               const local = Math.min(1, Math.max(0, (ms - typing[0]) / (typing[1] - typing[0])));
               return (
                 <div key={i} style={{ position: "relative" }}>
                   <div
                     data-chat-message={i}
-                    style={{
-                      opacity: shown.opacity,
-                      transform: `translateY(${shown.offset}px)`,
-                      padding: spacing.xxs,
-                      borderRadius: radius.sm,
-                      borderLeft: `${spacing.xxs / 2}px solid ${message.highlight ? colors.accent : "transparent"}`,
-                      backgroundColor: message.highlight ? mixColors(colors.surface, colors.accent, 0.08) : "transparent",
-                    }}
+                    {...share}
+                    style={{ ...messageStyle(theme, message), opacity: Math.round(shown.opacity * (pose?.ghost ?? 1) * 10000) / 10000, transform: `translateY(${shown.offset}px)` }}
                   >
-                    <MessageBody message={message} layout={layout} theme={theme} aspect={aspect} />
+                    <MessageBody message={message} layout={layout} theme={theme} aspect={aspect} actions={actionsOf(message, !pose?.lifted)} />
                   </div>
                   <div
                     data-chat-typing={i}
@@ -626,6 +888,36 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
           <Composer channel={channel} layout={layout} theme={theme} typing={composerAt(theme, messages, composer, ms)} />
         </div>
       </div>
+      {layout.lifts.map((lift, i) => {
+        const pose = poses[i];
+        if (lift === undefined || pose === undefined || !pose.lifted) return null;
+        const message = messages[i]!;
+        return (
+          <div
+            key={`lift-${i}`}
+            data-chat-lift={i}
+            {...(message.shareId === undefined ? {} : { "data-share-id": message.shareId })}
+            style={{
+              position: "absolute",
+              left: Math.round((lift.to.x - area.x) * 100) / 100,
+              bottom: Math.round((area.y + area.height - lift.to.bottom) * 100) / 100,
+              width: lift.width,
+              padding: pad,
+              boxSizing: "border-box",
+              backgroundColor: colors.surface,
+              border: `${theme.hairline}px solid ${colors.border}`,
+              borderRadius: radius.md,
+              boxShadow: liftShadow(theme, pose.shadow),
+              transformOrigin: "0 100%",
+              transform: `translate(${pose.dx}px, ${pose.dy}px) scale(${pose.scale})`,
+            }}
+          >
+            <div style={messageStyle(theme, message)}>
+              <MessageBody message={message} layout={layout} theme={theme} aspect={aspect} actions={actionsOf(message, false)} />
+            </div>
+          </div>
+        );
+      })}
       {cards && layout.cards && (
         <div
           style={{

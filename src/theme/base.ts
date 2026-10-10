@@ -113,6 +113,8 @@ export const baseMotion: ThemeMotion = {
   beat: { ms: 400 },
   flow: { ms: 1400, curve: "expoInOut", dotPx: 14, glowPx: 6, glowOpacity: 0.25 },
   typing: { ms: 120, curve: FX_CURVE, cps: 38, jitter: 0.3, pauseMinMs: 200, pauseMaxMs: 400, blinkMs: 1060 },
+  cursor: { ms: 600, curve: [0.42, 0, 0.58, 1], sizePx: 64, travelPx: 360, pressScale: 0.92, pressMs: 250, ringPx: 112, ringMs: 500, ringOpacity: 0.3 },
+  liftOut: { scale: 1.04, shadowYPx: 24, shadowBlurPx: 64, ghostOpacity: 0.3 },
   shine: { ms: 800, curve: [0.6, 0.6, 0, 1], widthShare: 0.3, skewDeg: 20, opacity: 0.35 },
   // Life #4: a page settles in over 5 frames without overshoot; the spoken word pops over 4.
   caption: { ms: 170, curve: [0.34, 0.8, 0.34, 1], fromScale: 0.9, risePx: 24, wordMs: 133, wordScale: 1.04 },

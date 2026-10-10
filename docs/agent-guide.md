@@ -730,6 +730,38 @@ typing rhythm.
 }
 ```
 
+The interface moment from the owner's reference: a message can carry
+`actions` (buttons; the first is the filled one), and a `cursor` moves to one
+by its `id` and clicks it (`atMs`, the click, defaults to a beat after the
+message lands). The buttons then resolve to the action's `resolved` text with
+a check. A message with `lift` leaves the window at `lift.atMs` (default: once
+the cursor has gone) and settles as a floating card beside it (in front of the
+window's bottom in 9:16); give it a `shareId` and the next scene's element with
+the same `shareId` takes it over. `lift` and `cards` don't mix. All times are
+ms on the chat's own clock. A chat with a click needs about 10 s on screen.
+
+```json
+{
+  "id": "approve",
+  "component": "ChatWindow",
+  "props": {
+    "channel": "deploys",
+    "messages": [
+      { "author": "Monitor", "badge": "ALERT", "time": "2:14 PM", "text": "Checkout errors are up to 2.3%.", "highlight": true },
+      {
+        "author": "Deploy Bot", "badge": "APP", "time": "2:15 PM", "text": "Hotfix 2.4.1 is ready to roll out.",
+        "actions": [{ "id": "approve", "label": "Approve", "resolved": "Approved by Maya Chen" }, { "id": "reject", "label": "Reject" }],
+        "shareId": "deploy",
+        "lift": { "atMs": 7200 }
+      }
+    ],
+    "cursor": { "target": "approve", "atMs": 5000 }
+  },
+  "narration": "The bot has a hotfix ready, and one click ships it.",
+  "durationMs": 10500
+}
+```
+
 ### Connectors and cards
 
 #### `Arrow`
