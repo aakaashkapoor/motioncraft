@@ -121,7 +121,15 @@ describe("Mp4Writer", () => {
 
 describe("parseRenderArgs", () => {
   it("parses the storyboard and --out", () => {
-    expect(parseRenderArgs(["sb.json", "--out", "out/video.mp4"])).toEqual({ storyboard: "sb.json", out: "out/video.mp4" });
+    expect(parseRenderArgs(["sb.json", "--out", "out/video.mp4"])).toEqual({ storyboard: "sb.json", out: "out/video.mp4", narration: true });
+  });
+
+  it("--no-narration turns narration off", () => {
+    expect(parseRenderArgs(["sb.json", "--out", "a.mp4", "--no-narration"])).toEqual({ storyboard: "sb.json", out: "a.mp4", narration: false });
+  });
+
+  it("has no --voice flag", () => {
+    expect(() => parseRenderArgs(["sb.json", "--out", "a.mp4", "--voice", "af_bella"])).toThrow();
   });
 
   it("rejects bad usage", () => {

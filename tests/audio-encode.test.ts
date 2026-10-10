@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aacAudioSpecificConfig, chunkTicks, opusDOps, usToTicks } from "../src/render/audioEncode";
+import { aacAudioSpecificConfig, chunkTicks, opusDOps, primingFromPeak, usToTicks } from "../src/render/audioEncode";
 import { UnsupportedAudioCodecError } from "../src/render/video";
 
 describe("aacAudioSpecificConfig", () => {
@@ -70,5 +70,23 @@ describe("UnsupportedAudioCodecError", () => {
     const error = new UnsupportedAudioCodecError("Microsoft Edge 120.0", ["mp4a.40.2", "opus"]);
     expect(error.message).toMatch(/^Microsoft Edge 120\.0 cannot encode AAC or Opus audio/);
     expect(error.message).toContain("mp4a.40.2, opus");
+  });
+});
+
+describe("primingFromPeak", () => {
+  it("is the distance from the impulse to the decoded peak", () => {
+    expect(primingFromPeak(0.9, 4096 + 1105, 4096)).toBe(1105);
+    expect(primingFromPeak(0.9, 100, 4096)).toBe(0);
+  });
+
+  it("throws when the impulse did not survive", () => {
+    expect(() => primingFromPeak(0.05, 5000, 4096)).toThrow(/could not measure the AAC encoder delay/);
+    expect(() => primingFromPeak(0, 0, 4096)).toThrow(/could not measure/);
+    expect(() => primingFromPeak(Number.NaN, 0, 4096)).toThrow(/could not measure/);
+  });
+
+  it("rejects an implausible delay", () => {
+    expect(() => primingFromPeak(0.9, 4096 + 4097, 4096)).toThrow(/implausible/);
+    expect(primingFromPeak(0.9, 4096 + 4096, 4096)).toBe(4096);
   });
 });

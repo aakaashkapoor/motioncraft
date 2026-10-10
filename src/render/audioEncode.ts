@@ -265,7 +265,20 @@ async function measureAacPriming(config: AudioEncoderConfig, decoderDescription:
       index++;
     }
   }
-  return Math.max(0, peakAt - impulseAt);
+  return primingFromPeak(peak, peakAt, impulseAt);
+}
+
+/** An impulse quieter than this did not survive the encode, so its position means nothing. */
+const MIN_IMPULSE_PEAK = 0.1;
+/** A real AAC encoder delay is about 1100 to 2100 samples; beyond this the measure is wrong. */
+const MAX_PRIMING_SAMPLES = 4096;
+
+/** The encoder delay from where the decoded impulse peaked; throws when the measurement is not believable. */
+export function primingFromPeak(peak: number, peakAt: number, impulseAt: number): number {
+  if (!(peak >= MIN_IMPULSE_PEAK)) throw new Error("could not measure the AAC encoder delay");
+  const priming = Math.max(0, peakAt - impulseAt);
+  if (priming > MAX_PRIMING_SAMPLES) throw new Error(`could not measure the AAC encoder delay: ${priming} samples is implausible`);
+  return priming;
 }
 
 /** Mixes the plan and encodes it as AAC (or Opus). */
@@ -300,6 +313,9 @@ export async function mixAndEncodeAudio(plan: AudioPlan): Promise<EncodedAudio> 
 
     const decoderConfig = aacConfig === undefined ? opusDOps(plan.sampleRate, AUDIO_CHANNELS, description) : (description ?? aacConfig);
     // Opus carries its delay as the PreSkip of dOps, which decoders (Chrome among them) already honor: an edit list on top would trim it twice.
+    // Keeping PreSkip only in dOps, with the elst media_time 0, deliberately departs from the Opus-in-ISOBMFF
+    // edit-list convention: Chrome's ffmpeg-based demuxer already applies the dOps PreSkip, and putting it in
+    // the edit list as well double-trimmed it (the audio came 6.4 ms early).
     const chunks = frames.map(
       (frame): AudioChunkData => ({
         data: toBase64(frame.data),

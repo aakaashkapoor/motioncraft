@@ -147,13 +147,14 @@ export function missingNarrationNotice(cached: CachedNarration): string | undefi
 
 export async function narrateStoryboard(
   storyboard: Storyboard,
-  options: { synthesizer: Synthesizer; outDir: string; voice?: string },
+  options: { synthesizer: Synthesizer; outDir: string; voice?: string; onProgress?: (done: number, total: number) => void },
 ): Promise<Record<string, SceneNarration>> {
   const { voice, files } = sceneFiles(storyboard, options.outDir, options.voice);
   const result: Record<string, SceneNarration> = {};
   await mkdir(options.outDir, { recursive: true });
 
-  for (const file of files) {
+  for (const [i, file] of files.entries()) {
+    options.onProgress?.(i + 1, files.length);
     const cached = await readCached(file);
     if (cached !== undefined) {
       result[file.sceneId] = cached;

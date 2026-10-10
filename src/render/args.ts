@@ -38,11 +38,13 @@ export function parseStillsArgs(argv: readonly string[]): StillsArgs {
   };
 }
 
-export const RENDER_USAGE = "usage: npx tsx scripts/render.ts <storyboard.json> --out <file.mp4>";
+export const RENDER_USAGE = "usage: npx tsx scripts/render.ts <storyboard.json> --out <file.mp4> [--no-narration]";
 
 export interface RenderArgs {
   storyboard: string;
   out: string;
+  /** Speak the narration and mix it in (the default); false renders silent with estimated timings. */
+  narration: boolean;
 }
 
 /** Parses the arguments for rendering a storyboard to MP4. */
@@ -50,7 +52,7 @@ export function parseRenderArgs(argv: readonly string[]): RenderArgs {
   const { values, positionals } = parseArgs({
     args: [...argv],
     allowPositionals: true,
-    options: { out: { type: "string" } },
+    options: { out: { type: "string" }, "no-narration": { type: "boolean" } },
   });
 
   if (positionals.length !== 1) throw new Error(`expected one storyboard file
@@ -59,7 +61,7 @@ ${RENDER_USAGE}`);
 ${RENDER_USAGE}`);
   if (!values.out.toLowerCase().endsWith(".mp4")) throw new Error(`--out must name an .mp4 file
 ${RENDER_USAGE}`);
-  return { storyboard: positionals[0]!, out: values.out };
+  return { storyboard: positionals[0]!, out: values.out, narration: values["no-narration"] !== true };
 }
 
 export const NARRATE_USAGE = "usage: npx tsx scripts/narrate.ts <storyboard.json> [--offline]";
