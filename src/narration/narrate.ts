@@ -16,7 +16,7 @@ import { encodeWav } from "./wav";
 import { alignWords } from "./wordTimes";
 
 /** Bump to discard every cached narration when how it is made changes. */
-export const NARRATION_CACHE_VERSION = 2;
+export const NARRATION_CACHE_VERSION = 3;
 export const DEFAULT_VOICE = "af_heart";
 /** Silence between two sentences of a scene. */
 export const SENTENCE_GAP_MS = 250;
