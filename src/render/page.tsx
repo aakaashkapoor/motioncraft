@@ -20,6 +20,8 @@ import { WIDE_SHOT, type Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { transitionStyle } from "../transitions";
 import { morphEndpoints, morphProgress, sharedIds, type BoundaryMeasurement, type SharedMeasurements } from "../transitions/shared";
+import { mixAndEncodeAudio, type EncodedAudio } from "./audioEncode";
+import type { AudioPlan } from "./audioPlan";
 import { createPageEncoder, type PageEncoder } from "./encode";
 import { fontLoadRequests } from "./fontFaces";
 import { domImages, loadFonts, pageGate, waitUntilReady } from "./ready";
@@ -197,6 +199,8 @@ export interface PageApi {
   measureFrame(): FrameMeasurement;
   /** Encodes captured frames to H.264 (see `renderVideo`). */
   encoder: PageEncoder;
+  /** Mixes the audio plan and encodes it as AAC or Opus (see `renderVideo`). */
+  mixAndEncodeAudio(plan: AudioPlan): Promise<EncodedAudio>;
 }
 
 declare global {
@@ -340,5 +344,6 @@ export function mountPage(): void {
       }
     },
     encoder: createPageEncoder(),
+    mixAndEncodeAudio,
   };
 }

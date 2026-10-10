@@ -3,7 +3,7 @@
 // <video> to trimStart + sceneTime * rate and holds capture, through the
 // readiness gate, until the seek has finished and that frame is painted. The
 // page never plays it and keeps it muted; `muted` only marks the clip's audio
-// for the future mix (see `clipAudioPlan`).
+// for the audio mix (see `audioPlan`).
 
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import { cancelRender, continueRender, delayRender } from "../render/ready";
