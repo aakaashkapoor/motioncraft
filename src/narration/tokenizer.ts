@@ -4,6 +4,11 @@
 /** The most phoneme ids the model accepts between the two `$` ends. */
 export const MAX_PHONEME_IDS = 510;
 
+/** How many characters of `phonemes` the vocabulary knows, before any cap. */
+export function countPhonemes(phonemes: string, vocab: Readonly<Record<string, number>>): number {
+  return [...phonemes].filter((char) => Object.hasOwn(vocab, char)).length;
+}
+
 export function encodePhonemes(phonemes: string, vocab: Readonly<Record<string, number>>): number[] {
   const ids: number[] = [];
   for (const char of phonemes) {

@@ -72,4 +72,4 @@ Names for any derivative.
 | misaki pronunciation dictionaries (`us_gold.json`, `us_silver.json`) | revision fba1236 | Apache-2.0 | hexgrad — https://github.com/hexgrad/misaki. Downloaded and checked the same way. |
 | English text normalizer (`src/narration/normalize.ts`) | n/a | Apache-2.0 | Ported from kokoro-js (https://github.com/hexgrad/kokoro, hexgrad). kokoro-js itself is not a dependency (its phonemizer bundles GPL eSpeak NG). |
 
-`.npmrc` sets `onnxruntime-node-install-cuda=skip`: onnxruntime-node's install script would otherwise download unpinned CUDA binaries on Linux x64, which breaks the pinned-downloads-only rule in `AGENTS.md`.
+`.npmrc` sets `onnxruntime-node-install-cuda=skip`: onnxruntime-node's install script would otherwise download unpinned CUDA binaries on Linux x64, which breaks the pinned-downloads-only rule in `AGENTS.md`. If npm stops honouring this (npm 12+), set `ONNXRUNTIME_NODE_INSTALL_CUDA=skip` in the environment on Linux and in CI.

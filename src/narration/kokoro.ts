@@ -20,8 +20,8 @@ import {
 } from "./assets";
 import { normalizeText } from "./normalize";
 import { createPhonemizer, type Lexicon } from "./phonemes";
-import { MAX_PHONEMES, tooLongError } from "./pieces";
-import { encodePhonemes } from "./tokenizer";
+import { tooLongError } from "./pieces";
+import { countPhonemes, encodePhonemes, MAX_PHONEME_IDS } from "./tokenizer";
 
 export interface Speech {
   samples: Float32Array;
@@ -85,8 +85,8 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
       const loaded = await loading;
       const phonemes = loaded.phonemize(normalizeText(text));
       const ids = encodePhonemes(phonemes, loaded.vocab);
-      const known = [...phonemes].filter((char) => Object.hasOwn(loaded.vocab, char)).length;
-      if (known > MAX_PHONEMES) throw tooLongError(known, text);
+      const known = countPhonemes(phonemes, loaded.vocab);
+      if (known > MAX_PHONEME_IDS) throw tooLongError(known, text);
       const row = Math.min(Math.max(ids.length - 2, 0), MAX_STYLE_ROW);
       const styles = await voiceStyles(loaded, voice);
 
