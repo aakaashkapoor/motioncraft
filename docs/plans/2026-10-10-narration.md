@@ -149,7 +149,7 @@ with `af_heart` and expects 24 kHz and 1.5 to 6 s of audio.
   `theme.motion.leadMs` instead of `evenWordTimes(...)`; otherwise unchanged.
   Keep the change small: `captionTrack` gains an optional `words` argument.
 - New storyboard check `narration-fit` in `src/checks/storyboard.ts`: an
-  **error** when a scene sets `durationMs` shorter than `leadMs + audioMs`
+  **error** when a scene sets `durationMs` shorter than `leadMs + audioMs + narrationTailMs` (tail = max(500, outgoing transition ms + 250), so voices never overlap across a transition)
   (message gives both numbers). `checkStoryboard` takes optional `narration`.
 - `scripts/stills.ts` and `scripts/check.ts`: when cached narration exists for
   the storyboard (`.motioncraft/narration/` sidecars), use its durations and
@@ -161,32 +161,64 @@ to even times; `narration-fit` error and pass.
 
 ## Task 3: An audio track in the MP4
 
-- Mixdown in the page (browser): an `OfflineAudioContext` at 48 kHz mono for the
-  video's full length. Schedule each scene's narration WAV at
-  `scene start + leadMs`, and each unmuted `VideoClip`'s audio per the existing
-  `clipAudioPlan` (`src/render/media.ts`: `startMs`, `durationMs`,
-  `sourceStartMs`, `rate`) at gain 0.35 under narration (1.0 when the scene has
-  no narration). Files reach the page the way media already does
-  (`mediaUrl` / the render session's file serving; read how `VideoClip` loads
-  its `src`).
-- Encode with WebCodecs `AudioEncoder`: try `mp4a.40.2` (AAC-LC) first, then
-  `opus`; 48 kHz, mono, 128 kbps. Return chunks to Node like the video encoder
-  does (`src/render/encode.ts`).
-- `src/render/mp4.ts`: support an optional second track: `soun` handler,
-  `smhd`, sample entry `mp4a` with an `esds` built from the encoder's
-  `AudioSpecificConfig` (description), or `Opus` with `dOps` when Opus was
-  used; its own `stts`/`stsz`/`stco`/`stsc` (audio samples can be written as one
-  run after the video in `mdat`); `mvhd` duration = the longer track. Video-only
-  files must stay byte-identical to today's (existing tests).
-- `renderVideo` (`src/render/video.ts`): optional `narration` (the per-scene
-  WAV paths + words); when present or when a clip has audio, add the audio track.
-  `VideoResult` gains `audioCodec?: string`.
+Context from Tasks 1-2: per scene, `SceneNarration { sceneId, wavPath, audioMs, words }`
+(`src/narration/types.ts`); `prepareMedia` passes the page only
+`PageNarration` (`{ words }` per scene); narrated scene lengths are
+`leadMs + audioMs + narrationTailMs(...)`, so a scene's voice always ends before
+the next scene's voice starts. Local media reaches the page through Playwright
+routes on the fake origin `https://motioncraft.localhost/media/...`
+(`src/kit/mediaSource.ts`, `routeMedia` in `src/render/media.ts`); nothing is
+fetched from the network.
 
-Tests: box-level tests for the audio track (`hdlr soun`, `esds`/`dOps`, sample
-tables, `mvhd` duration); an integration test (skips without a browser) that
-renders a 2-scene storyboard with a generated tone WAV as narration and checks
-the MP4 has 2 tracks and the audio track's duration matches the video within
-one audio frame.
+- **Serve narration WAVs** the same way: a route on
+  `https://motioncraft.localhost/narration/<file>.wav` answering only the WAV
+  files of this render's narration (404 for anything else). Widen
+  `PageNarration` per scene to `{ words, audioMs?, src? }` where `src` is that
+  served URL (never a disk path); `prepareMedia` fills it when a `wavPath`
+  exists. Pure URL helpers next to `mediaUrl` (`narrationUrl`, `narrationFile`).
+- **Audio plan (Node, pure):** `src/render/audioPlan.ts`:
+  `audioPlan(storyboard, timeline, theme, narration, clipAudio): AudioPlan`,
+  `AudioPlan = { durationMs; sampleRate: 48000; sources: AudioSource[] }`,
+  `AudioSource = { src (served URL); startMs; durationMs; sourceStartMs; rate; gain }`.
+  Narration: at `scene start + leadMs`, gain 1.0, its full `audioMs`. Unmuted
+  `VideoClip` audio from the existing `clipAudioPlan` (`startMs`, `durationMs`,
+  `sourceStartMs`, `rate`): gain 0.35 when the clip's scene has narration, else
+  1.0. `durationMs` = the video's length. Empty `sources` = no audio track.
+- **Mix and encode in the page:** a page function (alongside the video encoder
+  in `src/render/encode.ts` or a new `src/render/audioEncode.ts`) that takes the
+  plan, fetches each `src`, `decodeAudioData`s it, schedules it in an
+  `OfflineAudioContext` (48 kHz, mono, length = plan duration) with its
+  offset/gain/rate/trim, renders, then encodes with WebCodecs `AudioEncoder`:
+  try `{ codec: "mp4a.40.2", sampleRate: 48000, numberOfChannels: 1, bitrate: 128000 }`
+  first (check `AudioEncoder.isConfigSupported`), else `opus`. Return to Node
+  the codec string, the decoder config `description` (AudioSpecificConfig for
+  AAC; for Opus build `dOps` from the encoder's config/description or the
+  standard Opus header defaults), and the chunks (data, timestamp, duration),
+  base64 like the video chunks. If neither codec is supported, throw a clear
+  error naming the browser (like `UnsupportedCodecError`).
+- **MP4 writer** (`src/render/mp4.ts`): an optional second track. `soun`
+  handler (`hdlr`), `smhd`, sample entry `mp4a` + `esds` (from the
+  AudioSpecificConfig) or `Opus` + `dOps`, sample rate as the media timescale,
+  `stts` from chunk durations, `stsz`, `stco`, `stsc`; audio samples written as
+  one run after the video samples in `mdat`. `mvhd` duration = the longer
+  track; `tkhd` track ids 1 (video) and 2 (audio), audio `tkhd` volume 1.0.
+  **Video-only output must stay byte-identical to today's** (keep or add a test
+  that pins it).
+- **`renderVideo`** (`src/render/video.ts`): optional `narration` (the
+  per-scene `SceneNarration`s). Build the plan; when it has sources, mix,
+  encode and add the audio track. `VideoResult` gains `audioCodec?: string`;
+  `result.audio` (today's `clipAudioPlan`) can be replaced by the plan.
+
+Tests: `audioPlan` (narration offsets = scene start + lead, gains, clip under
+narration at 0.35, muted clips excluded, no sources = no track); narration URL
+helpers and the route (only this render's WAVs); MP4 box tests for the audio
+track (`hdlr soun`, `esds`/`dOps` contents, sample tables, `mvhd` duration,
+two `trak`s) and the video-only byte-identity test; one browser integration
+test (skips without a browser like the existing ones) that renders a 2-scene
+storyboard with a generated 440 Hz tone WAV as each scene's narration and checks
+the MP4 has two tracks, the audio track's codec, and that its duration matches
+the video within one audio frame (decode the file's audio in the page with
+WebCodecs `AudioDecoder` or `decodeAudioData` on the MP4 to confirm it plays).
 
 ## Task 4: Wire-up, docs, showcase
 
