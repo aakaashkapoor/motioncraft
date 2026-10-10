@@ -1,4 +1,4 @@
-// Command-line arguments for scripts/stills.ts and scripts/render.ts.
+// Command-line arguments for scripts/stills.ts, scripts/render.ts and scripts/narrate.ts.
 
 import { parseArgs } from "node:util";
 import { parseFrameList } from "./frames";
@@ -60,4 +60,29 @@ ${RENDER_USAGE}`);
   if (!values.out.toLowerCase().endsWith(".mp4")) throw new Error(`--out must name an .mp4 file
 ${RENDER_USAGE}`);
   return { storyboard: positionals[0]!, out: values.out };
+}
+
+export const NARRATE_USAGE = "usage: npx tsx scripts/narrate.ts <storyboard.json> [--voice name] [--offline]";
+
+export interface NarrateArgs {
+  storyboard: string;
+  voice?: string;
+  offline: boolean;
+}
+
+/** Parses the arguments for speaking a storyboard's narration. */
+export function parseNarrateArgs(argv: readonly string[]): NarrateArgs {
+  const { values, positionals } = parseArgs({
+    args: [...argv],
+    allowPositionals: true,
+    options: { voice: { type: "string" }, offline: { type: "boolean" } },
+  });
+
+  if (positionals.length !== 1) throw new Error(`expected one storyboard file
+${NARRATE_USAGE}`);
+  if (values.voice === "") throw new Error(`--voice needs a voice name
+${NARRATE_USAGE}`);
+  const args: NarrateArgs = { storyboard: positionals[0]!, offline: values.offline === true };
+  if (values.voice !== undefined) args.voice = values.voice;
+  return args;
 }

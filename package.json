@@ -14,6 +14,7 @@
     "check": "npm run typecheck && npm run test"
   },
   "dependencies": {
+    "onnxruntime-node": "1.21.0",
     "prismjs": "1.30.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"

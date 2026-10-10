@@ -62,3 +62,12 @@ Mono are an alternative a theme can choose. Full license texts:
 The font files are unmodified (the Geist files are only renamed, to keep
 brackets out of file names). motioncraft does not use the Reserved Font
 Names for any derivative.
+
+## Local narration (voice)
+
+| Item | Version | License | Author / source |
+| ---- | ------- | ------- | --------------- |
+| onnxruntime-node | 1.21.0 | MIT | Microsoft Corporation — https://github.com/microsoft/onnxruntime (runs the voice model; its dependencies are MIT, ISC, BSD-3-Clause, BlueOak-1.0.0 or MIT OR CC0-1.0) |
+| Kokoro-82M voice model (`model_quantized.onnx`, `tokenizer.json`, `voices/*.bin`) | revision 1939ad2 | Apache-2.0 | hexgrad — https://huggingface.co/hexgrad/Kokoro-82M, ONNX export https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX. Downloaded once, size- and SHA-256-checked, into `~/.cache/motioncraft`; never bundled. |
+| misaki pronunciation dictionaries (`us_gold.json`, `us_silver.json`) | revision fba1236 | Apache-2.0 | hexgrad — https://github.com/hexgrad/misaki. Downloaded and checked the same way. |
+| English text normalizer (`src/narration/normalize.ts`) | n/a | Apache-2.0 | Ported from kokoro-js (https://github.com/hexgrad/kokoro, hexgrad). kokoro-js itself is not a dependency (its phonemizer bundles GPL eSpeak NG). |
