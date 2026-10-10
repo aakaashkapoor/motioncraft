@@ -6,11 +6,14 @@ first use, no API, no spending); the audio's timing drives scene length and
 caption sync. Today `narration` is text only (captions + an estimated length)
 and every MP4 is silent.
 
-**Engine: Kokoro-82M** via `kokoro-js@1.2.1` (Apache-2.0, runs in Node on
-`@huggingface/transformers`), model `onnx-community/Kokoro-82M-v1.0-ONNX`,
-`dtype: "q8"`, `device: "cpu"`. Verified locally: ~3 s to load (after a one-time
-~90 MB download), ~1x real time to speak, 24 kHz mono Float32 PCM, stock voices
-such as `af_heart`, `af_bella`, `am_adam`. It returns **no word timings**.
+**Engine: Kokoro-82M**, run directly with `onnxruntime-node` (MIT). Fully local:
+the model and dictionaries download once (pinned and sha256-checked, per
+`AGENTS.md`) into `~/.cache/motioncraft/`; after that everything runs offline.
+**Not** `kokoro-js` (its `phonemizer` dependency is eSpeak NG compiled to WASM,
+GPL-3.0) and **not** `@huggingface/transformers` (pulls `sharp`/libvips, LGPL).
+Pronunciation comes from Kokoro's own English dictionaries (misaki, Apache-2.0).
+Verified locally: about 3 s to load, about real time to speak, 24 kHz mono. It
+returns **no word timings**, so Task 1 derives them.
 
 Rules for every task: TypeScript, follow the repo's patterns (`AGENTS.md`),
 test first, `npm run check` must pass (typecheck + all tests). Commit as
@@ -21,62 +24,109 @@ repo already skips browser tests when none is found).
 
 ---
 
-## Task 1: Synthesis and word timings (Node)
+## Task 1: Local voice (Kokoro on onnxruntime-node) and word timings
 
-New folder `src/narration/`:
+New folder `src/narration/`, one responsibility per file:
 
-- `wav.ts`: `encodeWav(samples: Float32Array, sampleRate: number): Uint8Array`
-  (16-bit PCM mono, little-endian, correct RIFF header) and
-  `decodeWav(bytes): { samples: Float32Array; sampleRate: number }` for files it
-  wrote. Pure.
-- `sentences.ts`: `splitSentences(text): string[]`: splits narration into
-  sentences at `.`, `!`, `?` (keeping the punctuation, ignoring decimals like
-  `4.8`), trimming; a text with no terminal punctuation is one sentence. Pure.
-- `wordTimes.ts`: `alignWords(sentences: SpokenSentence[]): TimedWord[]`, where
-  `SpokenSentence = { text: string; startMs: number; endMs: number }` (the span
-  of that sentence's own audio). Inside a sentence each word gets time in
-  proportion to its weight = letters and digits in the word + 1, plus an extra
-  3 units after a word ending in `,` `;` `:` (a spoken pause); words follow each
-  other with no gaps from `startMs` to `endMs`. Reuse `TimedWord` from
-  `src/kit/captionWords.ts` (`{ text, startMs, endMs }`). Pure.
-- `tts.ts`: the engine boundary.
+- `assets.ts`: the pinned files and a fetcher.
+  ```ts
+  export interface PinnedFile { url: string; sha256: string; bytes: number; path: string /* relative to cacheDir */ }
+  export const KOKORO_REVISION = "1939ad2a8e416c0acfeecc08a694d14ef25f2231"; // onnx-community/Kokoro-82M-v1.0-ONNX
+  export const MISAKI_REVISION = "fba1236595f2d2bf21d414ba6e57d25256afada3";  // hexgrad/misaki
+  export async function ensureFile(file: PinnedFile, cacheDir: string, options?: { offline?: boolean; fetch?: typeof fetch }): Promise<string>
+  ```
+  Model files (`https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/<rev>/<path>`):
+  - `onnx/model_quantized.onnx`: 92361116 bytes, sha256 `fbae9257e1e05ffc727e951ef9b9c98418e6d79f1c9b6b13bd59f5c9028a1478`
+  - `tokenizer.json`: 3497 bytes, sha256 `77a02c8e164413299b4b4c403b14f8e0e1c1b727db4d46a09d6327b861060a34`
+  - voices, each 522240 bytes: `voices/af_heart.bin` `d583ccff3cdca2f7fae535cb998ac07e9fcb90f09737b9a41fa2734ec44a8f0b`;
+    `voices/af_bella.bin` `f69d836209b78eb8c66e75e3cda491e26ea838a3674257e9d4e5703cbaf55c8b`;
+    `voices/am_michael.bin` `1d1f21dd8da39c30705cd4c75d039d265e9bc4a2a93ed09bc9e1b1225eb95ba1`
+
+  Dictionaries (`https://raw.githubusercontent.com/hexgrad/misaki/<rev>/misaki/data/<name>`):
+  - `us_gold.json`: 3000469 bytes, sha256 `dc414872a49a28ae6c141463d502fd945f3b2fde040484fdc47d00cc4612686f`
+  - `us_silver.json`: 3099517 bytes, sha256 `de8f67be911bb6c659187b4a65fd966b6a30e56350e0f790d763210b053ac475`
+
+  `ensureFile` returns the cached path when the file exists with the right size
+  and hash; otherwise it downloads (Node `fetch`, injectable for tests) to a temp
+  file, verifies, and renames into place. A hash mismatch is an error naming the
+  file. `offline: true` never touches the network and errors with "run once
+  online to download <file>". Default cache dir: `~/.cache/motioncraft`
+  (`os.homedir()` + `node:path`). Record both sources in `licenses/` (Kokoro-82M
+  model: Apache-2.0, hexgrad; misaki dictionaries: Apache-2.0, hexgrad).
+- `normalize.ts`: text cleanup before pronunciation, ported from kokoro-js's
+  English normalizer (Apache-2.0; credit it in a comment): curly quotes to
+  straight, `Dr.`/`Mr.`/`Ms.`/`Mrs.`, years (`1990s`), times (`9:41`), money
+  (`$12.50`), decimals (`4.8` becomes "4 point 8"), ranges (`2-3` becomes "2 to
+  3"), thousands separators. Then integers become words (`42` becomes
+  "forty-two", up to billions). Pure.
+- `phonemes.ts`: English text to a Kokoro phoneme string.
+  `export function createPhonemizer(gold: Lexicon, silver: Lexicon): (text: string) => string`.
+  Tokenize into words and punctuation. Look each word up (exact, then lowercase,
+  then without a trailing `'s`/`s` plus a `z` sound, as misaki does) in gold, then
+  silver. Dictionary values are either a string or an object keyed by part of
+  speech: use the `DEFAULT` key, else the first value. Words found nowhere: an
+  all-caps acronym is spelled out (look up each letter); anything else gets a
+  simple letter-to-sound pass (map common graphemes to the phoneme set; it only
+  has to be intelligible). Keep `; : , . ! ?` as they are; words separated by
+  single spaces. Pure.
+- `tokenizer.ts`: `encodePhonemes(phonemes: string, vocab: Record<string, number>): number[]`.
+  Drop characters not in the vocab, one id per character, wrap with id `0` at
+  both ends (tokenizer.json's `TemplateProcessing`, `$` = 0), cap at 510 ids.
+  `vocab` is `tokenizer.json`'s `model.vocab`. Pure.
+- `kokoro.ts`: the model.
   ```ts
   export interface Speech { samples: Float32Array; sampleRate: number }
   export interface Synthesizer { speak(text: string, voice: string): Promise<Speech> }
-  export function kokoroSynthesizer(options?: { cacheDir?: string }): Synthesizer
+  export function kokoroSynthesizer(options?: { cacheDir?: string; offline?: boolean }): Synthesizer
   ```
-  `kokoroSynthesizer` loads lazily on the first `speak` (dynamic
-  `import("kokoro-js")`), sets `@huggingface/transformers`'s `env.cacheDir` to
-  `cacheDir` (default `~/.cache/motioncraft/models`), and rejects with a clear
-  message naming the valid voices when `voice` is unknown.
+  Lazily on the first `speak`: `ensureFile` everything, then load the ONNX
+  session (`onnxruntime-node`, `InferenceSession.create(path)`), the vocab, the
+  dictionaries and the voice file (raw little-endian Float32, rows of 256).
+  Per call: normalize, phonemize, encode ids. Style row = `min(max(ids.length - 2, 0), 509)`;
+  style = the floats `[row*256, row*256 + 256)`. Run with inputs `input_ids`
+  (int64 `[1, n]`), `style` (float32 `[1, 256]`) and `speed` (float32 `[1]`,
+  1.0); output `waveform` is 24 kHz mono. An unknown voice is an error listing
+  the supported voices (the three above). This ports kokoro-js's
+  `generate_from_ids` (Apache-2.0; credit it).
+- `wav.ts`: `encodeWav(samples, sampleRate): Uint8Array` (16-bit PCM mono,
+  little-endian RIFF) and `decodeWav(bytes)`. Pure.
+- `sentences.ts`: `splitSentences(text): string[]` at `.` `!` `?` (keep the
+  mark; ignore decimals like `4.8` and abbreviations like `Dr.`); text with no
+  terminal mark is one sentence. Pure.
+- `wordTimes.ts`: `alignWords(sentences: { text: string; startMs: number; endMs: number }[]): TimedWord[]`
+  (reuse `TimedWord` from `src/kit/captionWords.ts`). Inside a sentence, each
+  word's share of the time is proportional to its weight: letters and digits + 1,
+  plus 3 extra units after a word ending in `,` `;` `:`. No gaps. Pure.
 - `narrate.ts`:
   ```ts
   export interface SceneNarration { sceneId: string; wavPath: string; audioMs: number; words: TimedWord[] }
   export async function narrateStoryboard(storyboard: Storyboard, options: {
-    synthesizer: Synthesizer; cacheDir: string; voice?: string;
+    synthesizer: Synthesizer; outDir: string; voice?: string;
   }): Promise<Record<string, SceneNarration>>
   ```
-  For every scene with `narration`: split into sentences, speak each, join them
-  with 250 ms of silence between sentences, write one WAV per scene to
-  `<cacheDir>/<sha1(model id + voice + text)>.wav` plus a sidecar
-  `<same>.json` holding `{ audioMs, words }`; reuse both when they already exist
-  (no synthesis). Word times are relative to the start of the scene's audio.
-  Voice: `options.voice ?? storyboard.voice ?? "af_heart"`.
-- Storyboard: add optional top-level `voice?: string` to `src/storyboard/types.ts`
-  and validate it as a non-empty string in `validate.ts` (unknown names are
-  reported by the synthesizer, not the validator).
-- `scripts/narrate.ts <storyboard.json> [--voice name]`: narrates into
-  `<storyboard dir>/.motioncraft/narration/` and prints one line per scene
-  (`id  3.42 s  12 words`). Add `.motioncraft/` to `.gitignore`.
-- `package.json`: add `kokoro-js` `1.2.1` (exact) to dependencies.
+  For each scene with `narration`: split into sentences, speak each, join with
+  250 ms of silence, then write `<outDir>/<sha1(KOKORO_REVISION + voice + text)>.wav`
+  and a sidecar `.json` `{ audioMs, words }` (word times from the start of the
+  scene's audio). Reuse both when present (no synthesis). Voice:
+  `options.voice ?? storyboard.voice ?? "af_heart"`.
+- Storyboard: optional top-level `voice?: string` in `src/storyboard/types.ts`,
+  validated as a non-empty string in `validate.ts`.
+- `scripts/narrate.ts <storyboard.json> [--voice name] [--offline]`: narrates
+  into `<storyboard dir>/.motioncraft/narration/` and prints `id  3.42 s  12 words`
+  per scene. Add `.motioncraft/` to `.gitignore`.
+- `package.json`: `npm install --save-exact onnxruntime-node@1.21.0`, then
+  `npm ci` (see `AGENTS.md`).
 
-Tests (fake `Synthesizer` returning silence of a length derived from the text):
-WAV round trip and header fields; sentence splitting incl. decimals and no
-punctuation; word alignment (sums, order, comma pause, no gaps); narrate writes
-WAV + JSON, joins sentences with 250 ms gaps, caches (second run calls the
-synthesizer zero times), honours voice precedence; validator accepts/rejects
-`voice`. One real-Kokoro test that runs only when `MOTIONCRAFT_TTS_TEST=1`
-(speaks one sentence, checks 24 kHz and a plausible length).
+Tests (no network and no model; inject fakes): `ensureFile` with a fake fetch
+(cache hit, download and verify, hash mismatch, offline miss); normalizer cases;
+phonemizer with a tiny in-memory lexicon (gold before silver, part-of-speech
+objects, plural `s`, acronym fallback, an unknown word gives non-empty
+phonemes); tokenizer (unknown characters dropped, 0 at both ends, cap); WAV round
+trip; sentences; word alignment; narrate with a fake `Synthesizer` (WAV + JSON
+written, 250 ms gaps, a cache hit calls the synthesizer zero times, voice
+precedence); validator `voice`. One real end-to-end test, only when
+`MOTIONCRAFT_TTS_TEST=1`: speaks "Type one prompt, and get a finished video."
+with `af_heart` and expects 24 kHz and 1.5 to 6 s of audio.
 
 ## Task 2: Scene timing and captions from the audio
 
@@ -133,7 +183,7 @@ one audio frame.
 
 ## Task 4: Wire-up, docs, showcase
 
-- `scripts/render.ts`: narrate by default (Task 1's `narrateStoryboard`,
+- `scripts/render.ts`: narrate by default (Task 1's `narrateStoryboard` with `kokoroSynthesizer()`,
   cache in `<storyboard dir>/.motioncraft/narration/`), then render with
   narration durations, words and the audio track. `--no-narration` keeps
   today's silent render with estimated timings. `--voice <name>` overrides.
