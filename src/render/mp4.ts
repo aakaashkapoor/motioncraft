@@ -111,7 +111,7 @@ export function moovBox(track: Mp4Track, samples: Mp4Samples, audio?: Mp4Audio):
   const mediaTimescale = track.fps * TICKS_PER_FRAME;
   const mediaDuration = frames * TICKS_PER_FRAME;
   const movieDuration = Math.round((frames * MOVIE_TIMESCALE) / track.fps);
-  const audioTrack = audio === undefined ? undefined : audioTrak(audio.track, audio.samples, MOVIE_TIMESCALE, AUDIO_TRACK_ID);
+  const audioTrack = audio === undefined ? undefined : audioTrak(audio.track, audio.samples, MOVIE_TIMESCALE, AUDIO_TRACK_ID, movieDuration);
 
   return box(
     "moov",
@@ -122,13 +122,13 @@ export function moovBox(track: Mp4Track, samples: Mp4Samples, audio?: Mp4Audio):
       u32(0), // creation_time: fixed, so the same input gives the same file
       u32(0), // modification_time
       u32(MOVIE_TIMESCALE),
-      u32(Math.max(movieDuration, audioTrack?.movieDuration ?? 0)),
+      u32(movieDuration),
       u32(0x00010000), // rate 1.0
       u16(0x0100), // volume 1.0
       zeros(10),
       ...MATRIX,
       zeros(24),
-      u32(audioTrack === undefined ? 2 : AUDIO_TRACK_ID + 1), // next_track_ID
+      u32(audioTrack === undefined ? VIDEO_TRACK_ID + 1 : AUDIO_TRACK_ID + 1), // next_track_ID
     ),
     box(
       "trak",
@@ -162,7 +162,7 @@ export function moovBox(track: Mp4Track, samples: Mp4Samples, audio?: Mp4Audio):
         ),
       ),
     ),
-    ...(audioTrack === undefined ? [] : [audioTrack.trak]),
+    ...(audioTrack === undefined ? [] : [audioTrack]),
   );
 }
 

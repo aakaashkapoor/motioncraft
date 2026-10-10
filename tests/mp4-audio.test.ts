@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Mp4Writer, type Mp4AudioTrack } from "../src/render/mp4";
-import { findBox, summarizeMp4, summarizeTracks } from "./mp4box";
+import { findBox, readBoxes, summarizeMp4, summarizeTracks } from "./mp4box";
 
 let dir: string;
 beforeAll(async () => {
@@ -44,15 +44,16 @@ function descriptor(bytes: Buffer, offset: number): { tag: number; body: Buffer;
 }
 
 const asc = Buffer.from("1188", "hex"); // AAC-LC, 48 kHz, mono
-const aac: Mp4AudioTrack = { codec: "mp4a", sampleRate: 48_000, channels: 1, description: asc };
+const PRIMING = 1024;
+const aac: Mp4AudioTrack = { codec: "mp4a", sampleRate: 48_000, channels: 1, description: asc, primingTicks: PRIMING };
 const dOps = Buffer.from("0001013880bb0000000000", "hex");
 
 async function writeWithAudio(path: string, audio: Mp4AudioTrack, frames = 5): Promise<{ data: Buffer; samples: Buffer[] }> {
   const writer = await Mp4Writer.create(path);
   for (let i = 0; i < frames; i++) await writer.addSample(Buffer.alloc(10 + i, i + 1), i % 2 === 0);
-  const samples = [Buffer.alloc(7, 0xa1), Buffer.alloc(9, 0xa2), Buffer.alloc(8, 0xa3)];
-  // Ticks are in the audio timescale; the last frame is shorter.
-  const ticks = [1024, 1024, 700];
+  const samples = Array.from({ length: 10 }, (_, i) => Buffer.alloc(5 + i, 0xa0 + i));
+  // Ticks are in the audio timescale; the last frame is shorter. 9916 ticks cover the 5 video frames (8016 ticks) plus the priming.
+  const ticks = [...Array.from({ length: 9 }, () => 1024), 700];
   for (const [i, sample] of samples.entries()) writer.addAudioSample(sample, ticks[i]!);
   await writer.finish(video, audio);
   return { data: await readFile(path), samples };
@@ -90,7 +91,7 @@ describe("Mp4Writer, with an audio track", () => {
   });
 
   it("describes Opus with a dOps box", async () => {
-    const { data } = await writeWithAudio(join(dir, "opus.mp4"), { codec: "Opus", sampleRate: 48_000, channels: 1, description: dOps });
+    const { data } = await writeWithAudio(join(dir, "opus.mp4"), { codec: "Opus", sampleRate: 48_000, channels: 1, description: dOps, primingTicks: 0 });
     const a = summarizeTracks(data)[1]!;
     expect(a).toMatchObject({ entry: "Opus", channels: 1, sampleRate: 48_000, configType: "dOps" });
     expect(a.config).toEqual(dOps);
@@ -100,34 +101,52 @@ describe("Mp4Writer, with an audio track", () => {
     const { data, samples } = await writeWithAudio(join(dir, "tables.mp4"), aac);
     const [v, a] = summarizeTracks(data);
     expect(a!.timeToSample).toEqual([
-      [2, 1024],
+      [9, 1024],
       [1, 700],
     ]);
-    expect(a!.durationTicks).toBe(2748);
-    expect(a!.sampleSizes).toEqual([7, 9, 8]);
-    expect(a!.sampleToChunk).toEqual([[1, 3, 1]]);
+    expect(a!.durationTicks).toBe(9916);
+    expect(a!.sampleSizes).toEqual(samples.map((sample) => sample.length));
+    expect(a!.sampleToChunk).toEqual([[1, 10, 1]]);
     expect(a!.chunkOffsets).toHaveLength(1);
     const offset = a!.chunkOffsets[0]!;
     const videoEnd = Math.max(...summarizeMp4(data).sampleOffsets) + 14;
     expect(offset).toBe(videoEnd);
-    expect(data.subarray(offset, offset + 24)).toEqual(Buffer.concat(samples));
+    const audioBytes = Buffer.concat(samples).length;
+    expect(data.subarray(offset, offset + audioBytes)).toEqual(Buffer.concat(samples));
     // mdat covers the audio too, so moov starts right after.
-    expect(findBox(data, "mdat").end).toBe(offset + 24);
-    expect(findBox(data, "moov").start).toBe(offset + 24);
+    expect(findBox(data, "mdat").end).toBe(offset + audioBytes);
+    expect(findBox(data, "moov").start).toBe(offset + audioBytes);
     expect(v!.sampleSizes).toEqual([10, 11, 12, 13, 14]);
   });
 
-  it("sets the movie duration to the longer track", async () => {
-    const short = summarizeMp4((await writeWithAudio(join(dir, "short.mp4"), aac, 5)).data); // video 5/30 s, audio ~0.057 s
-    expect(short.movieSeconds).toBeCloseTo(5 / 30, 3);
-    const longAudio = await Mp4Writer.create(join(dir, "long.mp4"));
-    await longAudio.addSample(Buffer.alloc(4), true);
-    longAudio.addAudioSample(Buffer.alloc(3), 96_000); // 2 s
-    await longAudio.finish(video, aac);
-    const data = await readFile(join(dir, "long.mp4"));
-    expect(summarizeMp4(data).movieSeconds).toBeCloseTo(2, 3);
-    // The video track keeps its own length in its tkhd.
-    expect(summarizeTracks(data)[0]!.durationTicks / 30_000).toBeCloseTo(1 / 30, 5);
+  it("trims the encoder priming with an edit list on the audio track only", async () => {
+    const { data } = await writeWithAudio(join(dir, "edits.mp4"), aac);
+    const [v, a] = summarizeTracks(data);
+    expect(v!.edits).toEqual([]);
+    // One entry: the video length in movie ticks (ms), starting `priming` ticks into the media, at normal speed.
+    expect(a!.edits).toEqual([[167, PRIMING, 1]]);
+    expect(findBox(data, "moov/trak").type).toBe("trak");
+    // The edit list follows tkhd, and the audio tkhd and mvhd carry the video length.
+    expect(a!.trackDuration).toBe(167);
+    expect(summarizeMp4(data).movieSeconds).toBeCloseTo(167 / 1000, 5);
+    expect(v!.trackDuration).toBe(167);
+    // mdhd keeps every encoded tick.
+    expect(a!.durationTicks).toBe(9916);
+  });
+
+  it("puts edts right after tkhd in the audio trak", async () => {
+    const { data } = await writeWithAudio(join(dir, "order.mp4"), aac);
+    const moov = findBox(data, "moov");
+    const traks = readBoxes(data, moov.payload, moov.end).filter((b) => b.type === "trak");
+    expect(readBoxes(data, traks[1]!.payload, traks[1]!.end).map((b) => b.type)).toEqual(["tkhd", "edts", "mdia"]);
+    expect(readBoxes(data, traks[0]!.payload, traks[0]!.end).map((b) => b.type)).toEqual(["tkhd", "mdia"]);
+  });
+
+  it("refuses audio that does not cover the video after the priming", async () => {
+    const writer = await Mp4Writer.create(join(dir, "short-audio.mp4"));
+    for (let i = 0; i < 30; i++) await writer.addSample(Buffer.alloc(4), i === 0); // 1 s
+    writer.addAudioSample(Buffer.alloc(3), 48_000); // 1 s of ticks, minus the priming
+    await expect(writer.finish(video, aac)).rejects.toThrow(/audio is shorter than the video/);
   });
 
   it("refuses an audio track without samples", async () => {

@@ -11,6 +11,8 @@
 // foreignObject, html2canvas) would be a second renderer with its own font and
 // layout quirks. PNG is lossless, so nothing is lost before the encoder.
 
+import { toBase64, toBytes } from "./pageBytes";
+
 /** About 8 Mbps: plenty for code-drawn 1080p graphics. */
 export const VIDEO_BITRATE = 8_000_000;
 
@@ -120,20 +122,6 @@ export interface PageEncoder {
 
 /** Frames waiting in the encoder before `encodeFrame` waits for it to catch up. */
 const MAX_QUEUE = 4;
-
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const step = 0x8000;
-  for (let i = 0; i < bytes.length; i += step) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + step));
-  }
-  return btoa(binary);
-}
-
-function toBytes(buffer: AllowSharedBufferSource): Uint8Array {
-  if (buffer instanceof ArrayBuffer || buffer instanceof SharedArrayBuffer) return new Uint8Array(buffer);
-  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-}
 
 export function createPageEncoder(): PageEncoder {
   let encoder: VideoEncoder | undefined;

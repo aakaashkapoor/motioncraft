@@ -70,16 +70,29 @@ describe("renderVideo with narration (integration)", () => {
     expect(audio!.entry).toBe(result.audioCodec === "opus" ? "Opus" : "mp4a");
     expect(audio!.sampleToChunk).toEqual([[1, audio!.sampleSizes.length, 1]]);
 
-    // The audio is as long as the video, within one audio frame (1024 samples).
+    // The edit list trims the encoder priming and plays exactly the video length; the movie is one video frame at most off.
     const videoSeconds = result.durationMs / 1000;
-    expect(Math.abs(audio!.durationTicks / audio!.timescale - videoSeconds)).toBeLessThanOrEqual(1024 / 48_000);
-    expect(summarizeMp4(data).movieSeconds).toBeGreaterThanOrEqual(videoSeconds);
+    const frameSeconds = 1 / result.fps;
+    expect(Math.abs(summarizeMp4(data).movieSeconds - videoSeconds)).toBeLessThanOrEqual(frameSeconds);
+    expect(audio!.edits).toHaveLength(1);
+    const [segment, priming, rate] = audio!.edits[0]!;
+    expect(rate).toBe(1);
+    expect(Math.abs(segment / 1000 - videoSeconds)).toBeLessThanOrEqual(frameSeconds);
+    expect(priming).toBeGreaterThanOrEqual(0); // 0 where the browser encoder already compensates its delay
+    // The encoded audio, less the priming, covers the video and ends within a couple of audio frames of it.
+    const playable = (audio!.durationTicks - priming) / audio!.timescale;
+    expect(playable).toBeGreaterThanOrEqual(videoSeconds - 0.001);
+    expect(playable - videoSeconds).toBeLessThan(3 * (1024 / 48_000));
 
     const [voiceOne, voiceTwo] = result.audio.sources;
     expect(voiceOne!.startMs).toBe(lightTheme.motion.leadMs);
     expect(voiceTwo!.startMs).toBeGreaterThan(voiceOne!.startMs + TONE_MS);
 
     // Decode the file audio in the page: the tone is where the plan put it, and quiet before it.
+    const onsetSearch = [
+      [0, voiceOne!.startMs + TONE_MS],
+      [voiceOne!.startMs + TONE_MS + 50, voiceTwo!.startMs + TONE_MS],
+    ] as const;
     const windows = [
       [0, lightTheme.motion.leadMs - 50],
       [voiceOne!.startMs + 100, voiceOne!.startMs + TONE_MS - 100],
@@ -87,7 +100,7 @@ describe("renderVideo with narration (integration)", () => {
     ] as const;
     const decoded = await withRenderPage({ storyboard, theme: lightTheme, durations }, (page) =>
       page.evaluate(
-        async ([base64, spans]) => {
+        async ([base64, spans, searches]) => {
           const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
           const buffer = await new OfflineAudioContext(1, 48_000, 48_000).decodeAudioData(bytes.buffer);
           const samples = buffer.getChannelData(0);
@@ -102,12 +115,20 @@ describe("renderVideo with narration (integration)", () => {
             }
             return { peak, hz: crossings / 2 / ((to - from) / 1000) };
           });
-          return { seconds: buffer.duration, stats };
+          // The first sample louder than a fifth of the tone, in ms, in each search span.
+          const onsets = searches.map(([from, to]) => {
+            for (let i = at(from); i < at(to); i++) if (Math.abs(samples[i]!) > 0.1) return (i * 1000) / buffer.sampleRate;
+            return -1;
+          });
+          return { seconds: buffer.duration, stats, onsets };
         },
-        [data.toString("base64"), windows] as const,
+        [data.toString("base64"), windows, onsetSearch] as const,
       ),
     );
-    expect(Math.abs(decoded.seconds - videoSeconds)).toBeLessThan(0.1);
+    expect(Math.abs(decoded.seconds - videoSeconds)).toBeLessThan(0.05);
+    // The tone starts where the plan says, to within 2 ms: the priming is gone.
+    expect(Math.abs(decoded.onsets[0]! - voiceOne!.startMs)).toBeLessThan(2);
+    expect(Math.abs(decoded.onsets[1]! - voiceTwo!.startMs)).toBeLessThan(2);
     const [lead, first, second] = decoded.stats;
     expect(lead!.peak).toBeLessThan(0.05);
     for (const voice of [first!, second!]) {

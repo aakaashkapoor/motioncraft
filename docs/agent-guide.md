@@ -916,7 +916,8 @@ and a `shareId`, and can sit full frame or inside a window's `content`.
 #### `VideoClip`
 
 `trimStartMs` and `trimEndMs` pick the part of the file, `rate` sets the speed,
-`muted` leaves its audio out of the mix. Supported: `.mp4`, `.m4v`, `.mov`,
+`muted` leaves its audio out of the mix. Clip audio at a `rate` other than 1
+changes pitch (it is resampled, not time-stretched). Supported: `.mp4`, `.m4v`, `.mov`,
 `.webm`. With `"durationMs": "clip"` the scene lasts as long as the clip.
 
 ```json

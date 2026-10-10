@@ -22,7 +22,7 @@ export interface VideoClipProps extends KitProps {
   trimEndMs?: number;
   /** Default "cover". */
   fit?: MediaFit;
-  /** Playback speed. Default 1. */
+  /** Playback speed. Default 1. The clip audio follows it, so its pitch changes too (it is not time-stretched). */
   rate?: number;
   /** Leaves the clip's audio out of the audio mix. Default false. */
   muted?: boolean;

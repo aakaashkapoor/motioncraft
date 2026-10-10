@@ -143,6 +143,10 @@ export interface Mp4TrackSummary {
   timeToSample: [number, number][];
   sampleSizes: number[];
   chunkOffsets: number[];
+  /** elst entries as [segmentDuration (movie ticks), mediaTime (media ticks), rate]; empty without an edit list. */
+  edits: [number, number, number][];
+  /** tkhd duration, movie ticks. */
+  trackDuration: number;
   /** stsc entries as [firstChunk, samplesPerChunk, sampleDescriptionIndex]. */
   sampleToChunk: [number, number, number][];
 }
@@ -177,9 +181,20 @@ export function summarizeTracks(data: Buffer): Mp4TrackSummary[] {
       const stts = sub(`${stbl}/stts`);
       const stsc = sub(`${stbl}/stsc`);
       const count = (box: Mp4Box) => data.readUInt32BE(box.payload + 4);
+      const edts = readBoxes(data, trak.payload, trak.end).find((b) => b.type === "edts");
+      const elst = edts === undefined ? undefined : readBoxes(data, edts.payload, edts.end).find((b) => b.type === "elst");
       return {
         trackId: data.readUInt32BE(tkhd.payload + 12),
         volume: data.readUInt16BE(tkhd.payload + 36) / 256,
+        trackDuration: data.readUInt32BE(tkhd.payload + 20),
+        edits:
+          elst === undefined
+            ? []
+            : Array.from({ length: count(elst) }, (_, i): [number, number, number] => [
+                data.readUInt32BE(elst.payload + 8 + 12 * i),
+                data.readUInt32BE(elst.payload + 12 + 12 * i),
+                data.readUInt16BE(elst.payload + 16 + 12 * i) + data.readUInt16BE(elst.payload + 18 + 12 * i) / 0x10000,
+              ]),
         handler: data.toString("latin1", hdlr.payload + 8, hdlr.payload + 12),
         mediaHeader: readBoxes(data, minf.payload, minf.end)[0]!.type,
         timescale: data.readUInt32BE(mdhd.payload + 12),

@@ -178,6 +178,7 @@ describe("VideoClip (integration)", () => {
       { src: mediaUrl("numbers.mp4"), startMs: 800, durationMs: 300, sourceStartMs: 4000 / 3, rate: 2, gain: 1 },
     ]);
     expect(result.audioCodec).toBeUndefined();
+    expect(result.audioSkipped).toEqual(["numbers.mp4"]);
     expect(summarizeTracks(await readFile(out))).toHaveLength(1);
 
     // Decode every output frame with WebCodecs and read the number it shows.

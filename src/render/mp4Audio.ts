@@ -12,6 +12,11 @@ export interface Mp4AudioTrack {
   channels: number;
   /** `mp4a`: the AudioSpecificConfig. `Opus`: the payload of the `dOps` box. */
   description: Uint8Array;
+  /**
+   * Encoder delay, in ticks: the first samples are priming, not sound. An edit
+   * list starts playback this far into the media so the sound lines up with the video.
+   */
+  primingTicks: number;
 }
 
 /** The audio samples, in order, as one run of bytes in the file. */
@@ -55,6 +60,14 @@ export function esdsBox(audioSpecificConfig: Uint8Array): Bytes {
   );
 }
 
+/** Samples per second as the 16.16 field of an AudioSampleEntry; it holds rates up to 65535 Hz. */
+function sampleRateField(sampleRate: number): Bytes {
+  if (!Number.isInteger(sampleRate) || sampleRate < 1 || sampleRate > 0xffff) {
+    throw new Error(`mp4: audio sample rate ${sampleRate} Hz does not fit an MP4 sample entry`);
+  }
+  return u32(sampleRate * 0x10000);
+}
+
 function audioSampleEntry(audio: Mp4AudioTrack): Bytes {
   return box(
     audio.codec,
@@ -65,7 +78,7 @@ function audioSampleEntry(audio: Mp4AudioTrack): Bytes {
     u16(16), // samplesize
     u16(0), // pre_defined
     u16(0), // reserved
-    u32(audio.sampleRate * 0x10000), // 16.16
+    sampleRateField(audio.sampleRate),
     audio.codec === "mp4a" ? esdsBox(audio.description) : box("dOps", audio.description),
   );
 }
@@ -81,17 +94,29 @@ function runs(durations: readonly number[]): [count: number, delta: number][] {
   return result;
 }
 
-/** The audio trak, and its length in movie time units. */
+/**
+ * The audio trak. Its edit list plays `segmentDuration` movie ticks (the
+ * video's length) starting after the encoder priming, so `mvhd` and `tkhd` equal
+ * the video length and the sound lines up with the pictures.
+ */
 export function audioTrak(
   audio: Mp4AudioTrack,
   samples: Mp4AudioSamples,
   movieTimescale: number,
   trackId: number,
-): { trak: Bytes; movieDuration: number } {
+  segmentDuration: number,
+): Bytes {
   const ticks = samples.durations.reduce((sum, d) => sum + d, 0);
-  const movieDuration = Math.round((ticks * movieTimescale) / audio.sampleRate);
+  // Half a movie tick of rounding is allowed.
+  if (ticks - audio.primingTicks < ((segmentDuration - 0.5) * audio.sampleRate) / movieTimescale) {
+    throw new Error(
+      `mp4: the audio is shorter than the video: ${ticks} ticks less ${audio.primingTicks} priming at ${audio.sampleRate} Hz, ` +
+        `but the video lasts ${segmentDuration / movieTimescale} s`,
+    );
+  }
   const wide = samples.offset > 0xffffffff;
-  const trak = box(
+  const sampleRuns = runs(samples.durations);
+  return box(
     "trak",
     fullBox(
       "tkhd",
@@ -101,7 +126,7 @@ export function audioTrak(
       u32(0),
       u32(trackId),
       u32(0),
-      u32(movieDuration),
+      u32(segmentDuration),
       zeros(8),
       u16(0), // layer
       u16(0), // alternate_group
@@ -110,6 +135,10 @@ export function audioTrak(
       ...MATRIX,
       u32(0), // width, height: none for audio
       u32(0),
+    ),
+    box(
+      "edts",
+      fullBox("elst", 0, 0, u32(1), u32(segmentDuration), u32(audio.primingTicks), u16(1), u16(0)), // media_rate 1.0
     ),
     box(
       "mdia",
@@ -122,7 +151,7 @@ export function audioTrak(
         box(
           "stbl",
           fullBox("stsd", 0, 0, u32(1), audioSampleEntry(audio)),
-          fullBox("stts", 0, 0, u32(runs(samples.durations).length), ...runs(samples.durations).flatMap(([count, delta]) => [u32(count), u32(delta)])),
+          fullBox("stts", 0, 0, u32(sampleRuns.length), ...sampleRuns.flatMap(([count, delta]) => [u32(count), u32(delta)])),
           // All samples are one chunk.
           fullBox("stsc", 0, 0, u32(1), u32(1), u32(samples.sizes.length), u32(1)),
           fullBox("stsz", 0, 0, u32(0), u32(samples.sizes.length), ...samples.sizes.map(u32)),
@@ -131,5 +160,4 @@ export function audioTrak(
       ),
     ),
   );
-  return { trak, movieDuration };
 }

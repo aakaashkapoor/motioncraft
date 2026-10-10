@@ -46,12 +46,22 @@ describe("chunkTicks", () => {
   it("makes the samples tile the timeline, whatever microsecond rounding does", () => {
     const frame = (1024 * 1_000_000) / 48_000; // 21333.33 us
     const chunks = Array.from({ length: 6 }, (_, i) => ({ timestampUs: Math.round(i * frame), durationUs: Math.round(frame) }));
-    expect(chunkTicks(chunks, 48_000)).toEqual([1024, 1024, 1024, 1024, 1024, 1024]);
+    expect(chunkTicks(chunks, 48_000, 1024)).toEqual([1024, 1024, 1024, 1024, 1024, 1024]);
     expect(usToTicks(20_000, 48_000)).toBe(960);
   });
 
-  it("gives the last chunk its own duration", () => {
-    expect(chunkTicks([{ timestampUs: 0, durationUs: 20_000 }], 48_000)).toEqual([960]);
+  it("gives the last chunk its own duration when it has one", () => {
+    expect(chunkTicks([{ timestampUs: 0, durationUs: 20_000 }], 48_000, 1024)).toEqual([960]);
+  });
+
+  it("without durations, the last chunk repeats the previous step, or the codec frame size when alone", () => {
+    const frame = (1024 * 1_000_000) / 48_000;
+    const chunks = [0, 1, 2].map((i) => ({ timestampUs: Math.round(i * frame) }));
+    expect(chunkTicks(chunks, 48_000, 960)).toEqual([1024, 1024, 1024]);
+    expect(chunkTicks([{ timestampUs: 0 }], 48_000, 1024)).toEqual([1024]);
+    expect(chunkTicks([{ timestampUs: 0 }], 48_000, 960)).toEqual([960]);
+    expect(chunkTicks([{ timestampUs: 0, durationUs: 0 }], 48_000, 960)).toEqual([960]);
+    expect(chunkTicks([], 48_000, 960)).toEqual([]);
   });
 });
 
