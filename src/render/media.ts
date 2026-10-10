@@ -2,14 +2,15 @@
 // uses, checks them before any browser starts (clear errors for missing or
 // unsupported files and bad props), resolves `durationMs: "clip"`, serves the
 // files to the render page (byte ranges, so the page can seek; never the
-// network), and lays out the clips' audio on the timeline for the future mix.
+// network), and lays out the clips' audio on the timeline for the audio mix (see audioPlan.ts).
 
 import { constants } from "node:fs";
-import { access, open, stat } from "node:fs/promises";
+import { access, open, readFile, stat } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import type { Page } from "playwright-core";
 import type { Timeline } from "../engine/timeline";
-import { MEDIA_URL_PREFIX, mediaSrc } from "../kit/mediaSource";
+import { MEDIA_URL_PREFIX, mediaSrc, NARRATION_URL_PREFIX, narrationFile, narrationFileName } from "../kit/mediaSource";
+import type { SceneNarration } from "../narration/types";
 import { sceneComponents } from "../storyboard/components";
 import type { Storyboard } from "../storyboard/types";
 import { readMp4DurationMs } from "./mp4Probe";
@@ -129,12 +130,23 @@ export async function fileProblem(path: string): Promise<string | undefined> {
   }
 }
 
+/** What `prepareMedia` takes: the page input, with narration that may carry the WAV path. */
+export type MediaInput = Omit<PageInput, "narration"> & { narration?: Record<string, PageNarrationSource> };
+
 export interface PreparedMedia {
   /** The input with every `durationMs: "clip"` resolved into `durations`. */
   input: PageInput;
   /** Source durations (ms) of the video files that could be read, by resolved path. */
   sourceDurationsMs: Record<string, number>;
 }
+
+/** What the page gets of each scene narration: its words. The audio is mixed outside the page. */
+function pageNarration(narration: Record<string, PageNarrationSource>): NonNullable<PageInput["narration"]> {
+  return Object.fromEntries(Object.entries(narration).map(([id, { words }]) => [id, { words }]));
+}
+
+/** A scene narration as `prepareMedia` receives it (extra fields, such as the audio length and WAV path, are ignored). */
+type PageNarrationSource = Pick<SceneNarration, "words">;
 
 /** How long a clip plays: from trimStart to trimEnd (or the end of the file), at its rate. */
 function clipLengthMs(props: Record<string, unknown>, sourceMs: number | undefined): number | undefined {
@@ -148,7 +160,7 @@ function clipLengthMs(props: Record<string, unknown>, sourceMs: number | undefin
  * Checks every media file the storyboard uses and resolves scenes that take
  * their length from their clip. Throws a `MediaError` listing every problem.
  */
-export async function prepareMedia(input: PageInput): Promise<PreparedMedia> {
+export async function prepareMedia(input: MediaInput): Promise<PreparedMedia> {
   const uses = mediaUses(input.storyboard, input.mediaDir);
   const problems: string[] = [];
   const label = (use: MediaUse) => `scene "${use.sceneId}": ${use.component}`;
@@ -193,11 +205,14 @@ export async function prepareMedia(input: PageInput): Promise<PreparedMedia> {
   }
   if (problems.length > 0) throw new MediaError(problems);
 
-  const { storyboard, theme, mediaDir } = input;
-  return { input: { storyboard, theme, durations, ...(mediaDir === undefined ? {} : { mediaDir }) }, sourceDurationsMs };
+  const { storyboard, theme, mediaDir, narration } = input;
+  return {
+    input: { storyboard, theme, durations, ...(mediaDir === undefined ? {} : { mediaDir }), ...(narration === undefined ? {} : { narration: pageNarration(narration) }) },
+    sourceDurationsMs,
+  };
 }
 
-/** When and how a clip's audio plays in the output, for the future audio mix. */
+/** When and how a clip's audio plays in the output, for the audio mix. */
 export interface ClipAudio {
   sceneId: string;
   src: string;
@@ -259,6 +274,23 @@ export function parseRange(header: string | undefined, size: number): { start: n
   const end = last === "" ? size - 1 : Math.min(Number(last), size - 1);
   if (start >= size || end < start) return "unsatisfiable";
   return { start, end };
+}
+
+/**
+ * Serves the WAV of each narrated scene of this render (and nothing else) to
+ * the page at `NARRATION_URL_PREFIX`. Keyed by the file name the page was
+ * given, so a disk path never reaches the page and no other file is reachable.
+ */
+export async function routeNarration(page: Page, narration: Readonly<Record<string, Pick<SceneNarration, "wavPath">>>): Promise<void> {
+  const files = new Map<string, string>();
+  for (const [id, { wavPath }] of Object.entries(narration)) files.set(narrationFileName(id), wavPath);
+
+  await page.route(`${NARRATION_URL_PREFIX}**`, async (route) => {
+    const name = narrationFile(route.request().url());
+    const path = name === undefined ? undefined : files.get(name);
+    if (path === undefined) return route.fulfill({ status: 404, body: "not a narration file of this render" });
+    return route.fulfill({ status: 200, headers: { "content-type": "audio/wav" }, body: await readFile(path) });
+  });
 }
 
 /** The most an open-ended range request gets in one response; the browser asks again for more. */

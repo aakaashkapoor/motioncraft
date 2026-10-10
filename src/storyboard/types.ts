@@ -106,6 +106,8 @@ export interface Storyboard {
   safe?: SafeProfile;
   /** How narration is captioned. Defaults to `standard`. */
   captionStyle?: CaptionStyle;
+  /** The narration voice (a Kokoro voice name). Defaults to "af_heart". */
+  voice?: string;
   scenes: StoryboardScene[];
 }
 

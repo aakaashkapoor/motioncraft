@@ -18,9 +18,10 @@ import {
 import { sceneComponents } from "./components";
 import { shotsErrors } from "./shots";
 import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
+import { STOCK_VOICES } from "../narration/voices";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "scenes"]);
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "voice", "scenes"]);
 const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition", "shots"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
 
@@ -170,6 +171,12 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
     errors.push(`captionStyle must be ${oneOf(CAPTION_STYLES)} (got ${describe(captionStyle)})`);
   }
 
+  const { voice } = input;
+  if (voice !== undefined) {
+    if (!isNonEmptyString(voice)) errors.push(`voice must be a non-empty string (got ${describe(voice)})`);
+    else if (!(STOCK_VOICES as readonly string[]).includes(voice)) errors.push(`voice must be one of ${STOCK_VOICES.join(", ")} (got ${describe(voice)})`);
+  }
+
   const scenes = validateScenes(input.scenes, errors);
 
   if (errors.length > 0) return { ok: false, errors };
@@ -179,5 +186,6 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (accentIntensity !== undefined) storyboard.accentIntensity = accentIntensity as AccentIntensity;
   if (safe !== undefined) storyboard.safe = safe as SafeProfile;
   if (captionStyle !== undefined) storyboard.captionStyle = captionStyle as CaptionStyle;
+  if (voice !== undefined) storyboard.voice = voice as string;
   return { ok: true, storyboard };
 }

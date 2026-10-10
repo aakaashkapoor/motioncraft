@@ -26,3 +26,5 @@ Read `docs/design.md` (the pipeline) and `docs/design-v2.md` (the design system,
   `npm ci`. A second `npm install` can silently delete the Windows native
   binding the test runner needs (npm/cli#4828); `npm ci` restores it.
 - Keep files small and focused: one responsibility per file.
+- npm prints the warning "Unknown project config onnxruntime-node-install-cuda". It is
+  expected; do not remove that line from `.npmrc` (it stops a CUDA download).

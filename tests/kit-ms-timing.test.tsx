@@ -123,7 +123,8 @@ describe("kit motion runs on the scene clock", () => {
   });
 
   describe.each(["9:16", "16:9"] as const)("%s", (aspect) => {
-    it.each(Object.keys(kit))("%s plays its entrance identically in a 3 s and a 9 s scene", (name) => {
+    // Renders every frame of a 9 s scene: slow under a parallel full-suite run.
+    it.each(Object.keys(kit))("%s plays its entrance identically in a 3 s and a 9 s scene", { timeout: 30_000 }, (name) => {
       const short = Array.from({ length: HOLD_END + 1 }, (_, f) => draw(name, aspect, SHORT, f));
       const long = Array.from({ length: HOLD_END + 1 }, (_, f) => draw(name, aspect, LONG, f));
       for (let f = 0; f <= HOLD_END; f++) {

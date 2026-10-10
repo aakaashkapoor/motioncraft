@@ -1,4 +1,5 @@
-// Layer-1 checks: the storyboard checks (transitions, theme colors, media files),
+// Layer-1 checks: the storyboard checks (transitions, theme colors, media files,
+// and narration-fit when the narration is spoken),
 // then the start, middle and end frame of every scene (overflow, safe area,
 // contrast, readability, and the type-scale warning). Prints the problems and
 // warnings and exits non-zero on any error or frame problem; warnings alone pass.
@@ -7,7 +8,8 @@
 import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { checkStoryboard, formatIssue, formatProblem, runChecks } from "../src/checks";
-import { estimateDurations } from "../src/render/durations";
+import { loadCachedNarration, missingNarrationNotice, narrationDir } from "../src/narration/narrate";
+import { sceneDurations } from "../src/render/durations";
 import { resolveTheme } from "../src/render/themes";
 import { validateStoryboard } from "../src/storyboard/validate";
 
@@ -25,7 +27,12 @@ async function main(argv: string[]): Promise<void> {
   const theme = resolveTheme(storyboard);
   const mediaDir = dirname(file);
 
-  const issues = await checkStoryboard(storyboard, { theme, mediaDir });
+  // Narration already spoken (scripts/narrate.ts) sets the scene lengths and caption timing; none is ever made here.
+  const cached = await loadCachedNarration(storyboard, { outDir: narrationDir(file) });
+  const notice = missingNarrationNotice(cached);
+  if (notice !== undefined) console.log(notice);
+  const narration = cached.scenes;
+  const issues = await checkStoryboard(storyboard, { theme, mediaDir, narration });
   for (const issue of issues) console.log(formatIssue(issue));
   const errors = issues.filter((issue) => issue.severity === "error").length;
   if (errors > 0) {
@@ -34,7 +41,7 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
-  const result = await runChecks({ storyboard, theme, durations: estimateDurations(storyboard), mediaDir });
+  const result = await runChecks({ storyboard, theme, durations: sceneDurations(storyboard, narration, theme), mediaDir, narration });
   for (const warning of result.warnings) console.log(formatProblem(warning));
   const warnings = issues.length + result.warnings.length;
   if (result.passed) {

@@ -7,9 +7,12 @@ import { HEX_COLOR } from "../theme/color";
 import { resolveTheme } from "../theme/resolve";
 import type { Theme } from "../theme/types";
 import { fileProblem, mediaUses } from "../render/media";
+import { ownValue } from "../engine/timeline";
+import type { SceneNarration } from "../narration/types";
+import { narrationTailMs } from "../render/durations";
 import type { Storyboard } from "../storyboard/types";
 
-export const STORYBOARD_CHECK_NAMES = ["transition", "theme-color", "media"] as const;
+export const STORYBOARD_CHECK_NAMES = ["transition", "theme-color", "media", "narration-fit"] as const;
 export type StoryboardCheckName = (typeof STORYBOARD_CHECK_NAMES)[number];
 
 export type Severity = "error" | "warn";
@@ -117,6 +120,32 @@ export interface CheckStoryboardOptions {
   mediaDir?: string;
   /** Default `resolveTheme(storyboard)`. */
   theme?: Theme;
+  /** Measured narration audio per scene id; enables the `narration-fit` check. */
+  narration?: Record<string, Pick<SceneNarration, "audioMs">>;
+}
+
+/** Errors on a scene whose `durationMs` is shorter than its lead, narration audio and tail (see `narrationTailMs`). */
+export function checkNarrationFit(
+  storyboard: Storyboard,
+  narration: Record<string, Pick<SceneNarration, "audioMs">>,
+  theme: Theme = resolveTheme(storyboard),
+): StoryboardIssue[] {
+  const issues: StoryboardIssue[] = [];
+  for (const [i, scene] of storyboard.scenes.entries()) {
+    const audio = ownValue(narration, scene.id);
+    if (typeof scene.durationMs !== "number" || audio === undefined) continue;
+    const { leadMs } = theme.motion;
+    const tailMs = narrationTailMs(storyboard, i, theme);
+    const neededMs = leadMs + audio.audioMs + tailMs;
+    if (scene.durationMs >= neededMs) continue;
+    issues.push({
+      check: "narration-fit",
+      severity: "error",
+      sceneId: scene.id,
+      message: `durationMs ${scene.durationMs} is shorter than the narration needs: ${leadMs} ms lead + ${audio.audioMs} ms audio + ${tailMs} ms tail = ${neededMs} ms; lengthen it or remove durationMs to follow the audio`,
+    });
+  }
+  return issues;
 }
 
 /** Every storyboard check, errors first. */
@@ -126,6 +155,7 @@ export async function checkStoryboard(storyboard: Storyboard, options: CheckStor
     ...(await checkMediaFiles(storyboard, options.mediaDir)),
     ...checkTransitions(storyboard, theme),
     ...checkThemeColors(storyboard, theme),
+    ...(options.narration === undefined ? [] : checkNarrationFit(storyboard, options.narration, theme)),
   ];
   return [...issues.filter((i) => i.severity === "error"), ...issues.filter((i) => i.severity === "warn")];
 }

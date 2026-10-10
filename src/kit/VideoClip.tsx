@@ -3,7 +3,7 @@
 // <video> to trimStart + sceneTime * rate and holds capture, through the
 // readiness gate, until the seek has finished and that frame is painted. The
 // page never plays it and keeps it muted; `muted` only marks the clip's audio
-// for the future mix (see `clipAudioPlan`).
+// for the audio mix (see `audioPlan`).
 
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import { cancelRender, continueRender, delayRender } from "../render/ready";
@@ -22,9 +22,9 @@ export interface VideoClipProps extends KitProps {
   trimEndMs?: number;
   /** Default "cover". */
   fit?: MediaFit;
-  /** Playback speed. Default 1. */
+  /** Playback speed. Default 1. The clip audio follows it, so its pitch changes too (it is not time-stretched). */
   rate?: number;
-  /** Leaves the clip's audio out of the future mix. Default false. */
+  /** Leaves the clip's audio out of the audio mix. Default false. */
   muted?: boolean;
   shareId?: string;
 }

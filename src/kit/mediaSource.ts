@@ -23,6 +23,32 @@ export function mediaSrc(url: string): string | undefined {
   }
 }
 
+/**
+ * Narration WAVs are served from this origin by the renderer (see
+ * `render/media.ts`): only the WAV of each narrated scene of this render.
+ */
+export const NARRATION_URL_PREFIX = "https://motioncraft.localhost/narration/";
+
+/** The served file name of a scene's narration WAV. */
+export function narrationFileName(sceneId: string): string {
+  return `${sceneId}.wav`;
+}
+
+/** The page URL for a narration WAV file name (see `narrationFileName`). */
+export function narrationUrl(file: string): string {
+  return NARRATION_URL_PREFIX + encodeURIComponent(file);
+}
+
+/** The WAV file name a narration URL stands for, or undefined for any other URL. */
+export function narrationFile(url: string): string | undefined {
+  if (!url.startsWith(NARRATION_URL_PREFIX)) return undefined;
+  try {
+    return decodeURIComponent(url.slice(NARRATION_URL_PREFIX.length).split(/[?#]/)[0]!);
+  } catch {
+    return undefined;
+  }
+}
+
 export interface ClipTiming {
   /** Where the clip starts in the source, ms. Default 0. */
   trimStartMs?: number;

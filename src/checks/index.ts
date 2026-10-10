@@ -15,7 +15,7 @@ export { checkContrast, effectiveBackground, MIN_CONTRAST, parseCssColor, textCo
 export { checkReadability, countWords, minReadMs } from "./readability";
 export { checkTypeScale } from "./typeScale";
 export type { RampStep } from "./typeScale";
-export { checkMediaFiles, checkStoryboard, checkThemeColors, checkTransitions, formatIssue, STORYBOARD_CHECK_NAMES } from "./storyboard";
+export { checkMediaFiles, checkNarrationFit, checkStoryboard, checkThemeColors, checkTransitions, formatIssue, STORYBOARD_CHECK_NAMES } from "./storyboard";
 export type { CheckStoryboardOptions, Severity, StoryboardCheckName, StoryboardIssue } from "./storyboard";
 export { CHECK_NAMES, WARNING_CHECKS } from "./types";
 export type { CheckName, CheckResult, FrameMeasurement, MeasuredBlock, MeasuredKey, MeasuredText, Problem } from "./types";

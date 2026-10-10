@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   checkMediaFiles,
+  checkNarrationFit,
   checkStoryboard,
   checkThemeColors,
   checkTransitions,
@@ -11,6 +12,8 @@ import {
   type StoryboardIssue,
 } from "../src/checks";
 import { validateStoryboard, type Storyboard } from "../src/index";
+import { narrationTailMs } from "../src/render/durations";
+import { resolveTheme } from "../src/render/themes";
 
 function storyboard(input: Record<string, unknown>): Storyboard {
   const result = validateStoryboard({ title: "Test", aspect: "9:16", ...input });
@@ -149,5 +152,28 @@ describe("checkStoryboard", () => {
   it("formats an issue on one line", () => {
     const issue: StoryboardIssue = { check: "transition", severity: "warn", sceneId: "a", message: "no transition" };
     expect(formatIssue(issue)).toBe('warn [transition] scene "a": no transition');
+  });
+});
+
+describe("checkNarrationFit", () => {
+  const sb = storyboard({ scenes: [title("short", { durationMs: 2000 }), title("fits", { durationMs: 5000 }), { id: "auto", component: "TitleCard", props: { title: "auto" }, narration: "Spoken." }, title("quiet")] });
+  const theme = resolveTheme(sb);
+  const lead = theme.motion.leadMs;
+  const tail = (i: number) => narrationTailMs(sb, i, theme);
+
+  it("errors when durationMs ends before the lead and the audio, naming the lead, audio, tail and total", () => {
+    const issues = checkNarrationFit(sb, { short: { audioMs: 4000 }, fits: { audioMs: 4000 }, auto: { audioMs: 99999 } });
+    expect(issues.map((i) => [i.check, i.severity, i.sceneId])).toEqual([["narration-fit", "error", "short"]]);
+    expect(issues[0]!.message).toContain("2000");
+    const message = issues[0]!.message;
+    for (const n of [lead, 4000, tail(0), lead + 4000 + tail(0)]) expect(message).toContain(String(n));
+  });
+
+  it("passes when the scene is exactly long enough, and checkStoryboard only runs it with narration", async () => {
+    expect(checkNarrationFit(sb, { short: { audioMs: 2000 - lead - tail(0) } })).toEqual([]);
+    expect(checkNarrationFit(sb, { short: { audioMs: 2001 - lead - tail(0) } })).toHaveLength(1);
+    const narration = { short: { audioMs: 4000 } };
+    expect((await checkStoryboard(sb, { narration })).map((i) => i.check)).toContain("narration-fit");
+    expect((await checkStoryboard(sb)).map((i) => i.check)).not.toContain("narration-fit");
   });
 });

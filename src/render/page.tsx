@@ -12,6 +12,7 @@ import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
 import type { FrameMeasurement } from "../checks/types";
 import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type SceneDurations, type Timeline } from "../engine/timeline";
 import { Caption, kit } from "../kit";
+import type { PageNarration } from "../narration/types";
 import { SceneClockContext } from "../kit/frameContext";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
@@ -19,6 +20,8 @@ import { WIDE_SHOT, type Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { transitionStyle } from "../transitions";
 import { morphEndpoints, morphProgress, sharedIds, type BoundaryMeasurement, type SharedMeasurements } from "../transitions/shared";
+import { mixAndEncodeAudio, type EncodedAudio } from "./audioEncode";
+import type { AudioPlan } from "./audioPlan";
 import { createPageEncoder, type PageEncoder } from "./encode";
 import { fontLoadRequests } from "./fontFaces";
 import { domImages, loadFonts, pageGate, waitUntilReady } from "./ready";
@@ -33,6 +36,8 @@ export interface PageInput {
   durations: Record<string, number>;
   /** Where relative media paths (`src`) resolve; the working directory by default. Used by Node, not the page. */
   mediaDir?: string;
+  /** Measured word times per scene id, on the scene's audio clock (0 = start of its audio). Captions use them instead of even spacing. */
+  narration?: PageNarration;
 }
 
 export const INPUT_ELEMENT_ID = "motioncraft-input";
@@ -57,6 +62,8 @@ export interface FrameProps {
   targets?: CameraTargets;
   /** `live` (default) draws the camera as it plays; `steady` holds its breathing still, for the checks. */
   camera?: Exclude<CameraMode, "wide">;
+  /** Measured word times per scene id (see `PageInput`). */
+  narration?: PageInput["narration"];
 }
 
 interface SceneLayerProps {
@@ -68,13 +75,14 @@ interface SceneLayerProps {
   hideShared?: boolean;
   targets?: CameraTargets;
   camera: CameraMode;
+  narration?: PageInput["narration"];
 }
 
 /**
  * One scene's component, in its camera's world, and its caption, which stays
  * fixed. During a transition, wrapped in its presentation's style.
  */
-function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false, targets, camera }: SceneLayerProps) {
+function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false, targets, camera, narration }: SceneLayerProps) {
   const scene = storyboard.scenes[active.sceneIndex]!;
   const Component = Object.hasOwn(kit, scene.component) ? kit[scene.component] : undefined;
   if (Component === undefined) {
@@ -99,7 +107,7 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
       </CameraWorld>
       {scene.narration !== undefined && storyboard.captionStyle !== "off" && (
         <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
-          <Caption {...common} text={scene.narration} captionStyle={storyboard.captionStyle} />
+          <Caption {...common} text={scene.narration} captionStyle={storyboard.captionStyle} words={narration?.[scene.id]?.words} />
         </div>
       )}
     </SceneClockContext.Provider>
@@ -130,12 +138,12 @@ function morphAt(info: ReturnType<typeof frameAt>, shared: SharedMeasurements | 
  * incoming one on top, over one shared ground; elements the two scenes share
  * (see `shared`) are drawn once, morphing, above both.
  */
-export function Frame({ storyboard, theme, timeline, frame, shared, targets, camera = "live" }: FrameProps) {
+export function Frame({ storyboard, theme, timeline, frame, shared, targets, camera = "live", narration }: FrameProps) {
   const info = frameAt(timeline, frame);
   const size = frameSize(storyboard.aspect);
   const morph = morphAt(info, shared);
   const transition = morph === undefined ? undefined : timeline.transitions[morph.boundary]!;
-  const layer = { storyboard, theme, fps: timeline.fps, targets, camera };
+  const layer = { storyboard, theme, fps: timeline.fps, targets, camera, narration };
 
   return (
     <div
@@ -170,7 +178,7 @@ export function Frame({ storyboard, theme, timeline, frame, shared, targets, cam
  * elements are measured on (through the camera, as drawn), and shot targets
  * (with the camera wide).
  */
-function MeasureFrame(props: { storyboard: Storyboard; theme: Theme; fps: number; scene: ActiveScene; targets?: CameraTargets; camera: CameraMode }) {
+function MeasureFrame(props: { storyboard: Storyboard; theme: Theme; fps: number; scene: ActiveScene; targets?: CameraTargets; camera: CameraMode; narration?: PageInput["narration"] }) {
   const { width, height } = frameSize(props.storyboard.aspect);
   return (
     <div style={{ position: "relative", width, height, overflow: "hidden" }}>
@@ -191,6 +199,8 @@ export interface PageApi {
   measureFrame(): FrameMeasurement;
   /** Encodes captured frames to H.264 (see `renderVideo`). */
   encoder: PageEncoder;
+  /** Mixes the audio plan and encodes it as AAC or Opus (see `renderVideo`). */
+  mixAndEncodeAudio(plan: AudioPlan): Promise<EncodedAudio>;
 }
 
 declare global {
@@ -205,7 +215,7 @@ export function mountPage(): void {
   const container = document.getElementById(ROOT_ELEMENT_ID);
   if (!json || !container) throw new Error("motioncraft page: missing input or root element");
 
-  const { storyboard, theme, durations } = JSON.parse(json) as PageInput;
+  const { storyboard, theme, durations, narration } = JSON.parse(json) as PageInput;
   const timeline = buildTimeline(storyboard, durations as SceneDurations, theme);
   // React reports render errors here instead of throwing from flushSync.
   let renderError: unknown;
@@ -242,7 +252,7 @@ export function mountPage(): void {
   const measured = new Map<number, BoundaryMeasurement>();
   let provisional = false;
   const stageScene = (scene: ActiveScene, camera: CameraMode) => {
-    flushSync(() => stageRoot.render(<MeasureFrame storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} targets={targets} camera={camera} />));
+    flushSync(() => stageRoot.render(<MeasureFrame storyboard={storyboard} theme={theme} fps={timeline.fps} scene={scene} targets={targets} camera={camera} narration={narration} />));
     if (renderError !== undefined) throw renderError;
     return stage.firstElementChild!;
   };
@@ -292,7 +302,7 @@ export function mountPage(): void {
   // Commits synchronously, so the DOM shows the frame when this returns.
   const draw = (camera: Exclude<CameraMode, "wide">) => {
     flushSync(() => {
-      root.render(<Frame storyboard={storyboard} theme={theme} timeline={timeline} frame={current} shared={shared} targets={targets} camera={camera} />);
+      root.render(<Frame storyboard={storyboard} theme={theme} timeline={timeline} frame={current} shared={shared} targets={targets} camera={camera} narration={narration} />);
     });
     if (renderError !== undefined) throw renderError;
   };
@@ -334,5 +344,6 @@ export function mountPage(): void {
       }
     },
     encoder: createPageEncoder(),
+    mixAndEncodeAudio,
   };
 }

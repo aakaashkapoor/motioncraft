@@ -3,10 +3,11 @@
 
 import type { Page } from "playwright-core";
 import { kit } from "../kit";
+import type { SceneNarration } from "../narration/types";
 import { frameSize } from "../layout/frame";
 import { launchBrowser } from "./browser";
 import { bundlePage } from "./bundle";
-import { routeMedia } from "./media";
+import { routeMedia, routeNarration } from "./media";
 import type { PageInput } from "./page";
 import { READY_TIMEOUT_MS, RenderNotReadyError } from "./ready";
 
@@ -27,8 +28,16 @@ export function checkComponents(input: PageInput): void {
  */
 const PAGE_URL = "https://motioncraft.localhost/render.html";
 
-/** Loads the render page at the frame's size, runs `use`, then closes the browser. */
-export async function withRenderPage<T>(input: PageInput, use: (page: Page) => Promise<T>): Promise<T> {
+/**
+ * Loads the render page at the frame's size, runs `use`, then closes the
+ * browser. `narration` (with the WAV paths, which the page never sees) is
+ * served to the page when the render mixes audio.
+ */
+export async function withRenderPage<T>(
+  input: PageInput,
+  use: (page: Page) => Promise<T>,
+  narration?: Readonly<Record<string, SceneNarration>>,
+): Promise<T> {
   const html = await bundlePage(input);
   const browser = await launchBrowser();
   try {
@@ -37,6 +46,7 @@ export async function withRenderPage<T>(input: PageInput, use: (page: Page) => P
     page.on("pageerror", (error) => pageErrors.push(error));
     await page.route(PAGE_URL, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: html }));
     await routeMedia(page, input.storyboard, input.mediaDir);
+    if (narration !== undefined) await routeNarration(page, narration);
     await page.goto(PAGE_URL);
     if (pageErrors.length > 0) throw new Error(`render page failed to load: ${pageErrors[0]!.message}`);
     await page.waitForFunction(() => window.motioncraft !== undefined);

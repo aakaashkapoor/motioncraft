@@ -3,6 +3,7 @@
   "aspect": "9:16",
   "fps": 30,
   "theme": "light",
+  "voice": "af_heart",
   "scenes": [
     {
       "id": "hook",
@@ -251,7 +252,7 @@
         }
       },
       "narration": "No stock footage, no generated images. Every frame is code.",
-      "durationMs": 4500,
+      "durationMs": 5400,
       "transition": {
         "type": "fade",
         "durationMs": 600

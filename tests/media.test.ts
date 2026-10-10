@@ -11,7 +11,8 @@ import { readMp4DurationMs } from "../src/render/mp4Probe";
 import { showFrame, withRenderPage } from "../src/render/session";
 import { renderStills } from "../src/render/stills";
 import { renderVideo } from "../src/render/video";
-import { summarizeMp4 } from "./mp4box";
+import { mediaUrl } from "../src/kit/mediaSource";
+import { summarizeMp4, summarizeTracks } from "./mp4box";
 import { CLIP_BITS, writeTestClip, writeTestPng, type Rgb } from "./testMedia";
 
 let dir: string;
@@ -172,11 +173,13 @@ describe("VideoClip (integration)", () => {
     const result = await renderVideo({ storyboard: sb, theme: lightTheme, durations: {}, mediaDir: dir, out }).catch(skipWithoutBrowser(ctx));
     expect(result.frames).toBe(24 + 9);
 
-    // Clip audio timing is kept for the future mix.
-    expect(result.audio).toEqual([
-      expect.objectContaining({ sceneId: "trimmed", path: clip, startMs: 0, durationMs: 800, sourceStartMs: 200, rate: 1, muted: true }),
-      expect.objectContaining({ sceneId: "fast", path: clip, startMs: 800, durationMs: 300, sourceStartMs: 4000 / 3, rate: 2, muted: false }),
+    // Only the unmuted clip is in the audio plan. Its file has no audio track, so the MP4 gets none.
+    expect(result.audio.sources).toEqual([
+      { src: mediaUrl("numbers.mp4"), startMs: 800, durationMs: 300, sourceStartMs: 4000 / 3, rate: 2, gain: 1 },
     ]);
+    expect(result.audioCodec).toBeUndefined();
+    expect(result.audioSkipped).toEqual(["numbers.mp4"]);
+    expect(summarizeTracks(await readFile(out))).toHaveLength(1);
 
     // Decode every output frame with WebCodecs and read the number it shows.
     const data = await readFile(out);

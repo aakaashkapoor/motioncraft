@@ -5,6 +5,10 @@
 // and the mdat size is patched in. Original code, no muxer dependency.
 
 import { open, type FileHandle } from "node:fs/promises";
+import { audioTrak, type Mp4AudioSamples, type Mp4AudioTrack } from "./mp4Audio";
+import { MATRIX, ascii, box, fullBox, u16, u32, u64, u8, zeros, type Bytes } from "./mp4Box";
+
+export type { Mp4AudioTrack } from "./mp4Audio";
 
 export interface Mp4Track {
   width: number;
@@ -21,47 +25,8 @@ export interface Mp4Track {
 const TICKS_PER_FRAME = 1000;
 /** Movie (mvhd/tkhd) time units per second. */
 const MOVIE_TIMESCALE = 1000;
-
-// --- box building -----------------------------------------------------------
-
-type Bytes = Uint8Array;
-
-function u8(n: number): Bytes {
-  return Uint8Array.of(n);
-}
-function u16(n: number): Bytes {
-  const b = Buffer.alloc(2);
-  b.writeUInt16BE(n);
-  return b;
-}
-function u32(n: number): Bytes {
-  const b = Buffer.alloc(4);
-  b.writeUInt32BE(n);
-  return b;
-}
-function u64(n: number): Bytes {
-  const b = Buffer.alloc(8);
-  b.writeBigUInt64BE(BigInt(n));
-  return b;
-}
-function zeros(n: number): Bytes {
-  return new Uint8Array(n);
-}
-function ascii(text: string): Bytes {
-  return Buffer.from(text, "latin1");
-}
-
-function box(type: string, ...parts: Bytes[]): Bytes {
-  const size = 8 + parts.reduce((sum, part) => sum + part.length, 0);
-  return Buffer.concat([u32(size), ascii(type), ...parts]);
-}
-
-function fullBox(type: string, version: number, flags: number, ...parts: Bytes[]): Bytes {
-  return box(type, u8(version), u8(flags >> 16), u16(flags & 0xffff), ...parts);
-}
-
-/** The identity transform, 16.16 / 2.30 fixed point. */
-const MATRIX = [0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000].map(u32);
+const VIDEO_TRACK_ID = 1;
+const AUDIO_TRACK_ID = 2;
 
 // --- colr (nclx) --------------------------------------------------------------
 
@@ -88,6 +53,12 @@ export function colrBox(colorSpace: VideoColorSpaceInit | undefined): Bytes[] {
 }
 
 // --- moov ----------------------------------------------------------------------
+
+/** The audio track of a movie, with where its samples are. */
+export interface Mp4Audio {
+  track: Mp4AudioTrack;
+  samples: Mp4AudioSamples;
+}
 
 export interface Mp4Samples {
   sizes: readonly number[];
@@ -134,12 +105,13 @@ function stbl(track: Mp4Track, samples: Mp4Samples): Bytes {
   );
 }
 
-/** The complete moov box for `track` and its samples. */
-export function moovBox(track: Mp4Track, samples: Mp4Samples): Bytes {
+/** The complete moov box for `track` and its samples, and the audio track if there is one. */
+export function moovBox(track: Mp4Track, samples: Mp4Samples, audio?: Mp4Audio): Bytes {
   const frames = samples.sizes.length;
   const mediaTimescale = track.fps * TICKS_PER_FRAME;
   const mediaDuration = frames * TICKS_PER_FRAME;
   const movieDuration = Math.round((frames * MOVIE_TIMESCALE) / track.fps);
+  const audioTrack = audio === undefined ? undefined : audioTrak(audio.track, audio.samples, MOVIE_TIMESCALE, AUDIO_TRACK_ID, movieDuration);
 
   return box(
     "moov",
@@ -156,7 +128,7 @@ export function moovBox(track: Mp4Track, samples: Mp4Samples): Bytes {
       zeros(10),
       ...MATRIX,
       zeros(24),
-      u32(2), // next_track_ID
+      u32(audioTrack === undefined ? VIDEO_TRACK_ID + 1 : AUDIO_TRACK_ID + 1), // next_track_ID
     ),
     box(
       "trak",
@@ -166,7 +138,7 @@ export function moovBox(track: Mp4Track, samples: Mp4Samples): Bytes {
         0x3, // enabled, in movie
         u32(0),
         u32(0),
-        u32(1), // track_ID
+        u32(VIDEO_TRACK_ID),
         u32(0),
         u32(movieDuration),
         zeros(8),
@@ -190,6 +162,7 @@ export function moovBox(track: Mp4Track, samples: Mp4Samples): Bytes {
         ),
       ),
     ),
+    ...(audioTrack === undefined ? [] : [audioTrack]),
   );
 }
 
@@ -199,11 +172,17 @@ const FTYP = box("ftyp", ascii("isom"), u32(0x200), ascii("isom"), ascii("iso2")
 /** A 64-bit ("largesize") mdat header, so the size can never overflow. */
 const MDAT_HEADER_SIZE = 16;
 
-/** Streams H.264 samples into an MP4 file. Call `addSample` per frame, in order, then `finish`. */
+/**
+ * Streams H.264 samples into an MP4 file. Call `addSample` per frame, in order,
+ * then `finish`. Audio samples (`addAudioSample`) are held until `finish` and
+ * written as one run after the video samples.
+ */
 export class Mp4Writer {
   private readonly sizes: number[] = [];
   private readonly keyFrames: number[] = [];
   private readonly offsets: number[] = [];
+  private readonly audioSamples: Uint8Array[] = [];
+  private readonly audioDurations: number[] = [];
   private position: number;
   private closed = false;
 
@@ -237,11 +216,34 @@ export class Mp4Writer {
     this.position += data.length;
   }
 
-  /** Writes the moov box, patches the mdat size and closes the file. */
-  async finish(track: Mp4Track): Promise<void> {
+  /** Adds the next audio sample (one encoded audio frame) lasting `durationTicks` of the audio track's sample rate. */
+  addAudioSample(data: Uint8Array, durationTicks: number): void {
+    this.audioSamples.push(data);
+    this.audioDurations.push(durationTicks);
+  }
+
+  /** Writes the audio run and the moov box, patches the mdat size and closes the file. */
+  async finish(track: Mp4Track, audio?: Mp4AudioTrack): Promise<void> {
     try {
       if (this.sizes.length === 0) throw new Error("mp4: no samples");
-      const moov = moovBox(track, { sizes: this.sizes, keyFrames: this.keyFrames, offsets: this.offsets });
+      if (audio === undefined && this.audioSamples.length > 0) throw new Error("mp4: audio samples but no audio track");
+      if (audio !== undefined && this.audioSamples.length === 0) throw new Error("mp4: no audio samples");
+      const audioOffset = this.position;
+      if (audio !== undefined) {
+        const run = Buffer.concat(this.audioSamples);
+        await this.file.write(run, 0, run.length, this.position);
+        this.position += run.length;
+      }
+      const moov = moovBox(
+        track,
+        { sizes: this.sizes, keyFrames: this.keyFrames, offsets: this.offsets },
+        audio === undefined
+          ? undefined
+          : {
+              track: audio,
+              samples: { sizes: this.audioSamples.map((sample) => sample.length), durations: this.audioDurations, offset: audioOffset },
+            },
+      );
       await this.file.write(moov, 0, moov.length, this.position);
       const mdatSize = this.position - FTYP.length;
       await this.file.write(u64(mdatSize), 0, 8, FTYP.length + 8);

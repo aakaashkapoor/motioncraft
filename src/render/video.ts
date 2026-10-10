@@ -1,18 +1,24 @@
-// Renders a whole storyboard to an MP4 (H.264, silent for now) in the installed
-// Chrome or Edge: each frame is rendered and captured in the page, encoded
-// there with WebCodecs, and the encoded chunks come back to Node a few at a
-// time and stream into the MP4 file. No ffmpeg, no frame files on disk.
+// Renders a whole storyboard to an MP4 (H.264, plus an AAC or Opus audio track
+// when there is narration or clip audio) in the installed Chrome or Edge: each
+// frame is rendered and captured in the page, encoded there with WebCodecs, and
+// the encoded chunks come back to Node a few at a time and stream into the MP4
+// file. The audio is mixed and encoded in the page at the end. No ffmpeg, no
+// frame files on disk.
 
 import { mkdir, rm, stat } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { CDPSession } from "playwright-core";
+import type { CDPSession, Page } from "playwright-core";
 import { buildTimeline } from "../engine/timeline";
+import { mediaSrc } from "../kit/mediaSource";
 import { frameSize } from "../layout/frame";
 import { browserLabel } from "./browser";
+import type { SceneNarration } from "../narration/types";
+import { AUDIO_FRAME_SAMPLES, chunkTicks, type EncodedAudio } from "./audioEncode";
+import { audioPlan, type AudioPlan } from "./audioPlan";
 import { planFrame, type EncodedChunk } from "./encode";
-import { Mp4Writer, type Mp4Track } from "./mp4";
+import { clipAudioPlan, prepareMedia } from "./media";
+import { Mp4Writer, type Mp4AudioTrack, type Mp4Track } from "./mp4";
 import type { PageInput } from "./page";
-import { clipAudioPlan, prepareMedia, type ClipAudio } from "./media";
 import { checkComponents, showFrame, withRenderPage } from "./session";
 
 export interface VideoProgress {
@@ -21,7 +27,9 @@ export interface VideoProgress {
   totalFrames: number;
 }
 
-export interface VideoOptions extends PageInput {
+export interface VideoOptions extends Omit<PageInput, "narration"> {
+  /** Each narrated scene's audio, words and WAV file (see `narrateStoryboard`). Voices the video. */
+  narration?: Record<string, SceneNarration>;
   /** The .mp4 file to write. */
   out: string;
   onProgress?: (progress: VideoProgress) => void;
@@ -37,8 +45,12 @@ export interface VideoResult {
   bytes: number;
   /** The codec string the browser encoded with, e.g. "avc1.64002A". */
   codec: string;
-  /** Where each VideoClip's audio plays, for the future audio mix (the MP4 is silent for now). */
-  audio: ClipAudio[];
+  /** The codec string of the audio track ("mp4a.40.2" or "opus"); absent when the MP4 has no audio. */
+  audioCodec?: string;
+  /** VideoClip files (`src` as written) that were unmuted but have no audio track, so left out of the mix. */
+  audioSkipped?: string[];
+  /** What was mixed into the audio track; no sources, no track. */
+  audio: AudioPlan;
 }
 
 export class UnsupportedCodecError extends Error {
@@ -51,10 +63,51 @@ export class UnsupportedCodecError extends Error {
   }
 }
 
+export class UnsupportedAudioCodecError extends Error {
+  constructor(browser: string, tried: readonly string[]) {
+    super(
+      `${browser} cannot encode AAC or Opus audio with WebCodecs, which motioncraft needs to put sound in the MP4. ` +
+        `Tried: ${tried.join(", ")}. Update the browser, or install Google Chrome, and try again.`,
+    );
+    this.name = "UnsupportedAudioCodecError";
+  }
+}
+
 /** Captures what the page shows right now as a base64 PNG, exactly viewport-sized. */
 async function capture(cdp: CDPSession): Promise<string> {
   const { data } = await cdp.send("Page.captureScreenshot", { format: "png", optimizeForSpeed: true });
   return data;
+}
+
+/** What `addAudio` found: the track if anything was audible, and the clips left out for having no audio. */
+interface AddedAudio {
+  audio?: { track: Mp4AudioTrack; codec: string };
+  /** The `src` of each VideoClip file without an audio track. */
+  skipped: string[];
+}
+
+/** Mixes and encodes the plan in the page and hands the samples to the writer. */
+async function addAudio(page: Page, plan: AudioPlan, writer: Mp4Writer): Promise<AddedAudio> {
+  const encoded: EncodedAudio = await page.evaluate((p) => window.motioncraft!.mixAndEncodeAudio(p), plan);
+  if (encoded.status === "unsupported") throw new UnsupportedAudioCodecError(browserLabel(page.context().browser()!), encoded.tried);
+  const skipped = [...new Set(encoded.skipped.map((url) => mediaSrc(url) ?? url))];
+  if (encoded.status === "silent" || encoded.chunks.length === 0) return { skipped };
+  const entry = encoded.entry!;
+  const ticks = chunkTicks(encoded.chunks, encoded.sampleRate, AUDIO_FRAME_SAMPLES[entry]);
+  for (const [i, chunk] of encoded.chunks.entries()) writer.addAudioSample(Buffer.from(chunk.data, "base64"), ticks[i]!);
+  return {
+    skipped,
+    audio: {
+      codec: encoded.codec!,
+      track: {
+        codec: entry,
+        sampleRate: encoded.sampleRate,
+        channels: encoded.channels,
+        description: Buffer.from(encoded.description!, "base64"),
+        primingTicks: encoded.primingTicks,
+      },
+    },
+  };
 }
 
 /** Renders the storyboard to `out` as an MP4 and returns what was written. */
@@ -64,6 +117,7 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
   const { input, sourceDurationsMs } = await prepareMedia(options);
   const { storyboard, durations, theme } = input;
   const timeline = buildTimeline(storyboard, durations, theme);
+  const plan = audioPlan(timeline, theme, options.narration ?? {}, clipAudioPlan(storyboard, timeline, input.mediaDir, sourceDurationsMs));
   const { fps, totalFrames } = timeline;
   const { width, height } = frameSize(storyboard.aspect);
   await mkdir(dirname(out), { recursive: true });
@@ -79,6 +133,8 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
 
     const writer = await Mp4Writer.create(out);
     let track: Mp4Track | undefined;
+    let audioCodec: string | undefined;
+    let audioSkipped: string[] = [];
 
     const write = async (chunks: EncodedChunk[]) => {
       for (const chunk of chunks) {
@@ -113,7 +169,10 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
 
       if (writer.frames !== totalFrames) throw new Error(`encoder returned ${writer.frames} of ${totalFrames} frames`);
       if (track === undefined) throw new Error("encoder did not report its H.264 configuration (avcC)");
-      await writer.finish(track);
+      const added = plan.sources.length === 0 ? undefined : await addAudio(page, plan, writer);
+      await writer.finish(track, added?.audio?.track);
+      audioCodec = added?.audio?.codec;
+      audioSkipped = added?.skipped ?? [];
     } catch (error) {
       await writer.abort();
       await rm(out, { force: true });
@@ -129,7 +188,9 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
       durationMs: (totalFrames * 1000) / fps,
       bytes: (await stat(out)).size,
       codec,
-      audio: clipAudioPlan(storyboard, timeline, input.mediaDir, sourceDurationsMs),
+      ...(audioCodec === undefined ? {} : { audioCodec }),
+      ...(audioSkipped.length === 0 ? {} : { audioSkipped }),
+      audio: plan,
     };
-  });
+  }, options.narration);
 }

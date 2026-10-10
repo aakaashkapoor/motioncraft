@@ -213,8 +213,9 @@ buttons. In 9:16, `safe` picks which platform UI the frame keeps clear of:
 Narration is burned in as a caption, a page of a few words at a time, centered
 in the caption band. The word being spoken lights up in the accent and scales
 up a touch, and each page pops in (scale 0.9 to 1, rising 24 px, in 170 ms).
-Until there is a voice track, the words are spread evenly over the scene, each
-taking time in proportion to its length. `captionStyle` picks the look:
+With a voice track the words light up as they are spoken; without one
+(`--no-narration`) they are spread evenly over the scene, each taking time in
+proportion to its length. `captionStyle` picks the look:
 
 - `"standard"` (the default): pages of 3-6 words, one or two lines, in the
   ramp's `subtitle` at bold, on a plate of the ground color. For explainers.
@@ -225,6 +226,32 @@ taking time in proportion to its length. `captionStyle` picks the look:
 
 ```json
 { "captionStyle": "punch" }
+```
+
+### Narration
+
+Narration is spoken by default, by a voice that runs entirely on your machine.
+The storyboard's `voice` picks it:
+
+- `"af_heart"` (the default), `"af_bella"` and `"am_michael"` are the stock voices.
+- The first narration downloads a pinned, hash-checked model once to
+  `~/.cache/motioncraft`; after that nothing touches the network.
+- Spoken audio is cached beside the storyboard in `.motioncraft/narration/`,
+  so an unchanged line is never spoken twice.
+- A narrated scene without `durationMs` follows its audio: a short lead, the
+  audio, then a tail that leaves room for the outgoing transition. Set
+  `durationMs` only when the scene's choreography needs longer.
+- Captions light each word as it is spoken.
+- The `narration-fit` check is an error when an explicit `durationMs` is
+  shorter than lead + audio + tail. It names the total needed; lengthen the
+  scene or remove `durationMs`.
+- `npx tsx scripts/narrate.ts <storyboard.json>` speaks the narration ahead of
+  time, so `scripts/check.ts` and `scripts/stills.ts` use the real timings.
+  `scripts/render.ts` narrates by itself; `--no-narration` renders without a voice, with
+  timings estimated from the word count.
+
+```json
+{ "voice": "af_bella" }
 ```
 
 ## 3. Theme and overrides
@@ -399,8 +426,11 @@ Brand colors on a light base:
 
 ## 4. Checks
 
-Run `npx tsx scripts/check.ts <storyboard.json>` after writing the storyboard
-and after every fix. Storyboard checks run first, then the frame checks.
+If the storyboard has narration, run `npx tsx scripts/narrate.ts <storyboard.json>`
+first, so the checks (and `scripts/stills.ts`) use the real audio timing and not
+estimates. Then run `npx tsx scripts/check.ts <storyboard.json>` after writing
+the storyboard and after every fix. Storyboard checks run first, then the frame
+checks.
 
 - **Storyboard checks.**
   - `transition` (warn): a boundary has no chosen transition.
@@ -409,6 +439,9 @@ and after every fix. Storyboard checks run first, then the frame checks.
   - `media` (error): a `VideoClip` or `Image` file is missing or unreadable.
     Paths resolve from the storyboard's folder. Frames are not checked until
     these are fixed.
+  - `narration-fit` (error): a scene's `durationMs` is shorter than its lead
+    + narration audio + tail (needs the narration spoken first). Lengthen the
+    scene or remove `durationMs`.
 - **Frame checks** on the start, middle and end of every scene: `overflow`
   (text clipped or off frame), `safe-area` (inside the `safe` profile's UI-free
   zone, with text also off the 9:16 button rail), `contrast` (WCAG) and
@@ -916,7 +949,8 @@ and a `shareId`, and can sit full frame or inside a window's `content`.
 #### `VideoClip`
 
 `trimStartMs` and `trimEndMs` pick the part of the file, `rate` sets the speed,
-`muted` leaves its audio out of the mix. Supported: `.mp4`, `.m4v`, `.mov`,
+`muted` leaves its audio out of the mix. Clip audio at a `rate` other than 1
+changes pitch (it is resampled, not time-stretched). Supported: `.mp4`, `.m4v`, `.mov`,
 `.webm`. With `"durationMs": "clip"` the scene lasts as long as the clip.
 
 ```json
