@@ -161,7 +161,7 @@ describe("checkNarrationFit", () => {
   const lead = theme.motion.leadMs;
   const tail = (i: number) => narrationTailMs(sb, i, theme);
 
-  it("errors when durationMs ends before the lead and the audio, naming both numbers", () => {
+  it("errors when durationMs ends before the lead and the audio, naming the lead, audio, tail and total", () => {
     const issues = checkNarrationFit(sb, { short: { audioMs: 4000 }, fits: { audioMs: 4000 }, auto: { audioMs: 99999 } });
     expect(issues.map((i) => [i.check, i.severity, i.sceneId])).toEqual([["narration-fit", "error", "short"]]);
     expect(issues[0]!.message).toContain("2000");

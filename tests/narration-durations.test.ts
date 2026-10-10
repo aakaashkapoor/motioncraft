@@ -113,12 +113,12 @@ describe("narrationDurations", () => {
 });
 
 describe("prepareMedia and narration", () => {
-  it("hands the page only the words of each scene", async () => {
+  it("hands the page the words, audio length and served URL of each scene, never a path", async () => {
     const sb = board(30, [scene("a", { narration: "Hi." })]);
     const words = [{ text: "Hi.", startMs: 0, endMs: 400 }];
-    const full = { a: { sceneId: "a", wavPath: "C:\secret\a.wav", audioMs: 400, words } };
+    const full = { a: { sceneId: "a", wavPath: String.raw`C:\secret\a.wav`, audioMs: 400, words } };
     const { input } = await prepareMedia({ storyboard: sb, theme: resolveTheme(sb), durations: {}, narration: full });
-    expect(input.narration).toEqual({ a: { words } });
+    expect(input.narration).toEqual({ a: { words, audioMs: 400, src: "https://motioncraft.localhost/narration/a.wav" } });
     expect(JSON.stringify(input)).not.toContain("secret");
   });
 });

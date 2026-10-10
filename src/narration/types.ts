@@ -11,8 +11,11 @@ export interface SceneNarration {
   words: TimedWord[];
 }
 
-/** What the page needs of a scene's narration: its words, on the audio clock. */
-export type PageNarration = Record<string, { words: TimedWord[] }>;
+/**
+ * What the page needs of a scene's narration: its words, on the audio clock,
+ * the audio length and the URL it is served at (never a disk path).
+ */
+export type PageNarration = Record<string, { words: TimedWord[]; audioMs?: number; src?: string }>;
 
 /** Cached narration, and the narrated scenes that had none. */
 export interface CachedNarration {
