@@ -2,9 +2,8 @@
 //   npx tsx scripts/narrate.ts <storyboard.json> [--voice name] [--offline]
 
 import { readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
 import { kokoroSynthesizer } from "../src/narration/kokoro";
-import { narrateStoryboard } from "../src/narration/narrate";
+import { narrateStoryboard, narrationDir } from "../src/narration/narrate";
 import { parseNarrateArgs } from "../src/render/args";
 import { validateStoryboard } from "../src/storyboard/validate";
 
@@ -16,7 +15,7 @@ async function main(argv: string[]): Promise<void> {
     throw new Error(`${args.storyboard} is not a valid storyboard:\n${validation.errors.map((e) => `  - ${e}`).join("\n")}`);
   }
 
-  const outDir = join(dirname(args.storyboard), ".motioncraft", "narration");
+  const outDir = narrationDir(args.storyboard);
   const narrations = await narrateStoryboard(validation.storyboard, {
     synthesizer: kokoroSynthesizer({ offline: args.offline }),
     outDir,

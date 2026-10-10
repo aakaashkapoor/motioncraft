@@ -34,6 +34,7 @@ import {
   type CaptionStyle,
   type Storyboard,
   type Theme,
+  type TimedWord,
 } from "../src/index";
 import { Frame } from "../src/render/page";
 
@@ -481,5 +482,52 @@ describe("captionStyle in the frame", () => {
     const html = frame(board("off"));
     expect(html).not.toContain("data-caption");
     expect(html).not.toContain(">render</span>");
+  });
+});
+
+describe("measured word times", () => {
+  const text = "We render every frame for you.";
+  // Heavily uneven on purpose: "frame" is spoken late, on the audio clock.
+  const spoken: TimedWord[] = [
+    { text: "We", startMs: 0, endMs: 200 },
+    { text: "render", startMs: 200, endMs: 600 },
+    { text: "every", startMs: 600, endMs: 900 },
+    { text: "frame", startMs: 2000, endMs: 2600 },
+    { text: "for", startMs: 2600, endMs: 2800 },
+    { text: "you.", startMs: 2800, endMs: 3200 },
+  ];
+  const { leadMs } = lightTheme.motion;
+  const endMs = 5000;
+
+  it("captionTrack shifts measured words by the scene lead", () => {
+    const track = captionTrack(lightTheme, "9:16", text, "standard", endMs, spoken);
+    expect(track.words).toEqual(spoken.map((w) => ({ ...w, startMs: w.startMs + leadMs, endMs: w.endMs + leadMs })));
+    expect(activeWordAt(track.words, leadMs + 2100)).toBe(3);
+    expect(activeWordAt(track.words, leadMs + 1500)).toBeUndefined();
+  });
+
+  it("captionTrack falls back to even times without measured words", () => {
+    const even = captionTrack(lightTheme, "9:16", text, "standard", endMs);
+    expect(captionTrack(lightTheme, "9:16", text, "standard", endMs, [])).toEqual(even);
+    expect(even.words[0]!.startMs).toBe(leadMs);
+  });
+
+  it("lights the measured word at its time, through Frame's narration input", () => {
+    const sb = (() => {
+      const result = validateStoryboard({
+        title: "T",
+        aspect: "9:16",
+        scenes: [{ id: "a", component: "TitleCard", props: { title: "Hello" }, narration: text, durationMs: 5000 }],
+      });
+      if (!result.ok) throw new Error(result.errors.join("\n"));
+      return result.storyboard;
+    })();
+    const frameNo = Math.round(((leadMs + 2300) * 30) / 1000);
+    const html = renderToStaticMarkup(
+      createElement(Frame, { storyboard: sb, theme: lightTheme, timeline: buildTimeline(sb, {}), frame: frameNo, narration: { a: { words: spoken } } }),
+    );
+    const scales = Object.fromEntries(wordSpans(html).map((s) => [s.text, transformOf(s.style).scale]));
+    expect(scales["frame"]).toBeGreaterThan(1);
+    expect(scales["render"]).toBe(1);
   });
 });

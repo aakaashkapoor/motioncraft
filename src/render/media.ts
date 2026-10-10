@@ -193,8 +193,11 @@ export async function prepareMedia(input: PageInput): Promise<PreparedMedia> {
   }
   if (problems.length > 0) throw new MediaError(problems);
 
-  const { storyboard, theme, mediaDir } = input;
-  return { input: { storyboard, theme, durations, ...(mediaDir === undefined ? {} : { mediaDir }) }, sourceDurationsMs };
+  const { storyboard, theme, mediaDir, narration } = input;
+  return {
+    input: { storyboard, theme, durations, ...(mediaDir === undefined ? {} : { mediaDir }), ...(narration === undefined ? {} : { narration }) },
+    sourceDurationsMs,
+  };
 }
 
 /** When and how a clip's audio plays in the output, for the future audio mix. */

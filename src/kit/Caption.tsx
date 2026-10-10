@@ -26,6 +26,8 @@ export interface CaptionProps extends KitProps {
   text: string;
   /** Defaults to `standard`; `off` draws nothing. */
   captionStyle?: CaptionStyle;
+  /** Measured word times on the scene's audio clock; shifted by the scene lead. Without, words are spread evenly. */
+  words?: readonly TimedWord[];
 }
 
 /** How much caption text fits on one page for a theme, aspect and style (an estimate). */
@@ -41,8 +43,10 @@ export function captionLimits(theme: Theme, aspect: Aspect, style: ShownCaptionS
 }
 
 /**
- * The caption's words, spoken evenly from the scene's lead until its exit
- * begins (the scene's last frame is at `endMs`), and the pages they make.
+ * The caption's words and the pages they make. With measured `spoken` words
+ * (on the audio clock) they start at the scene's lead; otherwise they are
+ * spread evenly from the lead until the exit begins (the scene's last frame
+ * is at `endMs`).
  */
 export function captionTrack(
   theme: Theme,
@@ -50,8 +54,13 @@ export function captionTrack(
   text: string,
   style: ShownCaptionStyle,
   endMs: number,
+  spoken?: readonly TimedWord[],
 ): { words: TimedWord[]; pages: TimedPage[] } {
-  const words = evenWordTimes(text, theme.motion.leadMs, endMs - exitMs(theme, theme.motion.fx.ms));
+  const { leadMs } = theme.motion;
+  const words =
+    spoken !== undefined && spoken.length > 0
+      ? spoken.map((word) => ({ ...word, startMs: word.startMs + leadMs, endMs: word.endMs + leadMs }))
+      : evenWordTimes(text, leadMs, endMs - exitMs(theme, theme.motion.fx.ms));
   return { words, pages: timedPages(words, captionLimits(theme, aspect, style)) };
 }
 
@@ -80,10 +89,10 @@ export function captionColors(theme: Theme, style: ShownCaptionStyle): CaptionCo
   return { text, active: plate ? text : readableColor(colors.accent, text, [stroke]), stroke };
 }
 
-export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_CAPTION_STYLE }: CaptionProps) {
+export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_CAPTION_STYLE, words: spoken }: CaptionProps) {
   const time = useSceneTime(progress);
   if (captionStyle === "off") return null;
-  const { words, pages } = captionTrack(theme, aspect, text, captionStyle, time.endMs);
+  const { words, pages } = captionTrack(theme, aspect, text, captionStyle, time.endMs, spoken);
   if (pages.length === 0) return null;
   const page = pages[pageIndexAt(pages, time.ms)]!;
   const shown = words.slice(page.start, page.end);

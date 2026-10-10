@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   checkMediaFiles,
+  checkNarrationFit,
   checkStoryboard,
   checkThemeColors,
   checkTransitions,
@@ -11,6 +12,7 @@ import {
   type StoryboardIssue,
 } from "../src/checks";
 import { validateStoryboard, type Storyboard } from "../src/index";
+import { resolveTheme } from "../src/render/themes";
 
 function storyboard(input: Record<string, unknown>): Storyboard {
   const result = validateStoryboard({ title: "Test", aspect: "9:16", ...input });
@@ -149,5 +151,24 @@ describe("checkStoryboard", () => {
   it("formats an issue on one line", () => {
     const issue: StoryboardIssue = { check: "transition", severity: "warn", sceneId: "a", message: "no transition" };
     expect(formatIssue(issue)).toBe('warn [transition] scene "a": no transition');
+  });
+});
+
+describe("checkNarrationFit", () => {
+  const sb = storyboard({ scenes: [title("short", { durationMs: 2000 }), title("fits", { durationMs: 5000 }), { id: "auto", component: "TitleCard", props: { title: "auto" }, narration: "Spoken." }, title("quiet")] });
+  const lead = resolveTheme(sb).motion.leadMs;
+
+  it("errors when durationMs ends before the lead and the audio, naming both numbers", () => {
+    const issues = checkNarrationFit(sb, { short: { audioMs: 4000 }, fits: { audioMs: 4000 }, auto: { audioMs: 99999 } });
+    expect(issues.map((i) => [i.check, i.severity, i.sceneId])).toEqual([["narration-fit", "error", "short"]]);
+    expect(issues[0]!.message).toContain("2000");
+    expect(issues[0]!.message).toContain(String(lead + 4000));
+  });
+
+  it("passes when the scene is exactly long enough, and checkStoryboard only runs it with narration", async () => {
+    expect(checkNarrationFit(sb, { short: { audioMs: 2000 - lead } })).toEqual([]);
+    const narration = { short: { audioMs: 4000 } };
+    expect((await checkStoryboard(sb, { narration })).map((i) => i.check)).toContain("narration-fit");
+    expect((await checkStoryboard(sb)).map((i) => i.check)).not.toContain("narration-fit");
   });
 });

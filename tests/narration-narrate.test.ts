@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { KOKORO_REVISION, MISAKI_REVISION } from "../src/narration/assets";
-import { NARRATION_CACHE_VERSION, narrateStoryboard } from "../src/narration/narrate";
+import { NARRATION_CACHE_VERSION, loadCachedNarration, narrateStoryboard } from "../src/narration/narrate";
 import type { Synthesizer } from "../src/narration/kokoro";
 import { decodeWav } from "../src/narration/wav";
 import { validateStoryboard } from "../src/index";
@@ -147,5 +147,37 @@ describe("narrateStoryboard", () => {
     const result = await narrateStoryboard(board({}, "just words"), { synthesizer: synth, outDir });
     expect(synth.calls).toHaveLength(1);
     expect(result["a"]!.audioMs).toBe(1000);
+  });
+});
+
+describe("loadCachedNarration", () => {
+  it("returns narrated scenes already on disk without speaking", async () => {
+    const spoken = await narrateStoryboard(board(), { synthesizer: fakeSynth(), outDir });
+    const cached = await loadCachedNarration(board(), { outDir });
+    expect(cached).toEqual(spoken);
+  });
+
+  it("omits scenes that were never narrated, and an empty folder is empty", async () => {
+    expect(await loadCachedNarration(board(), { outDir })).toEqual({});
+    expect(await loadCachedNarration(board(), { outDir: join(outDir, "missing") })).toEqual({});
+  });
+
+  it("misses when the text or voice changed", async () => {
+    await narrateStoryboard(board(), { synthesizer: fakeSynth(), outDir });
+    expect(await loadCachedNarration(board({}, "Different words."), { outDir })).toEqual({});
+    expect(await loadCachedNarration(board(), { outDir, voice: "am_adam" })).toEqual({});
+  });
+
+  it("treats an invalid sidecar or a missing wav as a miss", async () => {
+    const spoken = await narrateStoryboard(board(), { synthesizer: fakeSynth(), outDir });
+    const wav = spoken["a"]!.wavPath;
+    const json = wav.replace(/\.wav$/, ".json");
+    await writeFile(json, "{ not json");
+    expect(await loadCachedNarration(board(), { outDir })).toEqual({});
+    await writeFile(json, JSON.stringify({ audioMs: "long", words: [] }));
+    expect(await loadCachedNarration(board(), { outDir })).toEqual({});
+    await writeFile(json, JSON.stringify({ audioMs: 5, words: [] }));
+    await rm(wav);
+    expect(await loadCachedNarration(board(), { outDir })).toEqual({});
   });
 });
