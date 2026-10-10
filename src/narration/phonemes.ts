@@ -26,6 +26,9 @@ function lookup(lexicon: Lexicon, word: string): string | undefined {
   return undefined;
 }
 
+/** Vowel-ish phonemes after which a stem-final t flaps, as in misaki. */
+const US_TAUS = "AIOWYiuæɑəɛɪɹʊʌ";
+
 /** The sound a plural or possessive s takes after `phonemes`, as misaki chooses it. */
 function suffixSound(phonemes: string): string {
   const last = [...phonemes].at(-1) ?? "";
@@ -68,18 +71,74 @@ function soundOut(word: string): string {
 export function createPhonemizer(gold: Lexicon, silver: Lexicon): (text: string) => string {
   const find = (word: string): string | undefined => lookup(gold, word) ?? lookup(silver, word);
 
+  const known = (word: string): boolean => find(word) !== undefined;
+
+  // The stem rules below are ported from misaki (misaki/en.py, Apache-2.0).
   const withSuffix = (word: string): string | undefined => {
-    const stem = /'s$/i.test(word) ? word.slice(0, -2) : /[^'s]s$/i.test(word) ? word.slice(0, -1) : undefined;
+    let stem: string | undefined;
+    if (/'s$/i.test(word)) stem = word.slice(0, -2);
+    else if (/[^s]s$/i.test(word) && known(word.slice(0, -1))) stem = word.slice(0, -1);
+    else if (word.length > 4 && /es$/i.test(word) && known(word.slice(0, -2))) stem = word.slice(0, -2);
+    else if (/ies$/i.test(word) && known(`${word.slice(0, -3)}y`)) stem = `${word.slice(0, -3)}y`;
     if (stem === undefined) return undefined;
     const base = find(stem);
     return base === undefined ? undefined : base + suffixSound(base);
+  };
+
+  const stemEd = (word: string): string | undefined => {
+    if (word.length < 4 || !/d$/i.test(word)) return undefined;
+    let stem: string | undefined;
+    if (!/dd$/i.test(word) && known(word.slice(0, -1))) stem = word.slice(0, -1);
+    else if (word.length > 4 && /ed$/i.test(word) && !/eed$/i.test(word) && known(word.slice(0, -2))) stem = word.slice(0, -2);
+    const base = stem === undefined ? undefined : find(stem);
+    if (base === undefined) return undefined;
+    const phones = [...base];
+    const last = phones.at(-1) ?? "";
+    if ("pkfθʃsʧ".includes(last)) return `${base}t`;
+    if (last === "d") return `${base}ᵻd`;
+    if (last !== "t") return `${base}d`;
+    if (phones.length < 2) return `${base}ɪd`;
+    if (US_TAUS.includes(phones.at(-2) ?? "")) return `${phones.slice(0, -1).join("")}ɾᵻd`;
+    return `${base}ᵻd`;
+  };
+
+  const stemIng = (word: string): string | undefined => {
+    if (word.length < 5 || !/ing$/i.test(word)) return undefined;
+    const head = word.slice(0, -3);
+    let stem: string | undefined;
+    if (word.length > 5 && known(head)) stem = head;
+    else if (known(`${head}e`)) stem = `${head}e`;
+    else if (word.length > 5 && /([bcdgklmnprstvxz])\1ing$|cking$/i.test(word) && known(word.slice(0, -4))) stem = word.slice(0, -4);
+    const base = stem === undefined ? undefined : find(stem);
+    if (base === undefined) return undefined;
+    const phones = [...base];
+    if (phones.length > 1 && phones.at(-1) === "t" && US_TAUS.includes(phones.at(-2) ?? "")) {
+      return `${phones.slice(0, -1).join("")}ɾɪŋ`;
+    }
+    return `${base}ɪŋ`;
+  };
+
+  // Not in misaki: a long word made of two known words, with one primary stress.
+  const compound = (word: string): string | undefined => {
+    if (word.length < 6) return undefined;
+    for (let i = 3; i <= word.length - 3; i++) {
+      const first = find(word.slice(0, i));
+      const second = find(word.slice(i));
+      if (first !== undefined && second !== undefined) return first + second.replaceAll("ˈ", "ˌ");
+    }
+    return undefined;
   };
 
   const spellOut = (word: string): string =>
     [...word].map((letter) => find(letter) ?? soundOut(letter)).join("");
 
   const pronounce = (word: string): string =>
-    find(word) ?? withSuffix(word) ?? (/^[A-Z]{2,}$/.test(word) ? spellOut(word) : soundOut(word));
+    find(word) ??
+    withSuffix(word) ??
+    stemEd(word) ??
+    stemIng(word) ??
+    compound(word) ??
+    (/^[A-Z]{2,}$/.test(word) ? spellOut(word) : soundOut(word));
 
   return (text) => {
     let out = "";

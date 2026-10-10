@@ -84,6 +84,36 @@ describe("createPhonemizer", () => {
     expect(phonemize("kicks")).toBe("kˈɪks");
   });
 
+  describe("stems", () => {
+    const stems = createPhonemizer(
+      {
+        generate: "ʤˈɛnəɹˌAt", walk: "wˈɔk", play: "plˈA", add: "ˈæd", make: "mˈAk", run: "ɹˈʌn",
+        get: "ɡˈɛt", box: "bˈɑks", story: "stˈɔɹi", motion: "mˈOʃən", craft: "kɹˈæft", need: "nˈid",
+        ne: "nˈɛ", ed: "ˈɛd",
+      },
+      {},
+    );
+
+    it.each([
+      ["generated", "ʤˈɛnəɹˌAɾᵻd"],
+      ["walked", "wˈɔkt"],
+      ["played", "plˈAd"],
+      ["added", "ˈædᵻd"],
+      ["making", "mˈAkɪŋ"],
+      ["running", "ɹˈʌnɪŋ"],
+      ["getting", "ɡˈɛɾɪŋ"],
+      ["boxes", "bˈɑksᵻz"],
+      ["stories", "stˈɔɹiz"],
+      ["motioncraft", "mˈOʃənkɹˌæft"],
+    ])("derives %s from its stem", (word, expected) => {
+      expect(stems(word)).toBe(expected);
+    });
+
+    it("lets a dictionary entry win over a stem split", () => {
+      expect(stems("need")).toBe("nˈid");
+    });
+  });
+
   it("spells an unknown all-caps word letter by letter", () => {
     expect(phonemize("AI")).toBe("ˈAˈI");
   });
