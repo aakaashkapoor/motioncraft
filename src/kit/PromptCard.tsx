@@ -21,7 +21,7 @@ import { withAlpha } from "../theme/color";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { Caret } from "./Caret";
 import { cardEntrance, liftShadow, maxCardWidth } from "./Card";
-import { useSceneTime, type SceneTime } from "./frameContext";
+import { entering, useSceneTime, type SceneTime } from "./frameContext";
 import { arrive, exitOpacity, fitSequence } from "./motion";
 import { Shine } from "./shine";
 import type { KitProps } from "./types";
@@ -109,7 +109,7 @@ export function PromptCard({ progress, theme, aspect, area: slot, text, label = 
   const time = useSceneTime(progress);
   const { ms } = time;
   const { leadMs, enter } = theme.motion;
-  const entrance = cardEntrance(arrive(theme, ms, leadMs), theme);
+  const entrance = cardEntrance(arrive(theme, entering(time).ms, leadMs), theme);
   const timing = promptCardTiming(theme, text, time, seed);
   const { typing } = timing;
   const shown = typed ? typedText(text, typing, ms) : text;

@@ -3,11 +3,11 @@
 
 import type { Rect } from "../layout/frame";
 
-export const CHECK_NAMES = ["overflow", "safe-area", "contrast", "readability", "type-scale", "centering"] as const;
+export const CHECK_NAMES = ["overflow", "safe-area", "contrast", "readability", "type-scale", "centering", "opening"] as const;
 export type CheckName = (typeof CHECK_NAMES)[number];
 
 /** Checks whose problems are warnings: reported, but they do not fail the run. */
-export const WARNING_CHECKS: ReadonlySet<CheckName> = new Set<CheckName>(["type-scale", "centering"]);
+export const WARNING_CHECKS: ReadonlySet<CheckName> = new Set<CheckName>(["type-scale", "centering", "opening"]);
 
 export interface Problem {
   check: CheckName;

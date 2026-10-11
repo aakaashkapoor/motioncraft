@@ -14,9 +14,9 @@ headlines, cards, diagrams and code highlights, exported as MP4.
 
 Made with motioncraft: every frame drawn in code, narrated by a local voice, rendered on one machine.
 
-https://github.com/user-attachments/assets/3554b9a4-c666-4241-ad28-0b42a29363bb
+https://github.com/user-attachments/assets/38b67e34-dff9-48f7-a354-02cc4d657d85
 
-https://github.com/user-attachments/assets/c1ea3a9d-de8b-46fc-b742-b836ed568057
+https://github.com/user-attachments/assets/6213f845-5a3d-4b48-8ed5-53af2bb2ec85
 
 **Status: early development.** Nothing to use yet. The design is in
 [`docs/design.md`](docs/design.md).

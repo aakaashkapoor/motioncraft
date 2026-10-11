@@ -13,7 +13,7 @@ import { glyphPad, textBoxHeight, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { headlineColor } from "../theme/roles";
 import type { Theme, TypeSpec } from "../theme/types";
-import { MotionDelay, useSceneTime } from "./frameContext";
+import { entering, MotionDelay, useSceneTime } from "./frameContext";
 import { HeadlineText } from "./Headline";
 import { headlineTiming, headlineWords, type HeadlineMotion, type MarkStyle } from "./headlineMotion";
 import { kit } from "./index";
@@ -214,7 +214,7 @@ export function Section({ progress, theme, aspect, area, headline, eyebrow, cont
           style={{
             ...at(layout.eyebrow),
             ...textStyle(eyebrowSpec),
-            opacity: fade(fx, time.ms - timing.eyebrow),
+            opacity: fade(fx, entering(time).ms - timing.eyebrow),
             fontFamily: fonts.body,
             textTransform: "uppercase",
             color: colors.textMuted,

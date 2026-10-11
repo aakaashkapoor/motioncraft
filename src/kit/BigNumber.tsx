@@ -19,7 +19,7 @@ import { fontSize, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole } from "../theme/types";
 import { headlineColor } from "../theme/roles";
-import { useSceneTime } from "./frameContext";
+import { entering, useSceneTime } from "./frameContext";
 import { arrive, exitOpacity, fade, pulse, tween } from "./motion";
 import { shineText } from "./shine";
 import type { KitProps } from "./types";
@@ -203,7 +203,7 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
   const box = placeBlock(area, { width: area.width, height }, blockCenterY(theme, aspect, slot));
   const time = useSceneTime(progress);
   const hero = motion["enter.hero"];
-  const { move, opacity: fadeIn } = arrive(theme, time.ms, motion.leadMs, hero);
+  const { move, opacity: fadeIn } = arrive(theme, entering(time).ms, motion.leadMs, hero);
   const opacity = Math.min(fadeIn, exitOpacity(theme, time, hero.ms));
   const rise = Math.round((1 - move) * spacing.lg * 100) / 100;
 

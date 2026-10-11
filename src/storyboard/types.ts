@@ -25,6 +25,21 @@ export const CAPTION_STYLES = ["standard", "punch", "off"] as const;
 export type CaptionStyle = (typeof CAPTION_STYLES)[number];
 export const DEFAULT_CAPTION_STYLE: CaptionStyle = "standard";
 
+/**
+ * How the video opens: `settled` (the default) shows the first scene's headline
+ * and content as they look once landed at frame 0, so the thumbnail GitHub,
+ * Slack and players show before play is never blank; `build` animates them in
+ * from nothing.
+ */
+export const OPENINGS = ["settled", "build"] as const;
+export type Opening = (typeof OPENINGS)[number];
+export const DEFAULT_OPENING: Opening = "settled";
+
+/** Whether scene `index` opens settled: only the first, and only unless the storyboard says `build`. */
+export function opensSettled(storyboard: { opening?: Opening }, index: number): boolean {
+  return index === 0 && (storyboard.opening ?? DEFAULT_OPENING) === "settled";
+}
+
 export const DEFAULT_FPS = 30;
 export const DEFAULT_THEME = "light";
 
@@ -106,6 +121,8 @@ export interface Storyboard {
   safe?: SafeProfile;
   /** How narration is captioned. Defaults to `standard`. */
   captionStyle?: CaptionStyle;
+  /** How the first scene opens. Defaults to `settled`. */
+  opening?: Opening;
   /** The narration voice (a Kokoro voice name). Defaults to "af_heart". */
   voice?: string;
   scenes: StoryboardScene[];

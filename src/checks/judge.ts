@@ -10,6 +10,7 @@ import { checkContrast } from "./contrast";
 import { checkOverflow } from "./overflow";
 import { checkReadability, sceneMs, sceneWords } from "./readability";
 import { checkCentering } from "./centering";
+import { checkOpening } from "./opening";
 import { checkSafeArea } from "./safeArea";
 import { checkTypeScale } from "./typeScale";
 import { WARNING_CHECKS, type CheckName, type CheckResult, type FrameMeasurement, type Problem } from "./types";
@@ -51,6 +52,7 @@ export function judge(storyboard: Storyboard, timeline: Timeline, frames: readon
     add("contrast", sceneId, frame, checkContrast(measurement));
     add("type-scale", sceneId, frame, checkTypeScale(measurement, steps));
     add("centering", sceneId, frame, checkCentering(measurement, storyboard.aspect));
+    if (frame === 0) add("opening", sceneId, frame, checkOpening(measurement));
     words.set(sceneIndex, Math.max(words.get(sceneIndex) ?? 0, sceneWords(measurement)));
   }
 

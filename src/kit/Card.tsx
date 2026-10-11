@@ -26,7 +26,7 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { mixColors, withAlpha } from "../theme/color";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
-import { useSceneTime } from "./frameContext";
+import { entering, useSceneTime } from "./frameContext";
 import { arrive, exitOpacity } from "./motion";
 import { highlightLevel, highlightShineMs, highlightStops } from "./progression";
 import { Shine } from "./shine";
@@ -384,7 +384,7 @@ export function Card({ progress, theme, aspect, area: slot, highlighted = false,
   const time = useSceneTime(progress);
   const { leadMs, enter } = theme.motion;
   const exit = exitOpacity(theme, time, enter.ms);
-  const entrance = cardEntrance(arrive(theme, time.ms, leadMs), theme);
+  const entrance = cardEntrance(arrive(theme, entering(time).ms, leadMs), theme);
   const stops = highlightStops(theme, highlighted ? 0 : undefined, 1, leadMs + enter.ms);
 
   return (
