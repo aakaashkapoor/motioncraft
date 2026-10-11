@@ -264,7 +264,9 @@ describe("phonemes in context", () => {
     egg: "ˈɛɡ",
     go: "ɡˈO",
     by: { DEFAULT: "bI", None: "bˈI" },
-    use: { NN: "jˈus", VB: "jˈuz", DEFAULT: "jus" },
+    use: { NOUN: "jˈus", VERB: "jˈuz", DEFAULT: "jus" },
+    abuse: { NN: "əbjˈus", VB: "əbjˈuz", DEFAULT: "əbjus" }, // NN and VB mirror misaki's tags
+    read: { DEFAULT: "ɹˈid", VBP: "ɹˈɛd" },
     it: "ɪt",
     eight: "ˈAt",
     type: "tˈIp",
@@ -274,6 +276,8 @@ describe("phonemes in context", () => {
     videos: "vˈɪdioz",
     water: "wˈɔɾəɹ",
     stop: "stˈɑp",
+    is: "ɪz",
+    here: "hˈɪɹ",
     A: "ˈA",
     I: "ˈI",
   };
@@ -314,6 +318,12 @@ describe("phonemes in context", () => {
     expect(phonemize("the use")).toBe("ðə jˈus");
     expect(phonemize("to use")).toBe("tə jˈuz");
     expect(phonemize("cat use")).toBe("kæt jus");
+    expect(phonemize("the abuse")).toBe("ði əbjˈus");
+    expect(phonemize("to abuse")).toBe("tʊ əbjˈuz");
+  });
+
+  it("keeps DEFAULT when the verb tag is one the entry has no plain form for", () => {
+    expect(phonemize("to read")).toBe("tə ɹˈid");
   });
 
   it("stresses a capitalized dictionary word", () => {
@@ -325,6 +335,23 @@ describe("phonemes in context", () => {
   it("does not stress the special cases or spelled-out acronyms", () => {
     expect(phonemize("The cat")).toBe("ðə kæt");
     expect(phonemize("AI")).toBe("ˈAˈI");
+  });
+
+  it("applies the special cases in all caps too", () => {
+    expect(phonemize("THE cat")).toBe("ðə kæt");
+    expect(phonemize("AN egg")).toBe("ɐn ˈɛɡ");
+    expect(phonemize("TO cat")).toBe("tə kæt");
+    expect(phonemize("go IN, cat")).toBe("ɡˈO ˈɪn, kæt");
+  });
+
+  it("spells a dotted acronym out letter by letter, with no inner periods", () => {
+    expect(phonemize("A.I. is here")).toBe("ˈAˈI ɪz hˈɪɹ");
+    expect(phonemize("the A.I. is here")).toBe("ði ˈAˈI ɪz hˈɪɹ");
+  });
+
+  it("keeps the final period of a dotted acronym only at the end of the text", () => {
+    expect(phonemize("go A.I.")).toBe("ɡˈO ˈAˈI.");
+    expect(phonemize("A.I. go")).toBe("ˈAˈI ɡˈO");
   });
 
   it("turns a flap into T", () => {
@@ -360,18 +387,47 @@ describe("createWordPhonemizer", () => {
   it("matches createPhonemizer on the same text", () => {
     expect(run(["one", "and", "8"]).phonemes).toBe(createPhonemizer(lex, {})("one and 8"));
   });
-});
 
-describe("normalizeText on its own output", () => {
-  it("is idempotent for the showcase lines", () => {
-    const storyboard = JSON.parse(readFileSync("examples/showcase/storyboard.json", "utf8")) as {
-      scenes: { narration?: string }[];
-    };
+  it("gives empty input no phonemes and no spans", () => {
+    expect(run([])).toEqual({ phonemes: "", spans: [] });
+  });
+
+  it("gives a leading pause an empty span at the start", () => {
+    const { phonemes, spans } = run(["...", "one"]);
+    expect(phonemes).toBe(".. wˈʌn".replace("..", "..."));
+    expect(spans[0]).toEqual({ start: 0, end: 0 });
+    expect(phonemes.slice(spans[1]!.start, spans[1]!.end)).toBe("wˈʌn");
+  });
+
+  it("reads a title with the capitalized name after it, with no period, and one shared span", () => {
+    const { phonemes, spans } = run(["Dr.", "Smith", "said"]);
+    expect(phonemes).not.toContain(".");
+    expect(spans[0]).toEqual(spans[1]);
+    expect(phonemes.slice(spans[2]!.start)).not.toBe(phonemes.slice(spans[0]!.start, spans[0]!.end));
+    expect(phonemes).toBe(createPhonemizer(lex, {})("Dr. Smith said"));
+  });
+
+  it("reads an amount and its scale as the whole-text normalizer does", () => {
+    const whole = normalizeText("$5 million");
+    expect(whole).toBe("five million dollars");
+    const { phonemes, spans } = run(["$5", "million"]);
+    expect(phonemes).toBe(createWordPhonemizer(lex, {})(whole.split(" ")).phonemes);
+    expect(spans[0]).toEqual(spans[1]);
+  });
+
+  it("keeps the period of etc. before a capital", () => {
+    expect(run(["etc.", "The", "end"]).phonemes).toContain(".");
+    expect(run(["etc.", "the", "end"]).phonemes).not.toContain(".");
+  });
+
+  it("gives the same phonemes as the plain text path for every showcase line", () => {
+    const storyboard = JSON.parse(
+      readFileSync(new URL("../examples/showcase/storyboard.json", import.meta.url), "utf8"),
+    ) as { scenes: { narration?: string }[] };
     const lines = storyboard.scenes.flatMap((scene) => (scene.narration === undefined ? [] : splitSentences(scene.narration)));
     expect(lines.length).toBeGreaterThan(5);
     for (const line of lines) {
-      const once = normalizeText(line);
-      expect(normalizeText(once)).toBe(once);
+      expect(run(line.split(/\s+/).filter(Boolean)).phonemes).toBe(createPhonemizer(lex, {})(line));
     }
   });
 });

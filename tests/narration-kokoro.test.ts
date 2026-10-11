@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { displayWordSpans, kokoroSynthesizer, wordSamples } from "../src/narration/kokoro";
+import { kokoroSynthesizer, wordSamples } from "../src/narration/kokoro";
 import { createPhonemizer, createWordPhonemizer } from "../src/narration/phonemes";
 import { encodePhonemes, encodePhonemesMapped } from "../src/narration/tokenizer";
 
@@ -105,19 +105,20 @@ describe("wordSamples", () => {
 });
 
 describe("word spans of a text", () => {
-  const gold = { type: "tˈIp", one: "wˈʌn", prompt: "pɹˈɑmpt", and: "ænd", get: "ɡɛt" };
-  const wordPhonemizer = createWordPhonemizer(gold, {});
+  const gold = { type: "tˈIp", one: "wˈʌn", prompt: "pɹˈɑmpt", and: "ænd", get: "ɡɛt", three: "θɹi", two: "tu", to: "tu" };
+  const words = (text: string): string[] => text.split(/\s+/).filter((word) => word !== "");
+  const phonemizeWords = createWordPhonemizer(gold, {});
 
-  it("sends the model the same phonemes as the plain text path", () => {
+  it("gives the same phonemes as the plain text path", () => {
     for (const text of ["Type one prompt, and get one.", "Type 3 prompts, and get 2-3 more at $5 million.", "Dr. Type  one"]) {
-      expect(displayWordSpans(text, wordPhonemizer).phonemes).toBe(createPhonemizer(gold, {})(text));
+      expect(phonemizeWords(words(text)).phonemes).toBe(createPhonemizer(gold, {})(text));
     }
   });
 
   it("has one ordered span per whitespace-separated word of the text, inside the phonemes", () => {
     const text = "Type 3 prompts, and get 2-3 more.";
-    const { phonemes, spans } = displayWordSpans(text, wordPhonemizer);
-    expect(spans).toHaveLength(text.split(/\s+/).length);
+    const { phonemes, spans } = phonemizeWords(words(text));
+    expect(spans).toHaveLength(words(text).length);
     for (const span of spans) {
       expect(span.start).toBeLessThanOrEqual(span.end);
       expect(span.end).toBeLessThanOrEqual(phonemes.length);
@@ -127,9 +128,15 @@ describe("word spans of a text", () => {
   });
 
   it("gives a number that reads as several words one span over all of them", () => {
-    const { phonemes, spans } = displayWordSpans("get 3 and", createWordPhonemizer({ ...gold, three: "θɹi" }, {}));
+    const { phonemes, spans } = phonemizeWords(["get", "3", "and"]);
     expect(spans).toHaveLength(3);
     expect(phonemes.slice(spans[1]!.start, spans[1]!.end)).toBe("θɹi");
+  });
+
+  it("gives 2-3, one display word, a span over all of its spoken words", () => {
+    const { phonemes, spans } = phonemizeWords(["get", "2-3", "and"]);
+    expect(spans).toHaveLength(3);
+    expect(phonemes.slice(spans[1]!.start, spans[1]!.end)).toBe("tu tə θɹi");
   });
 });
 

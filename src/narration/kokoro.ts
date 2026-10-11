@@ -18,7 +18,6 @@ import {
   TOKENIZER_FILE,
   VOICE_FILES,
 } from "./assets";
-import { normalizeText } from "./normalize";
 import { createWordPhonemizer, type Lexicon, type WordPhonemes } from "./phonemes";
 import { tooLongError } from "./pieces";
 import { countPhonemes, encodePhonemesMapped, MAX_PHONEME_IDS } from "./tokenizer";
@@ -39,50 +38,6 @@ const STYLE_SIZE = 256;
 const MAX_STYLE_ROW = 509;
 /** The model's frame: one duration unit is this many samples. */
 const SAMPLES_PER_FRAME = 600;
-
-/**
- * Per display word of `text` (split on whitespace), its phonemes' [start, end)
- * in the phoneme string. The phonemes are those of the whole normalized text,
- * so the model hears exactly what `createPhonemizer` gives. A display word
- * covers the normalized words it turns into ("3" is "three"; "2-3" is "two to
- * three"); when numbers and the like make per-word counts disagree with the
- * whole text, normalized words are shared out by length instead.
- */
-export function displayWordSpans(
-  text: string,
-  phonemizeWords: (words: readonly string[]) => WordPhonemes,
-): WordPhonemes {
-  const displayWords = text.split(/\s+/).filter((word) => word !== "");
-  const normalized = normalizeText(text).split(/\s+/).filter((word) => word !== "");
-  const { phonemes, spans } = phonemizeWords(normalized);
-
-  // How many normalized words each display word owns.
-  let counts = displayWords.map((word) => normalizeText(word).split(/\s+/).filter((w) => w !== "").length);
-  if (counts.reduce((sum, n) => sum + n, 0) !== normalized.length) {
-    const weights = displayWords.map((word) => Math.max(1, word.length));
-    const total = weights.reduce((sum, w) => sum + w, 0);
-    let spent = 0;
-    let given = 0;
-    counts = weights.map((w) => {
-      spent += w;
-      const upTo = Math.round((spent * normalized.length) / total);
-      const count = upTo - given;
-      given = upTo;
-      return count;
-    });
-  }
-
-  let first = 0;
-  let at = 0;
-  const result = counts.map((count) => {
-    const owned = spans.slice(first, first + count);
-    first += count;
-    if (owned.length === 0) return { start: at, end: at };
-    at = owned[owned.length - 1]!.end;
-    return { start: owned[0]!.start, end: at };
-  });
-  return { phonemes, spans: result };
-}
 
 /**
  * When each word is said, from the model's per-id `durations` (a value of `d`
@@ -175,7 +130,7 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
         throw error;
       });
       const loaded = await loading;
-      const { phonemes, spans } = displayWordSpans(text, loaded.phonemizeWords);
+      const { phonemes, spans } = loaded.phonemizeWords(text.split(/\s+/).filter((word) => word !== ""));
       const { ids, idOfChar } = encodePhonemesMapped(phonemes, loaded.vocab);
       const known = countPhonemes(phonemes, loaded.vocab);
       if (known > MAX_PHONEME_IDS) throw tooLongError(known, text);

@@ -289,7 +289,7 @@ describe("word times from the synthesizer", () => {
   });
 
   it("is a new cache version, so estimated times are never reused", () => {
-    expect(NARRATION_CACHE_VERSION).toBe(5);
+    expect(NARRATION_CACHE_VERSION).toBe(6);
   });
 });
 
