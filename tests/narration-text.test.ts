@@ -1,7 +1,8 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { splitForSpeech } from "../src/narration/pieces";
 import { normalizeText } from "../src/narration/normalize";
-import { createPhonemizer, type Lexicon } from "../src/narration/phonemes";
+import { createPhonemizer, createWordPhonemizer, type Lexicon } from "../src/narration/phonemes";
 import { encodePhonemes } from "../src/narration/tokenizer";
 import { splitSentences } from "../src/narration/sentences";
 import { alignWords } from "../src/narration/wordTimes";
@@ -95,13 +96,13 @@ describe("createPhonemizer", () => {
     );
 
     it.each([
-      ["generated", "ʤˈɛnəɹˌAɾᵻd"],
+      ["generated", "ʤˈɛnəɹˌATᵻd"],
       ["walked", "wˈɔkt"],
       ["played", "plˈAd"],
       ["added", "ˈædᵻd"],
       ["making", "mˈAkɪŋ"],
       ["running", "ɹˈʌnɪŋ"],
-      ["getting", "ɡˈɛɾɪŋ"],
+      ["getting", "ɡˈɛTɪŋ"],
       ["boxes", "bˈɑksᵻz"],
       ["stories", "stˈɔɹiz"],
       ["motioncraft", "mˈOʃənkɹˌæft"],
@@ -249,5 +250,128 @@ describe("splitForSpeech", () => {
 
   it("throws when one word alone is too long", () => {
     expect(() => splitForSpeech(`Start ${"x".repeat(600)}`)).toThrow(/sentence too long to speak \(\d+ phonemes, max 510\): "x+/);
+  });
+});
+
+describe("phonemes in context", () => {
+  const lex: Lexicon = {
+    the: "ði",
+    a: "A",
+    an: "æn",
+    to: "tu",
+    in: "ɪn",
+    cat: "kæt",
+    egg: "ˈɛɡ",
+    go: "ɡˈO",
+    by: { DEFAULT: "bI", None: "bˈI" },
+    use: { NN: "jˈus", VB: "jˈuz", DEFAULT: "jus" },
+    it: "ɪt",
+    eight: "ˈAt",
+    type: "tˈIp",
+    one: "wˈʌn",
+    prompt: "pɹˈɑmpt",
+    and: "ænd",
+    videos: "vˈɪdioz",
+    water: "wˈɔɾəɹ",
+    stop: "stˈɑp",
+    A: "ˈA",
+    I: "ˈI",
+  };
+  const phonemize = createPhonemizer(lex, {});
+
+  it("says the as ði before a vowel and ðə otherwise", () => {
+    expect(phonemize("the cat")).toBe("ðə kæt");
+    expect(phonemize("the egg")).toBe("ði ˈɛɡ");
+    expect(phonemize("cat the.")).toBe("kæt ðə.");
+  });
+
+  it("says a, an and I in their weak forms", () => {
+    expect(phonemize("a cat")).toBe("ɐ kæt");
+    expect(phonemize("A cat")).toBe("ɐ kæt");
+    expect(phonemize("an egg")).toBe("ɐn ˈɛɡ");
+    expect(phonemize("I go")).toBe("ˌI ɡˈO");
+  });
+
+  it("says to as tə before a consonant, tʊ before a vowel and the entry before punctuation", () => {
+    expect(phonemize("to cat")).toBe("tə kæt");
+    expect(phonemize("to egg")).toBe("tʊ ˈɛɡ");
+    expect(phonemize("go to.")).toBe("ɡˈO tu.");
+    expect(phonemize("go to")).toBe("ɡˈO tu");
+  });
+
+  it("stresses in only before punctuation or the end", () => {
+    expect(phonemize("go in, cat")).toBe("ɡˈO ˈɪn, kæt");
+    expect(phonemize("go in cat")).toBe("ɡˈO ɪn kæt");
+    expect(phonemize("In egg")).toBe("ɪn ˈɛɡ");
+  });
+
+  it("uses the None form of an entry at the end of a clause and DEFAULT mid-sentence", () => {
+    expect(phonemize("go by.")).toBe("ɡˈO bˈI.");
+    expect(phonemize("go by cat")).toBe("ɡˈO bI kæt");
+  });
+
+  it("picks the noun or verb form by the word before", () => {
+    expect(phonemize("the use")).toBe("ðə jˈus");
+    expect(phonemize("to use")).toBe("tə jˈuz");
+    expect(phonemize("cat use")).toBe("kæt jus");
+  });
+
+  it("stresses a capitalized dictionary word", () => {
+    expect(phonemize("It go")).toBe("ˌɪt ɡˈO");
+    expect(phonemize("IT go")).toBe("ˈɪt ɡˈO");
+    expect(phonemize("Cat")).toBe("kˌæt");
+  });
+
+  it("does not stress the special cases or spelled-out acronyms", () => {
+    expect(phonemize("The cat")).toBe("ðə kæt");
+    expect(phonemize("AI")).toBe("ˈAˈI");
+  });
+
+  it("turns a flap into T", () => {
+    expect(phonemize("water")).toBe("wˈɔTəɹ");
+  });
+});
+
+describe("createWordPhonemizer", () => {
+  const lex: Lexicon = {
+    type: "tˈIp",
+    one: "wˈʌn",
+    prompt: "pɹˈɑmpt",
+    and: "ænd",
+    eight: "ˈAt",
+    videos: "vˈɪdioz",
+  };
+  const run = createWordPhonemizer(lex, {});
+
+  it("reports where each word's phonemes sit, without punctuation", () => {
+    const words = ["Type", "one", "prompt,", "and", "8", "videos."];
+    const { phonemes, spans } = run(words);
+    expect(spans).toHaveLength(6);
+    const slices = spans.map(({ start, end }) => phonemes.slice(start, end));
+    expect(slices).toEqual(["tˈIp", "wˈʌn", "pɹˈɑmpt", "ænd", "ˈAt", "vˈɪdioz"]);
+    expect(phonemes).toBe("tˈIp wˈʌn pɹˈɑmpt, ænd ˈAt vˈɪdioz.");
+  });
+
+  it("gives a word with no sounds an empty span", () => {
+    const { spans } = run(["one", "...", "and"]);
+    expect(spans[1]!.start).toBe(spans[1]!.end);
+  });
+
+  it("matches createPhonemizer on the same text", () => {
+    expect(run(["one", "and", "8"]).phonemes).toBe(createPhonemizer(lex, {})("one and 8"));
+  });
+});
+
+describe("normalizeText on its own output", () => {
+  it("is idempotent for the showcase lines", () => {
+    const storyboard = JSON.parse(readFileSync("examples/showcase/storyboard.json", "utf8")) as {
+      scenes: { narration?: string }[];
+    };
+    const lines = storyboard.scenes.flatMap((scene) => (scene.narration === undefined ? [] : splitSentences(scene.narration)));
+    expect(lines.length).toBeGreaterThan(5);
+    for (const line of lines) {
+      const once = normalizeText(line);
+      expect(normalizeText(once)).toBe(once);
+    }
   });
 });
