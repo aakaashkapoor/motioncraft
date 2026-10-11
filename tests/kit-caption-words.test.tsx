@@ -535,6 +535,18 @@ describe("measured word times", () => {
     expect(lit(startsAt + 300)).toBeCloseTo(1.04, 6);
   });
 
+  it("does not start the first page's pop before the caption's own fade-in, though its first word lights early", () => {
+    // The first word is spoken at the scene lead, so its page would start CAPTION_LEAD_MS before the fade.
+    const frameMs = Math.ceil(leadMs * 0.03) / 0.03; // the first frame at or after the lead
+    const html = drawAtSpoken(frameMs, text, spoken);
+    const { fromScale } = lightTheme.motion.caption;
+    const elapsed = frameMs - leadMs; // under one frame (34 ms) into the fade
+    expect(transformOf(plateStyle(html)).scale).toBeLessThan(fromScale + 0.5 * (1 - fromScale));
+    expect(elapsed).toBeLessThan(34);
+    // The word light still leads: the first word is already lit at that frame.
+    expect(transformOf(wordSpans(html)[0]!.style).scale).toBeGreaterThan(1);
+  });
+
   it("captionTrack falls back to even times without measured words", () => {
     const even = captionTrack(lightTheme, "9:16", text, "standard", endMs);
     expect(captionTrack(lightTheme, "9:16", text, "standard", endMs, [])).toEqual(even);

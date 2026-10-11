@@ -5,7 +5,9 @@
 // Ported from `generate_from_ids` in kokoro-js
 // (https://github.com/hexgrad/kokoro, Apache-2.0, hexgrad): the style vector is
 // row `min(max(ids - 2, 0), 509)` of the voice file, and the model takes
-// `input_ids`, `style` and `speed` and returns a 24 kHz mono `waveform`.
+// `input_ids`, `style` and `speed` and returns a 24 kHz mono `waveform`. The
+// timestamped export also returns `durations`, one per input id in 600-sample
+// frames; `wordSamples` turns them into each word's start and end in the audio.
 
 import { readFile } from "node:fs/promises";
 import type { InferenceSession } from "onnxruntime-node";
@@ -57,6 +59,7 @@ export function wordSamples(
   let total = 0;
   for (let i = 0; i < durations.length; i++) {
     starts.push(total);
+    // Math.round rounds halves up where torch rounds them to even; the scale below absorbs any drift.
     total += Math.max(1, Math.round(durations[i]!)) * SAMPLES_PER_FRAME;
   }
   starts.push(total);
@@ -81,6 +84,18 @@ export function wordSamples(
     const endSample = starts[last === undefined ? before + 1 : last + 1]!;
     return { startSample: startSample * scale, endSample: endSample * scale };
   });
+}
+
+/** `wordSamples`, or undefined (the caller falls back to an estimate) when the model gave no `durations` or not one per id. */
+export function speechWords(
+  durations: ArrayLike<number> | undefined,
+  idCount: number,
+  idOfChar: readonly (number | undefined)[],
+  spans: readonly { start: number; end: number }[],
+  waveformLength: number,
+): { startSample: number; endSample: number }[] | undefined {
+  if (durations === undefined || durations.length !== idCount) return undefined;
+  return wordSamples(durations, idOfChar, spans, waveformLength);
 }
 
 interface Loaded {
@@ -144,8 +159,7 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
         speed: new ort.Tensor("float32", Float32Array.of(1), [1]),
       });
       const samples = Float32Array.from(output["waveform"]!.data as Float32Array);
-      const durations = output["durations"]!.data as ArrayLike<number>;
-      return { samples, sampleRate: SAMPLE_RATE, words: wordSamples(durations, idOfChar, spans, samples.length) };
+      return { samples, sampleRate: SAMPLE_RATE, words: speechWords(output["durations"]?.data as ArrayLike<number> | undefined, ids.length, idOfChar, spans, samples.length) };
     },
   };
 }

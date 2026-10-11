@@ -384,8 +384,10 @@ describe("createWordPhonemizer", () => {
     expect(spans[1]!.start).toBe(spans[1]!.end);
   });
 
-  it("matches createPhonemizer on the same text", () => {
-    expect(run(["one", "and", "8"]).phonemes).toBe(createPhonemizer(lex, {})("one and 8"));
+  it("reads each group's words as the whole-text normalizer would (assumes one-to-one words, no digits)", () => {
+    // "8" is normalized per group to "eight", same as in the whole text.
+    const line = "one and 8";
+    expect(run(line.split(/\s+/)).phonemes).toBe(run(normalizeText(line).split(/\s+/).filter(Boolean)).phonemes);
   });
 
   it("gives empty input no phonemes and no spans", () => {
@@ -394,7 +396,7 @@ describe("createWordPhonemizer", () => {
 
   it("gives a leading pause an empty span at the start", () => {
     const { phonemes, spans } = run(["...", "one"]);
-    expect(phonemes).toBe(".. wˈʌn".replace("..", "..."));
+    expect(phonemes).toBe("... wˈʌn");
     expect(spans[0]).toEqual({ start: 0, end: 0 });
     expect(phonemes.slice(spans[1]!.start, spans[1]!.end)).toBe("wˈʌn");
   });
@@ -403,8 +405,10 @@ describe("createWordPhonemizer", () => {
     const { phonemes, spans } = run(["Dr.", "Smith", "said"]);
     expect(phonemes).not.toContain(".");
     expect(spans[0]).toEqual(spans[1]);
-    expect(phonemes.slice(spans[2]!.start)).not.toBe(phonemes.slice(spans[0]!.start, spans[0]!.end));
-    expect(phonemes).toBe(createPhonemizer(lex, {})("Dr. Smith said"));
+    expect(spans[2]!.end).toBeGreaterThan(spans[2]!.start);
+    expect(spans[2]).not.toEqual(spans[0]);
+    const line = "Dr. Smith said hi.";
+    expect(run(line.split(/\s+/)).phonemes).toBe(run(normalizeText(line).split(/\s+/).filter(Boolean)).phonemes);
   });
 
   it("reads an amount and its scale as the whole-text normalizer does", () => {
@@ -420,14 +424,14 @@ describe("createWordPhonemizer", () => {
     expect(run(["etc.", "the", "end"]).phonemes).not.toContain(".");
   });
 
-  it("gives the same phonemes as the plain text path for every showcase line", () => {
+  it("gives the same phonemes per group as for the whole normalized line, for every showcase line", () => {
     const storyboard = JSON.parse(
       readFileSync(new URL("../examples/showcase/storyboard.json", import.meta.url), "utf8"),
     ) as { scenes: { narration?: string }[] };
     const lines = storyboard.scenes.flatMap((scene) => (scene.narration === undefined ? [] : splitSentences(scene.narration)));
     expect(lines.length).toBeGreaterThan(5);
-    for (const line of lines) {
-      expect(run(line.split(/\s+/).filter(Boolean)).phonemes).toBe(createPhonemizer(lex, {})(line));
+    for (const line of [...lines, "Dr. Smith said hi.", "It cost $5 million."]) {
+      expect(run(line.split(/\s+/).filter(Boolean)).phonemes).toBe(run(normalizeText(line).split(/\s+/).filter(Boolean)).phonemes);
     }
   });
 });

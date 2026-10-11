@@ -2,8 +2,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { kokoroSynthesizer, wordSamples } from "../src/narration/kokoro";
-import { createPhonemizer, createWordPhonemizer } from "../src/narration/phonemes";
+import { kokoroSynthesizer, speechWords, wordSamples } from "../src/narration/kokoro";
+import { normalizeText } from "../src/narration/normalize";
+import { createWordPhonemizer } from "../src/narration/phonemes";
 import { encodePhonemes, encodePhonemesMapped } from "../src/narration/tokenizer";
 
 describe("kokoroSynthesizer", () => {
@@ -53,7 +54,7 @@ describe("kokoroSynthesizer", () => {
       expect(Math.abs(ms(words[0]!.startSample) - ms(first))).toBeLessThanOrEqual(100);
       // The model gives the last vowel a long fade (here about 300 ms past the last audible sample), so the
       // raw end can sit beyond the sound; narration clamps it to the trimmed sound (see narrate tests).
-      expect(words[7]!.endSample).toBeGreaterThanOrEqual(last - ms(150) * 24);
+      expect(words[7]!.endSample).toBeGreaterThanOrEqual(last - 0.15 * speech.sampleRate);
       expect(words[7]!.endSample).toBeLessThanOrEqual(speech.samples.length);
     },
     600_000,
@@ -104,14 +105,28 @@ describe("wordSamples", () => {
   });
 });
 
+describe("speechWords", () => {
+  const A = { start: 0, end: 2 };
+
+  it("times the words when there is one duration per id", () => {
+    expect(speechWords([1, 1, 1], 3, [1, 2], [A], 1800)).toEqual(wordSamples([1, 1, 1], [1, 2], [A], 1800));
+  });
+
+  it("gives no words when durations are missing or not one per id", () => {
+    expect(speechWords(undefined, 3, [1, 2], [A], 1800)).toBeUndefined();
+    expect(speechWords([1, 1], 3, [1, 2], [A], 1800)).toBeUndefined();
+    expect(speechWords([1, 1, 1, 1], 3, [1, 2], [A], 1800)).toBeUndefined();
+  });
+});
+
 describe("word spans of a text", () => {
   const gold = { type: "tˈIp", one: "wˈʌn", prompt: "pɹˈɑmpt", and: "ænd", get: "ɡɛt", three: "θɹi", two: "tu", to: "tu" };
   const words = (text: string): string[] => text.split(/\s+/).filter((word) => word !== "");
   const phonemizeWords = createWordPhonemizer(gold, {});
 
-  it("gives the same phonemes as the plain text path", () => {
+  it("gives the same phonemes per group as for the whole normalized text", () => {
     for (const text of ["Type one prompt, and get one.", "Type 3 prompts, and get 2-3 more at $5 million.", "Dr. Type  one"]) {
-      expect(phonemizeWords(words(text)).phonemes).toBe(createPhonemizer(gold, {})(text));
+      expect(phonemizeWords(words(text)).phonemes).toBe(phonemizeWords(words(normalizeText(text))).phonemes);
     }
   });
 

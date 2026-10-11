@@ -1,7 +1,7 @@
 // When each caption word is spoken, which page is up and which word is lit
-// (design v3, life #4). There is no text-to-speech yet, so narration is split
-// evenly, each word's share weighted by its length; measured word times can
-// replace `evenWordTimes` later without changing the rest. Pure.
+// (design v3, life #4). Measured word times come from the voice itself;
+// `evenWordTimes` (each word's share weighted by its length) is the fallback
+// when the voice gives none. Pure.
 
 import { pageRanges, type CaptionLimits, type PageRange } from "./captionPages";
 import { fade, type Timed } from "./motion";

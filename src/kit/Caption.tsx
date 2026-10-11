@@ -61,7 +61,7 @@ export function captionTrack(
     spoken !== undefined && spoken.length > 0 && spoken.length === text.split(/\s+/).filter(Boolean).length
       ? spoken.map((word) => ({ ...word, startMs: word.startMs + leadMs, endMs: word.endMs + leadMs }))
       : // An estimate has no voice to run ahead of, so it starts late by the caption's own lead: its first word still lights as the caption has entered.
-        evenWordTimes(text, leadMs + CAPTION_LEAD_MS, endMs - exitMs(theme, theme.motion.fx.ms));
+        evenWordTimes(text, leadMs + CAPTION_LEAD_MS, endMs - exitMs(theme, theme.motion.fx.ms) + CAPTION_LEAD_MS);
   return { words, pages: timedPages(words, captionLimits(theme, aspect, style)) };
 }
 
@@ -103,7 +103,8 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
   const band = captionBand(theme, aspect);
   const { leadMs, fx, caption: motion } = theme.motion;
   const opacity = Math.min(fade(fx, time.ms - leadMs), exitOpacity(theme, time, fx.ms));
-  const enter = tween(motion, spokenMs - page.startMs);
+  // A page never starts its tween before the caption has begun to fade in; its words may still light ahead.
+  const enter = tween(motion, spokenMs - Math.max(page.startMs, leadMs + CAPTION_LEAD_MS));
   const pageScale = 1 - (1 - motion.fromScale) * (1 - enter);
   const pageRise = motion.risePx * (1 - enter);
 
