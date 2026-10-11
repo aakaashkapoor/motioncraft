@@ -1,6 +1,7 @@
 // Command-line arguments for scripts/stills.ts, scripts/render.ts and scripts/narrate.ts.
 
 import { parseArgs } from "node:util";
+import { DEFAULT_MAX_MB } from "./budget";
 import { parseFrameList } from "./frames";
 
 export const STILLS_USAGE =
@@ -38,22 +39,35 @@ export function parseStillsArgs(argv: readonly string[]): StillsArgs {
   };
 }
 
-export const RENDER_USAGE = "usage: npx tsx scripts/render.ts <storyboard.json> --out <file.mp4> [--no-narration]";
+export const RENDER_USAGE = "usage: npx tsx scripts/render.ts <storyboard.json> --out <file.mp4> [--no-narration] [--max-mb <n>]";
 
 export interface RenderArgs {
   storyboard: string;
   out: string;
   /** Speak the narration and mix it in (the default); false renders without a voice, with estimated timings. */
   narration: boolean;
+  /** The size budget in MB (1024 * 1024 bytes); 0 means no budget, at the full fixed bitrate. */
+  maxMb: number;
+}
+
+/** Runs `parse`, adding the usage line to whatever it throws (unknown options, missing values). */
+function withUsage<T>(usage: string, parse: () => T): T {
+  try {
+    return parse();
+  } catch (error) {
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${usage}`);
+  }
 }
 
 /** Parses the arguments for rendering a storyboard to MP4. */
 export function parseRenderArgs(argv: readonly string[]): RenderArgs {
-  const { values, positionals } = parseArgs({
-    args: [...argv],
-    allowPositionals: true,
-    options: { out: { type: "string" }, "no-narration": { type: "boolean" } },
-  });
+  const { values, positionals } = withUsage(RENDER_USAGE, () =>
+    parseArgs({
+      args: [...argv],
+      allowPositionals: true,
+      options: { out: { type: "string" }, "no-narration": { type: "boolean" }, "max-mb": { type: "string" } },
+    }),
+  );
 
   if (positionals.length !== 1) throw new Error(`expected one storyboard file
 ${RENDER_USAGE}`);
@@ -61,7 +75,13 @@ ${RENDER_USAGE}`);
 ${RENDER_USAGE}`);
   if (!values.out.toLowerCase().endsWith(".mp4")) throw new Error(`--out must name an .mp4 file
 ${RENDER_USAGE}`);
-  return { storyboard: positionals[0]!, out: values.out, narration: values["no-narration"] !== true };
+  const maxMbText = values["max-mb"];
+  if (maxMbText !== undefined && !/^\d+(\.\d+)?$/.test(maxMbText)) {
+    throw new Error(`--max-mb must be a number of megabytes, 0 or more
+${RENDER_USAGE}`);
+  }
+  const maxMb = maxMbText === undefined ? DEFAULT_MAX_MB : Number(maxMbText);
+  return { storyboard: positionals[0]!, out: values.out, narration: values["no-narration"] !== true, maxMb };
 }
 
 export const NARRATE_USAGE = "usage: npx tsx scripts/narrate.ts <storyboard.json> [--offline]";

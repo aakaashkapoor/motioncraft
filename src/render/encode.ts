@@ -88,6 +88,10 @@ export interface EncoderSetup {
   width: number;
   height: number;
   fps: number;
+  /** Video bitrate in bits per second; `VIDEO_BITRATE` when absent, less to fit a size budget. */
+  bitrate?: number;
+  /** Hold the bitrate constant so the file size is predictable (when there is a size budget). */
+  constantBitrate?: boolean;
 }
 
 /** What `start` found. `codec` is null when the browser cannot encode H.264 at all. */
@@ -141,7 +145,7 @@ export function createPageEncoder(): PageEncoder {
   return {
     async start(next) {
       setup = next;
-      const { width, height, fps } = next;
+      const { width, height, fps, bitrate = VIDEO_BITRATE, constantBitrate = false } = next;
       const tried: string[] = [];
       for (const codec of avcCodecCandidates(width, height, fps)) {
         // Software first: the same encoder on every machine. Hardware if that is all there is.
@@ -151,7 +155,8 @@ export function createPageEncoder(): PageEncoder {
             width,
             height,
             framerate: fps,
-            bitrate: VIDEO_BITRATE,
+            bitrate,
+            ...(constantBitrate ? { bitrateMode: "constant" as const } : {}),
             hardwareAcceleration,
             latencyMode: "quality",
             avc: { format: "avc" },

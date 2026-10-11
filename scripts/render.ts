@@ -1,7 +1,9 @@
 // Renders a storyboard to an MP4 in the installed Chrome or Edge. The narration
 // is spoken locally first (cached beside the storyboard) and mixed in as the
 // audio track; --no-narration renders without a voice, with estimated timings.
-//   npx tsx scripts/render.ts <storyboard.json> --out <file.mp4> [--no-narration]
+// The video bitrate is chosen so the MP4 fits --max-mb (default 9.5, GitHub's
+// 10 MB limit with margin); over budget, it exits 1 and keeps the file.
+//   npx tsx scripts/render.ts <storyboard.json> --out <file.mp4> [--no-narration] [--max-mb <n>]
 
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -43,6 +45,10 @@ function formatBytes(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${(bytes / 1024).toFixed(1)} KB`;
 }
 
+function formatBitrate(bitsPerSecond: number): string {
+  return bitsPerSecond >= 1_000_000 ? `${(bitsPerSecond / 1_000_000).toFixed(1)} Mbps` : `${Math.round(bitsPerSecond / 1000)} kbps`;
+}
+
 async function main(argv: string[]): Promise<void> {
   const args = parseRenderArgs(argv);
 
@@ -78,16 +84,23 @@ async function main(argv: string[]): Promise<void> {
     durations: plan.durations,
     mediaDir,
     out: args.out,
+    maxMb: args.maxMb,
     ...(plan.narration === undefined ? {} : { narration: plan.narration }),
     onProgress: progressPrinter(),
+    onWarning: (message) => console.log(message),
   });
 
+  const budget = args.maxMb > 0 ? `budget ${args.maxMb} MB, ` : "";
   console.log(resolve(result.path));
   console.log(
     `${result.width}x${result.height}, ${result.fps} fps, ${result.frames} frames, ` +
-      `${(result.durationMs / 1000).toFixed(2)} s, ${formatBytes(result.bytes)} (${result.codec}, ${result.audioCodec === undefined ? "no audio" : result.audioCodec})`,
+      `${(result.durationMs / 1000).toFixed(2)} s, ${formatBytes(result.bytes)} (${budget}video ${formatBitrate(result.videoBitrate)}, ${result.codec}, ${result.audioCodec === undefined ? "no audio" : result.audioCodec})`,
   );
   if (result.audioSkipped !== undefined && result.audioSkipped.length > 0) console.log(`audio skipped: ${result.audioSkipped.join(", ")}`);
+  if (args.maxMb > 0 && result.bytes > args.maxMb * 1024 * 1024) {
+    console.error(`${formatBytes(result.bytes)} is over the ${args.maxMb} MB budget (kept the file); raise --max-mb, or 0 for no budget`);
+    process.exitCode = 1;
+  }
 }
 
 main(process.argv.slice(2)).catch((error: unknown) => {

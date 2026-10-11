@@ -12,7 +12,9 @@ import {
   frameTimestampUs,
   keyframeInterval,
   MAX_KEYFRAME_SECONDS,
+  VIDEO_BITRATE,
 } from "../src/render/encode";
+import { videoBitrateFor } from "../src/render/budget";
 import { colrBox, Mp4Writer } from "../src/render/mp4";
 import { renderVideo, UnsupportedCodecError, type VideoProgress } from "../src/render/video";
 import { summarizeMp4 } from "./mp4box";
@@ -121,11 +123,11 @@ describe("Mp4Writer", () => {
 
 describe("parseRenderArgs", () => {
   it("parses the storyboard and --out", () => {
-    expect(parseRenderArgs(["sb.json", "--out", "out/video.mp4"])).toEqual({ storyboard: "sb.json", out: "out/video.mp4", narration: true });
+    expect(parseRenderArgs(["sb.json", "--out", "out/video.mp4"])).toEqual({ storyboard: "sb.json", out: "out/video.mp4", narration: true, maxMb: 9.5 });
   });
 
   it("--no-narration turns narration off", () => {
-    expect(parseRenderArgs(["sb.json", "--out", "a.mp4", "--no-narration"])).toEqual({ storyboard: "sb.json", out: "a.mp4", narration: false });
+    expect(parseRenderArgs(["sb.json", "--out", "a.mp4", "--no-narration"])).toEqual({ storyboard: "sb.json", out: "a.mp4", narration: false, maxMb: 9.5 });
   });
 
   it("has no --voice flag", () => {
@@ -183,6 +185,7 @@ describe("renderVideo (integration)", () => {
 
     expect(result).toMatchObject({ path: out, width: 1080, height: 1920, fps: 30, frames: 30, durationMs: 1000 });
     expect(result.codec).toMatch(/^avc1\./);
+    expect(result.videoBitrate).toBe(VIDEO_BITRATE);
     expect(progress.at(-1)).toEqual({ frames: 30, totalFrames: 30 });
 
     const data = await readFile(out);
@@ -203,5 +206,32 @@ describe("renderVideo (integration)", () => {
       expect(offset + mp4.sampleSizes[i]!).toBeLessThanOrEqual(data.length);
     }
     expect(Math.max(...mp4.sampleSizes)).toBeGreaterThan(1000);
+  });
+
+  it("fits a size budget by lowering the video bitrate", { timeout: 120_000 }, async (ctx) => {
+    const validation = validateStoryboard({
+      title: "Budget",
+      aspect: "16:9",
+      fps: 30,
+      scenes: [{ id: "only", component: "TitleCard", props: { title: "Small", subtitle: "on purpose" }, durationMs: 2000 }],
+    });
+    if (!validation.ok) throw new Error(validation.errors.join("\n"));
+    const warnings: string[] = [];
+    const maxMb = 0.25;
+    const result = await renderVideo({
+      storyboard: validation.storyboard,
+      theme: neutralTheme,
+      durations: {},
+      out: join(dir, "budget.mp4"),
+      maxMb,
+      onWarning: (w) => warnings.push(w),
+    }).catch((error: unknown) => {
+      if (error instanceof BrowserNotFoundError) ctx.skip(`no Chrome or Edge installed: ${error.message}`);
+      throw error;
+    });
+    expect(result.videoBitrate).toBe(videoBitrateFor({ durationSeconds: 2, maxBytes: maxMb * 1024 * 1024, audioBitrate: 0 }));
+    expect(result.videoBitrate).toBeLessThan(VIDEO_BITRATE);
+    expect(result.bytes).toBeLessThan(maxMb * 1024 * 1024);
+    expect(warnings).toEqual([]);
   });
 });

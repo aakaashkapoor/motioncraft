@@ -317,6 +317,13 @@ or when the scene has no narration. Here `at` starts on the second "wagyu",
 
 Only props that say they take a cue accept one; the component's entry below says so.
 
+`scripts/render.ts` keeps the MP4 under a size budget: `--max-mb <n>` (default
+`9.5`, under GitHub's 10 MB per video) lowers the video bitrate to fit the
+video's length, never above the usual 8 Mbps. The summary line shows the budget
+and the bitrate. If the file still comes out over budget, it is kept and the
+script exits 1; very long videos warn up front that the budget can't be met.
+`--max-mb 0` turns the budget off.
+
 ## 3. Theme and overrides
 
 Themes are defaults, not rules. Anything the user asks for must be possible;
