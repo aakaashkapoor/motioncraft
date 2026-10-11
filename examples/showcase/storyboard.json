@@ -21,8 +21,7 @@
           }
         }
       },
-      "narration": "Type one prompt, and get a finished video.",
-      "durationMs": 4200,
+      "narration": "Type one prompt, like a launch video for motioncraft, and get a finished video back.",
       "transition": {
         "type": "fade",
         "durationMs": 600
@@ -56,8 +55,7 @@
         "label": "plan",
         "fromShare": 0.36
       },
-      "narration": "The agent turns it into a storyboard, one scene at a time.",
-      "durationMs": 6300,
+      "narration": "The agent reads your prompt and turns it into a storyboard, a simple plan that lays out the video one scene at a time.",
       "transition": {
         "type": "slide",
         "direction": "left",
@@ -108,8 +106,7 @@
         },
         "footer": "All local"
       },
-      "narration": "Four steps: prompt, plan, check every frame, then render.",
-      "durationMs": 6600,
+      "narration": "It works in four steps. You write the prompt, the agent plans the scenes, every frame gets checked, and then it renders.",
       "transition": {
         "type": "fade",
         "durationMs": 600
@@ -145,17 +142,16 @@
             ],
             "shareId": "render",
             "lift": {
-              "atMs": 5600
+              "atMs": 6100
             }
           }
         ],
         "cursor": {
           "target": "render",
-          "atMs": 4300
+          "atMs": 4100
         }
       },
-      "narration": "It checks in with you in chat. One click approves the plan, and the approval lifts right out.",
-      "durationMs": 8000,
+      "narration": "It checks in with you in chat first, and shows you the plan. One click on render approves it, and the approval lifts right out of the chat and into your video.",
       "transition": {
         "type": "fade",
         "durationMs": 700
@@ -189,8 +185,7 @@
         },
         "footer": "No upload"
       },
-      "narration": "One command checks it and renders it, right on your machine.",
-      "durationMs": 6000,
+      "narration": "Then one command checks every frame and renders the video, right on your own machine. Nothing gets uploaded.",
       "transition": {
         "type": "slide",
         "direction": "left",
@@ -229,8 +224,7 @@
         },
         "footer": "Every frame checked"
       },
-      "narration": "Every frame is checked before it ships.",
-      "durationMs": 6000,
+      "narration": "Every frame is checked before it ships. Text has to be big enough to read, clear of the app's buttons, and centered on the screen.",
       "transition": {
         "type": "fade",
         "durationMs": 600
@@ -251,8 +245,7 @@
           }
         }
       },
-      "narration": "No stock footage, no generated images. Every frame is code.",
-      "durationMs": 5400,
+      "narration": "No stock footage, no generated images. Every single frame you just watched is drawn in code.",
       "transition": {
         "type": "fade",
         "durationMs": 600
@@ -274,8 +267,8 @@
           }
         }
       },
-      "narration": "motioncraft. Prompt in, video out.",
-      "durationMs": 5000
+      "narration": "That's motioncraft. Prompt in, video out. It's open source, so try it on your next launch."
+
     }
   ]
 }
