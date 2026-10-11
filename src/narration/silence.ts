@@ -13,6 +13,8 @@ export interface Trimmed {
   leadSamples: number;
   /** Samples of margin after the last sound. */
   tailSamples: number;
+  /** The index in the original buffer where the kept samples begin. */
+  startSample: number;
 }
 
 /**
@@ -23,11 +25,11 @@ export interface Trimmed {
 export function trimSilence(samples: Float32Array, sampleRate: number): Trimmed {
   let first = 0;
   while (first < samples.length && Math.abs(samples[first]!) < SPEECH_LEVEL) first++;
-  if (first === samples.length) return { samples: new Float32Array(0), leadSamples: 0, tailSamples: 0 };
+  if (first === samples.length) return { samples: new Float32Array(0), leadSamples: 0, tailSamples: 0, startSample: 0 };
   let last = samples.length - 1;
   while (Math.abs(samples[last]!) < SPEECH_LEVEL) last--;
 
   const start = Math.max(0, first - Math.round((LEAD_MARGIN_MS * sampleRate) / 1000));
   const end = Math.min(samples.length, last + 1 + Math.round((TAIL_MARGIN_MS * sampleRate) / 1000));
-  return { samples: samples.slice(start, end), leadSamples: first - start, tailSamples: end - (last + 1) };
+  return { samples: samples.slice(start, end), leadSamples: first - start, tailSamples: end - (last + 1), startSample: start };
 }

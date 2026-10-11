@@ -19,13 +19,15 @@ import {
   VOICE_FILES,
 } from "./assets";
 import { normalizeText } from "./normalize";
-import { createPhonemizer, type Lexicon } from "./phonemes";
+import { createWordPhonemizer, type Lexicon, type WordPhonemes } from "./phonemes";
 import { tooLongError } from "./pieces";
-import { countPhonemes, encodePhonemes, MAX_PHONEME_IDS } from "./tokenizer";
+import { countPhonemes, encodePhonemesMapped, MAX_PHONEME_IDS } from "./tokenizer";
 
 export interface Speech {
   samples: Float32Array;
   sampleRate: number;
+  /** One per display word of the spoken text (split on whitespace): when it is said, in samples of `samples`. */
+  words?: { startSample: number; endSample: number }[];
 }
 
 export interface Synthesizer {
@@ -35,11 +37,101 @@ export interface Synthesizer {
 const SAMPLE_RATE = 24000;
 const STYLE_SIZE = 256;
 const MAX_STYLE_ROW = 509;
+/** The model's frame: one duration unit is this many samples. */
+const SAMPLES_PER_FRAME = 600;
+
+/**
+ * Per display word of `text` (split on whitespace), its phonemes' [start, end)
+ * in the phoneme string. The phonemes are those of the whole normalized text,
+ * so the model hears exactly what `createPhonemizer` gives. A display word
+ * covers the normalized words it turns into ("3" is "three"; "2-3" is "two to
+ * three"); when numbers and the like make per-word counts disagree with the
+ * whole text, normalized words are shared out by length instead.
+ */
+export function displayWordSpans(
+  text: string,
+  phonemizeWords: (words: readonly string[]) => WordPhonemes,
+): WordPhonemes {
+  const displayWords = text.split(/\s+/).filter((word) => word !== "");
+  const normalized = normalizeText(text).split(/\s+/).filter((word) => word !== "");
+  const { phonemes, spans } = phonemizeWords(normalized);
+
+  // How many normalized words each display word owns.
+  let counts = displayWords.map((word) => normalizeText(word).split(/\s+/).filter((w) => w !== "").length);
+  if (counts.reduce((sum, n) => sum + n, 0) !== normalized.length) {
+    const weights = displayWords.map((word) => Math.max(1, word.length));
+    const total = weights.reduce((sum, w) => sum + w, 0);
+    let spent = 0;
+    let given = 0;
+    counts = weights.map((w) => {
+      spent += w;
+      const upTo = Math.round((spent * normalized.length) / total);
+      const count = upTo - given;
+      given = upTo;
+      return count;
+    });
+  }
+
+  let first = 0;
+  let at = 0;
+  const result = counts.map((count) => {
+    const owned = spans.slice(first, first + count);
+    first += count;
+    if (owned.length === 0) return { start: at, end: at };
+    at = owned[owned.length - 1]!.end;
+    return { start: owned[0]!.start, end: at };
+  });
+  return { phonemes, spans: result };
+}
+
+/**
+ * When each word is said, from the model's per-id `durations` (a value of `d`
+ * lasts `max(1, round(d))` frames of 600 samples). `idOfChar` maps each index
+ * of the phoneme string to its index in the ids (undefined: no id) and `spans`
+ * are the words' [start, end) in the phoneme string. A word with no ids sits,
+ * with no length, where the last id before it ends. When the total is more
+ * than one frame off `waveformLength`, every time is scaled to fit it.
+ */
+export function wordSamples(
+  durations: ArrayLike<number>,
+  idOfChar: readonly (number | undefined)[],
+  spans: readonly { start: number; end: number }[],
+  waveformLength?: number,
+): { startSample: number; endSample: number }[] {
+  const starts: number[] = [];
+  let total = 0;
+  for (let i = 0; i < durations.length; i++) {
+    starts.push(total);
+    total += Math.max(1, Math.round(durations[i]!)) * SAMPLES_PER_FRAME;
+  }
+  starts.push(total);
+  const scale =
+    waveformLength !== undefined && total > 0 && Math.abs(total - waveformLength) > SAMPLES_PER_FRAME ? waveformLength / total : 1;
+
+  return spans.map(({ start, end }) => {
+    let first: number | undefined;
+    let last: number | undefined;
+    let before = 0; // the id of the last character ahead of the word: the pad, when there is none
+    for (let c = 0; c < end; c++) {
+      const id = idOfChar[c];
+      if (id === undefined) continue;
+      if (c < start) before = id;
+      else {
+        first ??= id;
+        last = id;
+      }
+    }
+    // With no ids of its own, a word is a point at the end of the id before it.
+    const startSample = starts[first ?? before + 1]!;
+    const endSample = starts[last === undefined ? before + 1 : last + 1]!;
+    return { startSample: startSample * scale, endSample: endSample * scale };
+  });
+}
 
 interface Loaded {
   session: InferenceSession;
   vocab: Record<string, number>;
-  phonemize: (text: string) => string;
+  phonemizeWords: (words: readonly string[]) => WordPhonemes;
   voices: Map<string, Float32Array>;
 }
 
@@ -61,7 +153,7 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
       readJson<Lexicon>(goldPath),
       readJson<Lexicon>(silverPath),
     ]);
-    return { session, vocab: tokenizer.model.vocab, phonemize: createPhonemizer(gold, silver), voices: new Map() };
+    return { session, vocab: tokenizer.model.vocab, phonemizeWords: createWordPhonemizer(gold, silver), voices: new Map() };
   }
 
   async function voiceStyles(loaded: Loaded, voice: string): Promise<Float32Array> {
@@ -83,8 +175,8 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
         throw error;
       });
       const loaded = await loading;
-      const phonemes = loaded.phonemize(normalizeText(text));
-      const ids = encodePhonemes(phonemes, loaded.vocab);
+      const { phonemes, spans } = displayWordSpans(text, loaded.phonemizeWords);
+      const { ids, idOfChar } = encodePhonemesMapped(phonemes, loaded.vocab);
       const known = countPhonemes(phonemes, loaded.vocab);
       if (known > MAX_PHONEME_IDS) throw tooLongError(known, text);
       const row = Math.min(Math.max(ids.length - 2, 0), MAX_STYLE_ROW);
@@ -96,7 +188,9 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
         style: new ort.Tensor("float32", styles.slice(row * STYLE_SIZE, (row + 1) * STYLE_SIZE), [1, STYLE_SIZE]),
         speed: new ort.Tensor("float32", Float32Array.of(1), [1]),
       });
-      return { samples: Float32Array.from(output["waveform"]!.data as Float32Array), sampleRate: SAMPLE_RATE };
+      const samples = Float32Array.from(output["waveform"]!.data as Float32Array);
+      const durations = output["durations"]!.data as ArrayLike<number>;
+      return { samples, sampleRate: SAMPLE_RATE, words: wordSamples(durations, idOfChar, spans, samples.length) };
     },
   };
 }

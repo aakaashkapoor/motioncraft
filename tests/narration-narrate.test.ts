@@ -3,7 +3,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { KOKORO_REVISION, MISAKI_REVISION } from "../src/narration/assets";
+import { KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION } from "../src/narration/assets";
 import { NARRATION_CACHE_VERSION, loadCachedNarration, missingNarrationNotice, narrateStoryboard } from "../src/narration/narrate";
 import type { Synthesizer } from "../src/narration/kokoro";
 import { decodeWav } from "../src/narration/wav";
@@ -59,7 +59,7 @@ describe("narrateStoryboard", () => {
     // 900 ms + 250 ms gap + 800 ms
     expect(scene.audioMs).toBe(1950);
     const key = createHash("sha1")
-      .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, MISAKI_REVISION, "af_heart", "Hi there. Bye now."].join("\0"))
+      .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, "af_heart", "Hi there. Bye now."].join("\0"))
       .digest("hex");
     expect(scene.wavPath).toBe(join(outDir, `${key}.wav`));
 
@@ -232,4 +232,88 @@ describe("missingNarrationNotice", () => {
     expect(scene.words.map((w) => w.text)).toEqual(["Hello", "there."]);
     expect(scene.words.every((w) => w.startMs === 0 && w.endMs === 0)).toBe(true);
   });
+});
+
+describe("word times from the synthesizer", () => {
+  const ms = (t: number) => Math.round(t * 24); // samples at 24 kHz
+
+  /** 300 ms silence, 1 s tone, 200 ms silence per piece; words as the voice reports them, in ms of the raw buffer. */
+  function timed(words: Record<string, [number, number][]>): Synthesizer {
+    return {
+      async speak(text) {
+        const samples = new Float32Array(ms(1500));
+        samples.fill(0.5, ms(300), ms(1300));
+        return {
+          samples,
+          sampleRate: SAMPLE_RATE,
+          words: words[text]!.map(([a, b]) => ({ startSample: ms(a), endSample: ms(b) })),
+        };
+      },
+    };
+  }
+
+  it("offsets each word by the trim, earlier pieces and the 250 ms gap between sentences", async () => {
+    const synth = timed({ "Hi there.": [[300, 700], [700, 1300]], "Bye now.": [[350, 800], [800, 1250]] });
+    const scene = (await narrateStoryboard(board(), { synthesizer: synth, outDir }))["a"]!;
+
+    expect(scene.words.map((w) => w.text)).toEqual(["Hi", "there.", "Bye", "now."]);
+    // The first piece keeps from 270 ms of the buffer.
+    expect(scene.words[0]!.startMs).toBeCloseTo(30, 3);
+    expect(scene.words[0]!.endMs).toBeCloseTo(430, 3);
+    expect(scene.words[1]!.startMs).toBeCloseTo(430, 3);
+    expect(scene.words[1]!.endMs).toBeCloseTo(1030, 3);
+    // The second starts at 1090 + 250 = 1340 ms.
+    expect(scene.words[2]!.startMs).toBeCloseTo(1340 + 80, 3);
+    expect(scene.words[2]!.endMs).toBeCloseTo(1340 + 530, 3);
+    expect(scene.words[3]!.startMs).toBeCloseTo(1340 + 530, 3);
+    expect(scene.words[3]!.endMs).toBeCloseTo(1340 + 980, 3);
+  });
+
+  it("keeps gaps between words and clamps times to the piece's sound", async () => {
+    const synth = timed({ "Hi there.": [[100, 500], [900, 1700]], "Bye now.": [[300, 500], [500, 600]] });
+    const words = (await narrateStoryboard(board(), { synthesizer: synth, outDir }))["a"]!.words;
+    expect(words[0]!.startMs).toBeCloseTo(0, 3); // before the sound: clamped to its start
+    expect(words[0]!.endMs).toBeCloseTo(230, 3);
+    expect(words[1]!.startMs).toBeCloseTo(630, 3); // a gap after "Hi"
+    expect(words[1]!.endMs).toBeCloseTo(1090, 3); // past the sound: clamped to its end
+    expect(words[2]!.startMs).toBeCloseTo(1340 + 30, 3);
+  });
+
+  it("falls back to the letter-count estimate for a piece whose word count does not match", async () => {
+    const synth = timed({ "Hi there.": [[300, 1300]], "Bye now.": [[300, 800], [800, 1300]] });
+    const words = (await narrateStoryboard(board(), { synthesizer: synth, outDir }))["a"]!.words;
+    expect(words.map((w) => w.text)).toEqual(["Hi", "there.", "Bye", "now."]);
+    expect(words[0]!.startMs).toBeCloseTo(30, 3);
+    expect(words[1]!.endMs).toBeCloseTo(1030, 3);
+    expect(words[0]!.endMs).toBeCloseTo(words[1]!.startMs, 6); // an even estimate has no gaps
+  });
+
+  it("is a new cache version, so estimated times are never reused", () => {
+    expect(NARRATION_CACHE_VERSION).toBe(5);
+  });
+});
+
+describe("the real voice", () => {
+  // Downloads ~100 MB once into ~/.cache/motioncraft.
+  it.skipIf(process.env["MOTIONCRAFT_TTS_TEST"] !== "1")(
+    "times a sentence's words inside its sound, in order",
+    async () => {
+      const { kokoroSynthesizer } = await import("../src/narration/kokoro");
+      const text = "Type one prompt, and get a finished video.";
+      const scene = (await narrateStoryboard(board({}, text), { synthesizer: kokoroSynthesizer(), outDir }))["a"]!;
+      const wav = decodeWav(new Uint8Array(await readFile(scene.wavPath)));
+      const loud = (x: number) => Math.abs(x) >= 0.01;
+      const soundStart = (wav.samples.findIndex(loud) / wav.sampleRate) * 1000;
+      const soundEnd = ((wav.samples.length - 1 - [...wav.samples].reverse().findIndex(loud)) / wav.sampleRate) * 1000;
+      const words = scene.words;
+      expect(words).toHaveLength(8);
+      for (const [i, word] of words.entries()) {
+        expect(word.endMs).toBeGreaterThanOrEqual(word.startMs);
+        if (i > 0) expect(word.startMs).toBeGreaterThanOrEqual(words[i - 1]!.startMs);
+      }
+      expect(Math.abs(words[0]!.startMs - soundStart)).toBeLessThanOrEqual(100);
+      expect(Math.abs(words[7]!.endMs - soundEnd)).toBeLessThanOrEqual(150);
+    },
+    600_000,
+  );
 });

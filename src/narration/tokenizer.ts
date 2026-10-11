@@ -9,11 +9,31 @@ export function countPhonemes(phonemes: string, vocab: Readonly<Record<string, n
   return [...phonemes].filter((char) => Object.hasOwn(vocab, char)).length;
 }
 
-export function encodePhonemes(phonemes: string, vocab: Readonly<Record<string, number>>): number[] {
-  const ids: number[] = [];
+/**
+ * The ids for `phonemes` (see `encodePhonemes`) and, for each UTF-16 index of
+ * `phonemes`, the index in `ids` of its id, or undefined when the character
+ * has none (outside the vocabulary, or past the cap). Index 0 is the leading
+ * `$`, so the first phoneme with an id maps to 1.
+ */
+export function encodePhonemesMapped(
+  phonemes: string,
+  vocab: Readonly<Record<string, number>>,
+): { ids: number[]; idOfChar: (number | undefined)[] } {
+  const ids: number[] = [0];
+  const idOfChar: (number | undefined)[] = [];
   for (const char of phonemes) {
     const id = Object.hasOwn(vocab, char) ? vocab[char] : undefined;
-    if (id !== undefined && ids.length < MAX_PHONEME_IDS) ids.push(id);
+    let at: number | undefined;
+    if (id !== undefined && ids.length - 1 < MAX_PHONEME_IDS) {
+      at = ids.length;
+      ids.push(id);
+    }
+    for (let unit = 0; unit < char.length; unit++) idOfChar.push(at);
   }
-  return [0, ...ids, 0];
+  ids.push(0);
+  return { ids, idOfChar };
+}
+
+export function encodePhonemes(phonemes: string, vocab: Readonly<Record<string, number>>): number[] {
+  return encodePhonemesMapped(phonemes, vocab).ids;
 }

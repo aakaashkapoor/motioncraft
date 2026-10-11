@@ -6,17 +6,17 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { TimedWord } from "../kit/captionWords";
 import type { Storyboard } from "../storyboard/types";
-import { KOKORO_REVISION, MISAKI_REVISION } from "./assets";
-import type { Synthesizer } from "./kokoro";
+import { KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION } from "./assets";
+import type { Speech, Synthesizer } from "./kokoro";
 import type { CachedNarration, SceneNarration } from "./types";
 import { splitForSpeech } from "./pieces";
 import { splitSentences } from "./sentences";
-import { trimSilence } from "./silence";
+import { trimSilence, type Trimmed } from "./silence";
 import { encodeWav } from "./wav";
 import { alignWords } from "./wordTimes";
 
 /** Bump to discard every cached narration when how it is made changes. */
-export const NARRATION_CACHE_VERSION = 4;
+export const NARRATION_CACHE_VERSION = 5;
 export const DEFAULT_VOICE = "af_heart";
 /** Silence between two sentences of a scene. */
 export const SENTENCE_GAP_MS = 250;
@@ -53,6 +53,30 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+/**
+ * The words of one piece timed by the voice, on the scene clock. `pieceStart`
+ * is where the piece's kept sound begins in the scene (in samples), `trimmed`
+ * how it was cut from `speech`. Undefined when the voice gave no word times
+ * or not one per word.
+ */
+function spokenWords(
+  piece: string,
+  speech: Speech,
+  trimmed: Trimmed,
+  pieceStart: number,
+  msAt: (samples: number) => number,
+): TimedWord[] | undefined {
+  const words = piece.split(/\s+/).filter(Boolean);
+  if (speech.words === undefined || speech.words.length !== words.length) return undefined;
+  const clamp = (sample: number): number => Math.min(Math.max(sample, 0), trimmed.samples.length);
+  const at = (sample: number): number => msAt(pieceStart + clamp(sample - trimmed.startSample));
+  return words.map((text, i) => ({
+    text,
+    startMs: at(speech.words![i]!.startSample),
+    endMs: at(speech.words![i]!.endSample),
+  }));
+}
+
 /** Speaks `text` sentence by sentence into one recording with its word times. */
 async function speakScene(
   text: string,
@@ -60,7 +84,7 @@ async function speakScene(
   synthesizer: Synthesizer,
 ): Promise<{ samples: Float32Array; sampleRate: number; audioMs: number; words: TimedWord[] }> {
   const chunks: Float32Array[] = [];
-  const spans: { text: string; startMs: number; endMs: number }[] = [];
+  const words: TimedWord[] = [];
   let sampleRate = 0;
   let total = 0;
   const msAt = (samples: number): number => (samples / sampleRate) * 1000;
@@ -71,17 +95,21 @@ async function speakScene(
     for (const [i, piece] of splitForSpeech(sentence).entries()) {
       const speech = await synthesizer.speak(piece, voice);
       if (sampleRate === 0) sampleRate = speech.sampleRate;
-      const { samples: sound, leadSamples, tailSamples } = trimSilence(speech.samples, speech.sampleRate);
+      const trimmed = trimSilence(speech.samples, speech.sampleRate);
+      const { samples: sound, leadSamples, tailSamples } = trimmed;
       if (i === 0 && chunks.length > 0) {
         const gap = new Float32Array(Math.round((SENTENCE_GAP_MS * sampleRate) / 1000));
         chunks.push(gap);
         total += gap.length;
       }
-      const startMs = msAt(total);
+      const pieceStart = total;
       chunks.push(sound);
       total += sound.length;
-      // Words span the sound itself, not the margins kept around it.
-      spans.push({ text: piece, startMs: startMs + msAt(leadSamples), endMs: msAt(total - tailSamples) });
+      // Words the voice timed keep its times. Otherwise they share the sound itself, not the margins kept around it.
+      words.push(
+        ...(spokenWords(piece, speech, trimmed, pieceStart, msAt) ??
+          alignWords([{ text: piece, startMs: msAt(pieceStart + leadSamples), endMs: msAt(total - tailSamples) }])),
+      );
     }
   }
 
@@ -91,7 +119,7 @@ async function speakScene(
     samples.set(chunk, offset);
     offset += chunk.length;
   }
-  return { samples, sampleRate, audioMs: Math.round(msAt(total)), words: alignWords(spans) };
+  return { samples, sampleRate, audioMs: Math.round(msAt(total)), words };
 }
 
 /** Where a storyboard file's narration is kept: `.motioncraft/narration/` beside it. */
@@ -113,7 +141,7 @@ function sceneFiles(storyboard: Storyboard, outDir: string, voice: string | unde
   for (const scene of storyboard.scenes) {
     if (scene.narration === undefined || splitSentences(scene.narration).length === 0) continue;
     const key = createHash("sha1")
-      .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, MISAKI_REVISION, chosen, scene.narration].join("\0"))
+      .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, chosen, scene.narration].join("\0"))
       .digest("hex");
     files.push({ sceneId: scene.id, text: scene.narration, wavPath: join(outDir, `${key}.wav`), jsonPath: join(outDir, `${key}.json`) });
   }

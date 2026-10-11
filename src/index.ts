@@ -98,7 +98,7 @@ export {
 export type { CaptionLimits, CaptionProps, KitComponent, KitProps, PageRange, TitleCardProps } from "./kit";
 export { BigNumber, bigNumberStep, bigNumberTiming, formatBigNumber, odometerColumns, odometerText, type BigNumberProps, type BigNumberTiming, type OdometerColumn } from "./kit/BigNumber";
 export { captionColors, captionTrack, type CaptionColors } from "./kit/Caption";
-export { activeWordAt, evenWordTimes, pageIndexAt, timedPages, wordLight, type TimedPage, type TimedWord } from "./kit/captionWords";
+export { activeWordAt, CAPTION_LEAD_MS, evenWordTimes, pageIndexAt, timedPages, wordLight, type TimedPage, type TimedWord } from "./kit/captionWords";
 export { FlowDiagram, flowDiagramLayout, flowDiagramTiming, type FlowArrow, type FlowDiagramLayout, type FlowDiagramProps, type FlowDiagramTiming } from "./kit";
 export { StepList, stepListLayout, stepListTiming, type StepListProps } from "./kit";
 export { ICON_NAMES, Icon, isIconName, type IconName, type IconProps } from "./icons";

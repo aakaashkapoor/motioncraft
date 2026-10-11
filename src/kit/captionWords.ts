@@ -55,6 +55,15 @@ export function activeWordAt(words: readonly TimedWord[], ms: number): number | 
 }
 
 /**
+ * How much earlier than it is spoken the caption shows a word: pages come up
+ * and words light this many ms ahead of the voice. People read a word as they
+ * hear it, and a word that lights only once it is heard seems late. The
+ * caption adds this to the scene clock once, before it looks up pages and
+ * word light.
+ */
+export const CAPTION_LEAD_MS = 100;
+
+/**
  * How lit `word` is at `ms`, 0..1: it lights over `ramp.ms`, or over half the
  * word when that is shorter, as it starts, and dims over the same as it ends,
  * while the next word lights.

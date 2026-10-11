@@ -18,6 +18,11 @@ export interface PinnedFile {
 
 /** onnx-community/Kokoro-82M-v1.0-ONNX (Apache-2.0, hexgrad). */
 export const KOKORO_REVISION = "1939ad2a8e416c0acfeecc08a694d14ef25f2231";
+/**
+ * onnx-community/Kokoro-82M-v1.0-ONNX-timestamped (Apache-2.0): the same
+ * weights and tokenizer, whose model also returns each input id's duration.
+ */
+export const KOKORO_TIMESTAMPED_REVISION = "dd4401a9add81ac692d20e240d22ec9dda82cc29";
 /** hexgrad/misaki (Apache-2.0). */
 export const MISAKI_REVISION = "fba1236595f2d2bf21d414ba6e57d25256afada3";
 
@@ -39,11 +44,12 @@ function dictionaryFile(name: string, bytes: number, sha256: string): PinnedFile
   };
 }
 
-export const MODEL_FILE = modelFile(
-  "onnx/model_quantized.onnx",
-  92361116,
-  "fbae9257e1e05ffc727e951ef9b9c98418e6d79f1c9b6b13bd59f5c9028a1478",
-);
+export const MODEL_FILE: PinnedFile = {
+  url: `https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX-timestamped/resolve/${KOKORO_TIMESTAMPED_REVISION}/onnx/model_quantized.onnx`,
+  sha256: "c0c02b3299fd97c34ea92a98e6d41eaa1a739c8f77bf685aac34bd7b34c1132c",
+  bytes: 92361055,
+  path: join("kokoro-timestamped", KOKORO_TIMESTAMPED_REVISION, "onnx", "model_quantized.onnx"),
+};
 export const TOKENIZER_FILE = modelFile(
   "tokenizer.json",
   3497,
