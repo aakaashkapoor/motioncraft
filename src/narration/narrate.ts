@@ -10,6 +10,7 @@ import { KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION } from ".
 import type { Speech, Synthesizer } from "./kokoro";
 import type { CachedNarration, SceneNarration } from "./types";
 import { splitForSpeech } from "./pieces";
+import { pronunciationsIn, sayAs } from "./pronounce";
 import { splitSentences } from "./sentences";
 import { trimSilence, type Trimmed } from "./silence";
 import { encodeWav } from "./wav";
@@ -77,11 +78,15 @@ function spokenWords(
   }));
 }
 
-/** Speaks `text` sentence by sentence into one recording with its word times. */
+/**
+ * Speaks `text` sentence by sentence into one recording with its word times.
+ * The voice says each word as `pronounce` maps it; the words keep the written text.
+ */
 async function speakScene(
   text: string,
   voice: string,
   synthesizer: Synthesizer,
+  pronounce: Storyboard["pronounce"],
 ): Promise<{ samples: Float32Array; sampleRate: number; audioMs: number; words: TimedWord[] }> {
   const chunks: Float32Array[] = [];
   const words: TimedWord[] = [];
@@ -93,7 +98,7 @@ async function speakScene(
     // A long sentence is spoken in pieces back to back; only sentences get a gap.
     // Each piece is trimmed of the silence around it, so word times match the sound.
     for (const [i, piece] of splitForSpeech(sentence).entries()) {
-      const speech = await synthesizer.speak(piece, voice);
+      const speech = await synthesizer.speak(sayAs(piece, pronounce), voice);
       if (sampleRate === 0) sampleRate = speech.sampleRate;
       const trimmed = trimSilence(speech.samples, speech.sampleRate);
       const { samples: sound, leadSamples, tailSamples } = trimmed;
@@ -140,9 +145,11 @@ function sceneFiles(storyboard: Storyboard, outDir: string, voice: string | unde
   const files: SceneFiles[] = [];
   for (const scene of storyboard.scenes) {
     if (scene.narration === undefined || splitSentences(scene.narration).length === 0) continue;
-    const key = createHash("sha1")
-      .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, chosen, scene.narration].join("\0"))
-      .digest("hex");
+    const parts = [NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, chosen, scene.narration];
+    // Only the pronunciations this scene uses, so a scene without any keeps its key.
+    const said = pronunciationsIn(scene.narration, storyboard.pronounce);
+    if (said.length > 0) parts.push(JSON.stringify(said));
+    const key = createHash("sha1").update(parts.join("\0")).digest("hex");
     files.push({ sceneId: scene.id, text: scene.narration, wavPath: join(outDir, `${key}.wav`), jsonPath: join(outDir, `${key}.json`) });
   }
   return { voice: chosen, files };
@@ -192,7 +199,7 @@ export async function narrateStoryboard(
       result[file.sceneId] = cached;
       continue;
     }
-    const spoken = await speakScene(file.text, voice, options.synthesizer);
+    const spoken = await speakScene(file.text, voice, options.synthesizer, storyboard.pronounce);
     await writeFile(file.wavPath, encodeWav(spoken.samples, spoken.sampleRate));
     await writeFile(file.jsonPath, JSON.stringify({ audioMs: spoken.audioMs, words: spoken.words }, null, 2));
     result[file.sceneId] = { sceneId: file.sceneId, wavPath: file.wavPath, audioMs: spoken.audioMs, words: spoken.words };

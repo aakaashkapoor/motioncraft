@@ -125,6 +125,12 @@ export interface Storyboard {
   opening?: Opening;
   /** The narration voice (a Kokoro voice name). Defaults to "af_heart". */
   voice?: string;
+  /**
+   * How written words are spoken: `{ "JSON": "Jaysawn" }` says "Jaysawn" where
+   * the narration has `JSON`, while captions keep `JSON`. Keys have no
+   * whitespace; values are one word of letters and apostrophes.
+   */
+  pronounce?: Record<string, string>;
   scenes: StoryboardScene[];
 }
 

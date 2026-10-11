@@ -148,6 +148,31 @@ describe("narrateStoryboard", () => {
     expect(synth.calls).toHaveLength(1);
     expect(result["a"]!.audioMs).toBe(1000);
   });
+
+  it("speaks the pronounce map's spoken form but keeps the written words for captions", async () => {
+    const synth = fakeSynth();
+    const pronounce = { JSON: "Jaysawn", nsh: "NSH" };
+    const result = await narrateStoryboard(board({ pronounce }, "Run (nsh) for a JSON: report."), { synthesizer: synth, outDir });
+    expect(synth.calls.map((c) => c.text)).toEqual(["Run (NSH) for a Jaysawn: report."]);
+    expect(result["a"]!.words.map((w) => w.text)).toEqual(["Run", "(nsh)", "for", "a", "JSON:", "report."]);
+    const sidecar = JSON.parse(await readFile(result["a"]!.wavPath.replace(/\.wav$/, ".json"), "utf8")) as { words: { text: string }[] };
+    expect(sidecar.words.map((w) => w.text)).toEqual(["Run", "(nsh)", "for", "a", "JSON:", "report."]);
+  });
+
+  it("re-speaks when a pronunciation the scene uses changes, and only then", async () => {
+    const narration = "A JSON report.";
+    const plain = await narrateStoryboard(board({}, narration), { synthesizer: fakeSynth(), outDir });
+    const unused = await narrateStoryboard(board({ pronounce: { nsh: "NSH" } }, narration), { synthesizer: fakeSynth(), outDir });
+    expect(unused["a"]!.wavPath).toBe(plain["a"]!.wavPath);
+
+    const first = await narrateStoryboard(board({ pronounce: { JSON: "Jaysawn" } }, narration), { synthesizer: fakeSynth(), outDir });
+    const changed = fakeSynth();
+    const second = await narrateStoryboard(board({ pronounce: { JSON: "Jayson" } }, narration), { synthesizer: changed, outDir });
+    expect(first["a"]!.wavPath).not.toBe(plain["a"]!.wavPath);
+    expect(second["a"]!.wavPath).not.toBe(first["a"]!.wavPath);
+    expect(changed.calls.map((c) => c.text)).toEqual(["A Jayson report."]);
+    expect(await readdir(outDir)).toHaveLength(6);
+  });
 });
 
 describe("loadCachedNarration", () => {
