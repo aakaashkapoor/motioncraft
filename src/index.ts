@@ -124,7 +124,7 @@ export { HEADLINE_MOTIONS, HEADLINE_ROLES, Headline, HeadlineText, MARK_STYLES, 
 export { SceneFrame, frameLineSpec, sceneFrameLayout, sceneFrameTiming, type SceneFrameLayout, type SceneFrameProps, type SceneFrameText, type SceneFrameTiming } from "./kit/SceneFrame";
 export { PromptCard, promptCardLayout, promptCardTiming, type PromptCardLayout, type PromptCardProps, type PromptCardTiming } from "./kit/PromptCard";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
-export { MotionDelay, NOMINAL_SCENE_MS, SceneClockContext, useSceneMs, useSceneTime, type SceneClock, type SceneTime } from "./kit/frameContext";
+export { MotionDelay, NOMINAL_SCENE_MS, OPENING_SETTLE_MS, entering, SceneClockContext, useSceneMs, useSceneTime, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { caretBlink, typedCount, typedText, typingPauseMs, typingSpan, typingTimes, type TypingSpan } from "./kit/typing";
 export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, pulse, tween, type Timed } from "./kit/motion";
 export * from "./camera";

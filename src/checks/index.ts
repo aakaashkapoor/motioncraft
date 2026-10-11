@@ -1,5 +1,5 @@
 // Layer-1 automatic checks (no AI): overflow, safe area, contrast, readability,
-// type scale and centering (warnings), and storyboard checks (transitions,
+// type scale, centering and opening (warnings), and storyboard checks (transitions,
 // theme colors, media files).
 
 export { runChecks } from "./run";
@@ -13,6 +13,7 @@ export { checkSafeArea } from "./safeArea";
 export { CENTERING_TOLERANCE_PX, checkCentering } from "./centering";
 export { checkContrast, effectiveBackground, MIN_CONTRAST, parseCssColor, textContrast } from "./contrast";
 export { checkReadability, countWords, minReadMs } from "./readability";
+export { BLANK_OPENING_MESSAGE, checkOpening } from "./opening";
 export { checkTypeScale } from "./typeScale";
 export type { RampStep } from "./typeScale";
 export { checkMediaFiles, checkNarrationFit, checkStoryboard, checkThemeColors, checkTransitions, formatIssue, STORYBOARD_CHECK_NAMES } from "./storyboard";

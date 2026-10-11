@@ -13,7 +13,7 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { accentInk, headlineColor } from "../theme/roles";
-import { useSceneTime } from "./frameContext";
+import { entering, useSceneTime } from "./frameContext";
 import { HeadlineText } from "./Headline";
 import { headlineTiming, headlineWords, linePose, wordLeaving, type HeadlineMotion, type MarkStyle } from "./headlineMotion";
 import { exitOpacity, fade } from "./motion";
@@ -79,7 +79,8 @@ export function titleCardBox(theme: Theme, aspect: Aspect, text: TitleText, slot
 
 export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle, kicker, titleMotion, emphasis, mark, markStyle }: TitleCardProps) {
   const { box, step } = titleCardBox(theme, aspect, { title, subtitle, kicker }, slot);
-  const time = useSceneTime(progress);
+  const scene = useSceneTime(progress);
+  const time = entering(scene);
   const { leadMs, fx } = theme.motion;
   const textIn = theme.motion["text.in"];
   const opacity = Math.min(fade(fx, time.ms - leadMs), exitOpacity(theme, time, textIn.ms));
@@ -141,7 +142,7 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
             text={title}
             theme={theme}
             spec={type[step][aspect]}
-            time={time}
+            time={scene}
             start={titleStart}
             motion={titleMotion}
             emphasis={emphasis}

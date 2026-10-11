@@ -3,11 +3,13 @@ import {
   CAPTION_STYLES,
   DEFAULT_FPS,
   DEFAULT_THEME,
+  OPENINGS,
   SAFE_PROFILES,
   SLIDE_DIRECTIONS,
   TRANSITION_TYPES,
   type Aspect,
   type CaptionStyle,
+  type Opening,
   type SafeProfile,
   type SceneShot,
   type SceneTransition,
@@ -21,7 +23,7 @@ import { accentIntensityError, colorError, themeOverridesErrors } from "./themeO
 import { STOCK_VOICES } from "../narration/voices";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "voice", "scenes"]);
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "scenes"]);
 const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition", "shots"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
 
@@ -170,6 +172,10 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (captionStyle !== undefined && !CAPTION_STYLES.includes(captionStyle as CaptionStyle)) {
     errors.push(`captionStyle must be ${oneOf(CAPTION_STYLES)} (got ${describe(captionStyle)})`);
   }
+  const { opening } = input;
+  if (opening !== undefined && !OPENINGS.includes(opening as Opening)) {
+    errors.push(`opening must be ${oneOf(OPENINGS)} (got ${describe(opening)})`);
+  }
 
   const { voice } = input;
   if (voice !== undefined) {
@@ -186,6 +192,7 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (accentIntensity !== undefined) storyboard.accentIntensity = accentIntensity as AccentIntensity;
   if (safe !== undefined) storyboard.safe = safe as SafeProfile;
   if (captionStyle !== undefined) storyboard.captionStyle = captionStyle as CaptionStyle;
+  if (opening !== undefined) storyboard.opening = opening as Opening;
   if (voice !== undefined) storyboard.voice = voice as string;
   return { ok: true, storyboard };
 }

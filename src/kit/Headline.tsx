@@ -17,7 +17,7 @@ import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
 import { accentInk, headlineColor } from "../theme/roles";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
-import { useSceneTime, type SceneTime } from "./frameContext";
+import { entering, useSceneTime, type SceneTime } from "./frameContext";
 import {
   charPose,
   HEADLINE_MOTIONS,
@@ -77,9 +77,11 @@ const moved = (pose: TextPose) => ({
   ...(pose.blur > 0 && { filter: `blur(${pose.blur}px)` }),
 });
 
-export function HeadlineText({ text, theme, spec, time, start, motion = "whole", emphasis, mark, markStyle = "bar", wordAttributes }: HeadlineTextProps) {
+export function HeadlineText({ text, theme, spec, time: sceneTime, start, motion = "whole", emphasis, mark, markStyle = "bar", wordAttributes }: HeadlineTextProps) {
   if (!HEADLINE_MOTIONS.includes(motion)) throw new Error(`headline motion must be one of ${oneOf(HEADLINE_MOTIONS)} (got ${JSON.stringify(motion)})`);
   if (!MARK_STYLES.includes(markStyle)) throw new Error(`markStyle must be one of ${oneOf(MARK_STYLES)} (got ${JSON.stringify(markStyle)})`);
+  // The headline and its mark are entrances: a settled opening has them landed at frame 0.
+  const time = entering(sceneTime);
   const words = headlineWords(text);
   const marks = headlineMarks(words, emphasis, mark);
   const timing = headlineTiming(theme, words, start, motion);

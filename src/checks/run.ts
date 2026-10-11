@@ -31,7 +31,11 @@ export async function runChecks(options: RunChecksOptions): Promise<CheckResult>
       await showFrame(page, frame);
       return page.evaluate(() => window.motioncraft!.measureFrame());
     };
-    if (frames === undefined) return sampleVisibleFrames(timeline, measure);
+    if (frames === undefined) {
+      const sampled = await sampleVisibleFrames(timeline, measure);
+      // Frame 0 is the thumbnail, so it is always measured (for the `opening` check).
+      return sampled[0]?.frame === 0 ? sampled : [{ frame: 0, measurement: await measure(0) }, ...sampled];
+    }
     const result: MeasuredFrame[] = [];
     for (const frame of frames) result.push({ frame, measurement: await measure(frame) });
     return result;

@@ -138,9 +138,17 @@ of the frame than a shot may.
 A storyboard is one JSON document. Top-level fields: `title`, `aspect`
 (`"9:16"`, the primary format, or `"16:9"`), `fps` (default 30), `theme`
 (default `"light"`), the theme fields in section 3, `safe` and
-`captionStyle` (below), and `scenes`. Each scene has an `id` (unique), a
+`captionStyle` (below), `opening` (below), and `scenes`. Each scene has an `id` (unique), a
 `component` (a kit name from section 5), `props`, and optionally `narration`,
 `durationMs`, `transition` and camera `shots` (section 1).
+
+`opening` is `"settled"` (the default) or `"build"`. The first frame of a video
+is its thumbnail on GitHub, Slack, X and most players until someone presses
+play, so it should not be blank. With `settled`, the first scene's entrances
+(headline, mark, and the `enter` of its content) count as finished at frame 0;
+anything timed inside the scene (typing, cursor clicks, scheduled list items,
+captions) still plays on its timeline, and the audio is unchanged. `build`
+animates everything in from nothing. It affects only scene 1.
 
 ```json
 {
@@ -451,6 +459,10 @@ checks.
   terminal or code window shrank to fit is allowed. `centering` (warn, 9:16)
   reports a scene whose main block (its cards, windows and text blocks
   together, without the caption) is more than 8 px off the frame's center line.
+  `opening` (warn) renders frame 0 and reports it when it shows no text (the
+  caption does not count), since that blank frame is the thumbnail GitHub,
+  Slack and social apps show before play; use `opening: settled` or put text on
+  the first frame.
 
 Warnings do not fail the run, but treat them as mistakes unless you meant it.
 

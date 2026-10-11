@@ -13,6 +13,11 @@ export interface SceneClock {
   frame: number;
   /** Frames in the scene. */
   frames: number;
+  /**
+   * The scene opens settled: its entrances count as finished at frame 0 (see
+   * `entering`). Set for the first scene unless the storyboard says `opening: build`.
+   */
+  settled?: boolean;
 }
 
 /** Provided by the render page; absent when a component is drawn on its own. */
@@ -38,6 +43,27 @@ export interface SceneTime {
   endMs: number;
   /** Milliseconds until the scene's last frame, counted in whole frames so exits match in any scene. */
   leftMs: number;
+  /** How far entrances are ahead of `ms`: `OPENING_SETTLE_MS` in a settled opening scene, else 0. See `entering`. */
+  settleMs?: number;
+}
+
+/**
+ * How far ahead of the timeline a settled opening scene's entrances run: far
+ * enough that every entrance (headline, mark, a content container's `enter`,
+ * through any `MotionDelay`) has finished at frame 0.
+ */
+export const OPENING_SETTLE_MS = 10_000;
+
+/**
+ * The time an entrance should use: `time`, with the settled opening's head
+ * start added. Only entrances use it (headline words, the mark sweep, a
+ * container's `enter`); anything timed inside the scene (typing, cursor
+ * clicks, scheduled list items, captions) keeps `time`. The same as `time`
+ * when the scene is not settled.
+ */
+export function entering(time: SceneTime): SceneTime {
+  const settleMs = time.settleMs ?? 0;
+  return settleMs === 0 ? time : { ms: time.ms + settleMs, endMs: time.endMs + settleMs, leftMs: time.leftMs, settleMs };
 }
 
 const MotionDelayContext = createContext(0);
@@ -61,7 +87,8 @@ export function useSceneTime(progress: number): SceneTime {
   const delay = useContext(MotionDelayContext);
   const ms = clock === undefined ? progress * NOMINAL_SCENE_MS : (clock.frame * 1000) / clock.fps;
   const leftMs = clock === undefined ? (1 - progress) * NOMINAL_SCENE_MS : (Math.max(0, clock.frames - 1 - clock.frame) * 1000) / clock.fps;
-  return { ms: ms - delay, endMs: ms - delay + leftMs, leftMs };
+  const settleMs = clock?.settled === true ? OPENING_SETTLE_MS : 0;
+  return { ms: ms - delay, endMs: ms - delay + leftMs, leftMs, ...(settleMs !== 0 && { settleMs }) };
 }
 
 /**

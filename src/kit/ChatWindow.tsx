@@ -26,7 +26,7 @@ import type { Aspect } from "../storyboard/types";
 import { mixColors, withAlpha } from "../theme/color";
 import { contrastRatio } from "../theme/contrast";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
-import { useSceneTime, type SceneTime } from "./frameContext";
+import { entering, useSceneTime, type SceneTime } from "./frameContext";
 import { Caret } from "./Caret";
 import { Cursor, cursorAt, cursorTiming } from "./cursor";
 import { liftPose, liftScale, liftShadow, type LiftEnds } from "./liftOut";
@@ -839,7 +839,7 @@ export function ChatWindow({ progress, theme, aspect, area: slot, channel, messa
   const { colors, spacing, radius, cardShadow } = theme;
   const time = useSceneTime(progress);
   const { ms } = time;
-  const enter = arrive(theme, ms, theme.motion.leadMs);
+  const enter = arrive(theme, entering(time).ms, theme.motion.leadMs);
   const exit = exitOpacity(theme, time, theme.motion.enter.ms);
   const { messages: timing, composer, cards: cardTimes, pace } = chatSequence(theme, messages, cards?.length ?? 0, time, seed);
   const { clickMs, liftMs } = chatMoments(theme, { messages, cursor, cards }, time, seed);

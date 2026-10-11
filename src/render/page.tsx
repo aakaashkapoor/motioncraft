@@ -16,7 +16,7 @@ import type { PageNarration } from "../narration/types";
 import { SceneClockContext } from "../kit/frameContext";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
-import { WIDE_SHOT, type Storyboard } from "../storyboard/types";
+import { WIDE_SHOT, opensSettled, type Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { transitionStyle } from "../transitions";
 import { morphEndpoints, morphProgress, sharedIds, type BoundaryMeasurement, type SharedMeasurements } from "../transitions/shared";
@@ -101,7 +101,7 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
     mode: camera,
   });
   const content = (
-    <SceneClockContext.Provider value={{ fps, frame: active.localFrame, frames: active.sceneFrames }}>
+    <SceneClockContext.Provider value={{ fps, frame: active.localFrame, frames: active.sceneFrames, settled: opensSettled(storyboard, active.sceneIndex) }}>
       <CameraWorld view={view} aspect={aspect}>
         <Component {...scene.props} {...common} />
       </CameraWorld>

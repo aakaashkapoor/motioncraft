@@ -13,7 +13,7 @@ import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
 import type { Theme } from "../theme/types";
-import { MotionDelay, useSceneTime, type SceneTime } from "./frameContext";
+import { entering, MotionDelay, useSceneTime, type SceneTime } from "./frameContext";
 import { arrive, exitOpacity } from "./motion";
 import { Shine } from "./shine";
 import { Slot, type SlotContent } from "./Slot";
@@ -86,7 +86,7 @@ export function windowLandMs(theme: Theme): number {
 /** Opacity, upward offset in px and scale of the window at scene time `time`: an `enter` arrival on the lead, a fast exit. Pure. */
 export function windowMotion(theme: Theme, time: SceneTime): { opacity: number; rise: number; scale: number } {
   const { leadMs, enter } = theme.motion;
-  const { move, opacity } = arrive(theme, time.ms, leadMs);
+  const { move, opacity } = arrive(theme, entering(time).ms, leadMs);
   return {
     opacity: Math.min(opacity, exitOpacity(theme, time, enter.ms)),
     // The rise carries the spring's overshoot; the scale stops at 1, so the window's text never draws larger than it lays out.

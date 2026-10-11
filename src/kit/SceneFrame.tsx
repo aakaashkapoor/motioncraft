@@ -13,7 +13,7 @@ import { glyphPad, textBoxHeight, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { headlineColor } from "../theme/roles";
 import type { Theme, TypeSpec } from "../theme/types";
-import { MotionDelay, useSceneTime } from "./frameContext";
+import { entering, MotionDelay, useSceneTime } from "./frameContext";
 import { HeadlineText } from "./Headline";
 import { headlineWords, linePose, wordLeaving, type HeadlineMotion, type MarkStyle } from "./headlineMotion";
 import { exitOpacity } from "./motion";
@@ -137,8 +137,9 @@ export function SceneFrame({ progress, theme, aspect, area, headline, eyebrow, c
     textAlign: "center" as const,
   });
   // The eyebrow and footer land as whole lines, like the headline.
-  const lands = (spec: TypeSpec, start: number) => {
-    const pose = linePose(theme, spec.size * spec.lineHeight, time.ms - start, leaving);
+  // Only the eyebrow is an opening entrance; the footer lands later in the scene on its own timeline.
+  const lands = (spec: TypeSpec, start: number, clock = time) => {
+    const pose = linePose(theme, spec.size * spec.lineHeight, clock.ms - start, leaving);
     return { opacity: pose.opacity, transform: `translateY(${pose.y}px)` };
   };
 
@@ -146,7 +147,7 @@ export function SceneFrame({ progress, theme, aspect, area, headline, eyebrow, c
   return (
     <div data-scene-frame="" style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", opacity: exitOpacity(theme, time, theme.motion["text.in"].ms) }}>
       {eyebrow !== undefined && layout.eyebrow !== undefined && (
-        <p data-frame-part="eyebrow" style={{ ...at(layout.eyebrow), ...textStyle(lineSpec), ...lands(lineSpec, timing.eyebrow), fontFamily: fonts.body, color: colors.textMuted }}>
+        <p data-frame-part="eyebrow" style={{ ...at(layout.eyebrow), ...textStyle(lineSpec), ...lands(lineSpec, timing.eyebrow, entering(time)), fontFamily: fonts.body, color: colors.textMuted }}>
           {eyebrow}
         </p>
       )}
