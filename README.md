@@ -12,11 +12,11 @@ headlines, cards, diagrams and code highlights, exported as MP4.
 
 ## See it
 
-Made with motioncraft: every frame drawn in code, narrated by a local voice, rendered on one machine. Click to watch with sound.
+Made with motioncraft: every frame drawn in code, narrated by a local voice, rendered on one machine.
 
-[![motioncraft launch video, widescreen. Click to watch with sound.](docs/media/poster-16x9.jpg)](https://aakaashkapoor.github.io/motioncraft/#wide)
+VIDEO_WIDE
 
-<a href="https://aakaashkapoor.github.io/motioncraft/#vertical"><img src="docs/media/poster-9x16.jpg" width="280" alt="motioncraft launch video, vertical. Click to watch with sound."></a>
+VIDEO_TALL
 
 **Status: early development.** Nothing to use yet. The design is in
 [`docs/design.md`](docs/design.md).
