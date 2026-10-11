@@ -23,7 +23,7 @@ import { accentIntensityError, colorError, themeOverridesErrors } from "./themeO
 import { STOCK_VOICES } from "../narration/voices";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "scenes"]);
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "pronounce", "scenes"]);
 const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition", "shots"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
 
@@ -142,6 +142,20 @@ function validateScenes(raw: unknown, errors: string[]): StoryboardScene[] {
   return scenes;
 }
 
+/** Problems with the storyboard's `pronounce` map: one written word to one spoken word. */
+function pronounceErrors(raw: unknown): string[] {
+  if (!isObject(raw)) return [`pronounce must be an object mapping a written word to how it is spoken (got ${describe(raw)})`];
+  const errors: string[] = [];
+  for (const [key, value] of Object.entries(raw)) {
+    const at = `pronounce[${JSON.stringify(key)}]`;
+    if (key === "" || /\s/.test(key)) errors.push(`${at}: the written word must be non-empty with no whitespace`);
+    if (typeof value !== "string" || !/^[A-Za-z']+$/.test(value)) {
+      errors.push(`${at} must be one word of letters and apostrophes (got ${describe(value)})`);
+    }
+  }
+  return errors;
+}
+
 /**
  * Validates a storyboard document and applies defaults (`fps` 30, `theme` "light").
  * Collects every problem rather than stopping at the first.
@@ -183,6 +197,9 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
     else if (!(STOCK_VOICES as readonly string[]).includes(voice)) errors.push(`voice must be one of ${STOCK_VOICES.join(", ")} (got ${describe(voice)})`);
   }
 
+  const { pronounce } = input;
+  if (pronounce !== undefined) errors.push(...pronounceErrors(pronounce));
+
   const scenes = validateScenes(input.scenes, errors);
 
   if (errors.length > 0) return { ok: false, errors };
@@ -194,5 +211,6 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (captionStyle !== undefined) storyboard.captionStyle = captionStyle as CaptionStyle;
   if (opening !== undefined) storyboard.opening = opening as Opening;
   if (voice !== undefined) storyboard.voice = voice as string;
+  if (pronounce !== undefined) storyboard.pronounce = pronounce as Record<string, string>;
   return { ok: true, storyboard };
 }
