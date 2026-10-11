@@ -1,5 +1,6 @@
-// When each word of the narration is spoken. The synthesizer reports no word
-// times, so each sentence's measured span is shared out by word weight. Pure.
+// When each word of the narration is spoken, as a fallback: used when the voice
+// gives no word times, so each sentence's measured span is shared out by word
+// weight. Pure.
 
 import type { TimedWord } from "../kit/captionWords";
 

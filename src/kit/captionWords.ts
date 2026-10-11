@@ -1,7 +1,7 @@
 // When each caption word is spoken, which page is up and which word is lit
-// (design v3, life #4). There is no text-to-speech yet, so narration is split
-// evenly, each word's share weighted by its length; measured word times can
-// replace `evenWordTimes` later without changing the rest. Pure.
+// (design v3, life #4). Measured word times come from the voice itself;
+// `evenWordTimes` (each word's share weighted by its length) is the fallback
+// when the voice gives none. Pure.
 
 import { pageRanges, type CaptionLimits, type PageRange } from "./captionPages";
 import { fade, type Timed } from "./motion";
@@ -53,6 +53,15 @@ export function activeWordAt(words: readonly TimedWord[], ms: number): number | 
   const index = words.findIndex((word) => word.startMs <= ms && ms < word.endMs);
   return index < 0 ? undefined : index;
 }
+
+/**
+ * How much earlier than it is spoken the caption shows a word: pages come up
+ * and words light this many ms ahead of the voice. People read a word as they
+ * hear it, and a word that lights only once it is heard seems late. The
+ * caption adds this to the scene clock once, before it looks up pages and
+ * word light.
+ */
+export const CAPTION_LEAD_MS = 100;
 
 /**
  * How lit `word` is at `ms`, 0..1: it lights over `ramp.ms`, or over half the

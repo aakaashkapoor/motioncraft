@@ -1,29 +1,95 @@
 // English text to a Kokoro phoneme string, using misaki's US dictionaries
 // (gold first, then silver). A word in neither is spelled out when it is an
-// acronym, else sounded out by simple letter-to-sound rules. Pure.
+// acronym, else sounded out by simple letter-to-sound rules. Short words are
+// read in context (right to left), as misaki does. Pure.
+//
+// Text is normalized exactly once, here: `createWordPhonemizer` groups the
+// display words whose normalization depends on a neighbour, normalizes each
+// group, and walks the resulting spoken tokens in `phonemizeTokens`.
+
+import { normalizeText } from "./normalize";
 
 /** A dictionary entry: one pronunciation, or one per part of speech. */
 export type LexiconEntry = string | Readonly<Record<string, string>>;
 export type Lexicon = Readonly<Record<string, LexiconEntry>>;
 
-const PUNCTUATION = new Set([";", ":", ",", ".", "!", "?"]);
-/** Words, then punctuation to keep, then dashes and ellipses that read as a pause. */
-const TOKEN = /[A-Za-z]+(?:'[A-Za-z]+)*|[;:,.!?]|[—–…]/g;
+/** A dotted acronym, then words, then punctuation to keep, then dashes and ellipses that read as a pause. */
+const TOKEN = /(?:[A-Za-z]\.){2,}|[A-Za-z]+(?:'[A-Za-z]+)*|[;:,.!?]|[—–…]/g;
+const DOTTED = /^(?:[A-Za-z]\.){2,}$/;
+/** Each token that reads as a pause, and the mark it is emitted as. */
+const BREAKS: ReadonlyMap<string, string> = new Map([
+  [";", ";"], [":", ":"], [",", ","], [".", "."], ["!", "!"], ["?", "?"], ["…", "."], ["—", ","], ["–", ","],
+]);
 
-function pick(entry: LexiconEntry | undefined): string | undefined {
+/** Where a word sits: whether the next spoken word starts with a vowel (null: punctuation or the end), and the word before it. */
+interface Context {
+  nextVowel: boolean | null;
+  /** The word before it, lowercased. */
+  previous: string;
+}
+/** For a lookup with no neighbours (a stem, a letter): `nextVowel` is false, not null, so a "None" entry is not taken as sitting at a clause end. */
+const DEFAULT_CONTEXT: Context = { nextVowel: false, previous: "" };
+
+/** Words after which a word is read as a noun, or as a verb (a stand-in for misaki's tagger). */
+const NOUN_CUES = new Set("a an the this that these those my your our their his her its every each some any no".split(" "));
+const VERB_CUES = new Set("to i you we they he she it can will would should could must may might do does did don't won't".split(" "));
+
+function pick(entry: LexiconEntry | undefined, context: Context): string | undefined {
   if (entry === undefined || typeof entry === "string") return entry;
   const values = Object.values(entry).filter((value): value is string => typeof value === "string");
-  return Object.hasOwn(entry, "DEFAULT") && typeof entry["DEFAULT"] === "string" ? entry["DEFAULT"] : values[0];
+  const get = (key: string): string | undefined =>
+    Object.hasOwn(entry, key) && typeof entry[key] === "string" ? entry[key] : undefined;
+  if (Object.hasOwn(entry, "None")) {
+    return (context.nextVowel === null ? get("None") : get("DEFAULT")) ?? get("DEFAULT") ?? values[0];
+  }
+  // NN and VB mirror misaki's tags; the real dictionaries use NOUN and VERB.
+  if (NOUN_CUES.has(context.previous)) {
+    const noun = get("NN") ?? get("NOUN");
+    if (noun !== undefined) return noun;
+  } else if (VERB_CUES.has(context.previous)) {
+    const verb = get("VB") ?? get("VERB");
+    if (verb !== undefined) return verb;
+  }
+  return get("DEFAULT") ?? values[0];
 }
 
-function lookup(lexicon: Lexicon, word: string): string | undefined {
+function lookup(lexicon: Lexicon, word: string, context: Context): string | undefined {
   for (const key of [word, word.toLowerCase()]) {
     if (Object.hasOwn(lexicon, key)) {
-      const found = pick(lexicon[key]);
+      const found = pick(lexicon[key], context);
       if (found !== undefined && found !== "") return found;
     }
   }
   return undefined;
+}
+
+const VOWELS = "AIOQWYaiuæɑɒɔəɛɜɪʊʌᵻ";
+const CONSONANTS = "bdfhjklmnpstvwzðŋɡɹɾʃʒʤʧθ";
+const CONTEXT_BREAKS = ";:,.!?—…";
+
+/** misaki's apply_stress: restress `ps` for a word of the given prominence. */
+function applyStress(ps: string, stress: number): string {
+  const has = (set: string): boolean => [...ps].some((c) => set.includes(c));
+  const restress = (text: string): string => {
+    const chars = [...text];
+    const keyed = chars.map((c, i): [number, string] => [i, c]);
+    for (let i = 0; i < chars.length; i++) {
+      if (!"ˌˈ".includes(chars[i]!)) continue;
+      const j = chars.findIndex((c, k) => k >= i && VOWELS.includes(c));
+      if (j >= 0) keyed[i] = [j - 0.5, chars[i]!];
+    }
+    return keyed.sort((x, y) => x[0] - y[0]).map(([, c]) => c).join("");
+  };
+  if (stress < -1) return ps.replaceAll("ˈ", "").replaceAll("ˌ", "");
+  if (stress === -1 || ((stress === 0 || stress === -0.5) && ps.includes("ˈ"))) {
+    return ps.replaceAll("ˌ", "").replaceAll("ˈ", "ˌ");
+  }
+  if ((stress === 0 || stress === 0.5 || stress === 1) && !has("ˌˈ")) {
+    return has(VOWELS) ? restress(`ˌ${ps}`) : ps;
+  }
+  if (stress >= 1 && !ps.includes("ˈ") && ps.includes("ˌ")) return ps.replaceAll("ˌ", "ˈ");
+  if (stress > 1 && !has("ˌˈ")) return has(VOWELS) ? restress(`ˈ${ps}`) : ps;
+  return ps;
 }
 
 /** Vowel-ish phonemes after which a stem-final t flaps, as in misaki. */
@@ -68,8 +134,36 @@ function soundOut(word: string): string {
   return stressAt < 0 ? out : `${out.slice(0, stressAt)}ˈ${out.slice(stressAt)}`;
 }
 
-export function createPhonemizer(gold: Lexicon, silver: Lexicon): (text: string) => string {
-  const find = (word: string): string | undefined => lookup(gold, word) ?? lookup(silver, word);
+function capitalize(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+/** Whether the word after one with these `phonemes` starts with a vowel; `previous` is the answer for the word after that. */
+function contextAfter(phonemes: string, previous: boolean | null): boolean | null {
+  for (const c of phonemes) {
+    if (VOWELS.includes(c)) return true;
+    if (CONSONANTS.includes(c)) return false;
+    if (CONTEXT_BREAKS.includes(c)) return null;
+  }
+  return previous;
+}
+
+/** A spoken token and the display word (or group) it belongs to. */
+interface Token {
+  text: string;
+  owner: number;
+}
+
+export interface WordPhonemes {
+  /** The full phoneme string. */
+  phonemes: string;
+  /** Per input word: its phonemes' [start, end) in `phonemes`, punctuation excluded; start === end when it has none. */
+  spans: { start: number; end: number }[];
+}
+
+export function createWordPhonemizer(gold: Lexicon, silver: Lexicon): (words: readonly string[]) => WordPhonemes {
+  const find = (word: string, context: Context = DEFAULT_CONTEXT): string | undefined =>
+    lookup(gold, word, context) ?? lookup(silver, word, context);
 
   const known = (word: string): boolean => find(word) !== undefined;
 
@@ -132,28 +226,117 @@ export function createPhonemizer(gold: Lexicon, silver: Lexicon): (text: string)
   const spellOut = (word: string): string =>
     [...word].map((letter) => find(letter) ?? soundOut(letter)).join("");
 
-  const pronounce = (word: string): string =>
-    find(word) ??
-    withSuffix(word) ??
-    stemEd(word) ??
-    stemIng(word) ??
-    compound(word) ??
-    (/^[A-Z]{2,}$/.test(word) ? spellOut(word) : soundOut(word));
+  /** misaki's get_special_case; the words also count in all caps. */
+  const special = (word: string, context: Context): string | undefined => {
+    if (word === "I") return "ˌI";
+    const lower = word.toLowerCase();
+    if (word !== lower && word !== word.toUpperCase() && word !== capitalize(lower)) return undefined;
+    if (lower === "a") return "ɐ";
+    if (lower === "an") return "ɐn";
+    if (lower === "the") return context.nextVowel === true ? "ði" : "ðə";
+    if (lower === "to") return context.nextVowel === null ? find("to") : context.nextVowel ? "tʊ" : "tə";
+    if (lower === "in") return context.nextVowel === null ? "ˈɪn" : "ɪn";
+    return undefined;
+  };
 
-  return (text) => {
+  const pronounce = (word: string, context: Context): string => {
+    if (DOTTED.test(word)) return spellOut(word.replaceAll(".", "").toUpperCase());
+    const fixed = special(word, context);
+    if (fixed !== undefined) return fixed;
+    const found = find(word, context) ?? withSuffix(word) ?? stemEd(word) ?? stemIng(word) ?? compound(word);
+    if (found === undefined) return /^[A-Z]{2,}$/.test(word) ? spellOut(word) : soundOut(word);
+    if (word === word.toLowerCase()) return found;
+    return applyStress(found, word === word.toUpperCase() ? 2 : 0.5);
+  };
+
+  /** The right-to-left walk over normalized tokens; returns one span per owner, `owners` in all. */
+  const phonemizeTokens = (tokens: readonly Token[], owners: number): WordPhonemes => {
+    const slots = tokens.map((token) => ({ ...token, phonemes: "" }));
+    // A dotted acronym ends a sentence only when it ends the text.
+    const last = slots.at(-1);
+    if (last !== undefined && DOTTED.test(last.text)) slots.push({ text: ".", owner: last.owner, phonemes: "" });
+
+    // Right to left, as misaki does, so each word knows what follows it.
+    let nextVowel: boolean | null = null;
+    for (let i = slots.length - 1; i >= 0; i--) {
+      const slot = slots[i]!;
+      if (BREAKS.has(slot.text)) {
+        nextVowel = null;
+        continue;
+      }
+      const previous = slots[i - 1]?.text.toLowerCase() ?? "";
+      const raw = pronounce(slot.text, { nextVowel, previous });
+      slot.phonemes = raw.replaceAll("ɾ", "T").replaceAll("ʔ", "t");
+      nextVowel = contextAfter(raw, nextVowel);
+    }
+
     let out = "";
-    for (const [token] of text.matchAll(TOKEN)) {
-      if (PUNCTUATION.has(token)) {
-        out += token;
-      } else if (token === "…") {
-        out += ".";
-      } else if (token === "—" || token === "–") {
-        out += ",";
-      } else {
-        const phonemes = pronounce(token);
-        if (phonemes !== "") out += `${out === "" ? "" : " "}${phonemes}`;
+    const spans = Array.from({ length: owners }, () => ({ start: -1, end: -1 }));
+    for (const slot of slots) {
+      const mark = BREAKS.get(slot.text);
+      if (mark !== undefined) {
+        out += mark;
+      } else if (slot.phonemes !== "") {
+        if (out !== "") out += " ";
+        const span = spans[slot.owner]!;
+        if (span.start < 0) span.start = out.length;
+        out += slot.phonemes;
+        span.end = out.length;
       }
     }
-    return out;
+    // A word with no sounds of its own sits at the end of what precedes it.
+    let at = 0;
+    for (const span of spans) {
+      if (span.start < 0) {
+        span.start = at;
+        span.end = at;
+      } else {
+        at = span.end;
+      }
+    }
+    return { phonemes: out, spans };
   };
+
+  return (words) => {
+    // Normalize each run of display words that normalize together, once.
+    const groupOf: number[] = [];
+    const tokens: Token[] = [];
+    let groups = 0;
+    for (let first = 0; first < words.length; groups++) {
+      let last = first;
+      while (last + 1 < words.length && dependsOnNext(words, first, last)) last++;
+      for (const [text] of normalizeText(words.slice(first, last + 1).join(" ")).matchAll(TOKEN)) {
+        tokens.push({ text, owner: groups });
+      }
+      for (let w = first; w <= last; w++) groupOf.push(groups);
+      first = last + 1;
+    }
+    const { phonemes, spans } = phonemizeTokens(tokens, groups);
+    // Every display word of a group gets the span of the whole group.
+    return { phonemes, spans: groupOf.map((group) => ({ ...spans[group]! })) };
+  };
+}
+
+const TITLE = /(?<![A-Za-z0-9_])(?:dr|mr|ms|mrs)\.$/i;
+const ETC = /(?<![A-Za-z0-9_])etc\.$/i;
+const CAPITALIZED = /^[A-Z]/;
+const MONEY = /^[$£€][\d.,]+$/;
+const SCALE = /^(?:hundred|thousand|million|billion|trillion)[.,;:!?]*$/i;
+
+/**
+ * Whether the group that began at `words[first]` and reaches `words[last]` also
+ * takes in the next word, because the normalizer looks across the space: a
+ * title or "etc." before a capital, or an amount before "million" and the like.
+ */
+function dependsOnNext(words: readonly string[], first: number, last: number): boolean {
+  const word = words[last]!;
+  const next = words[last + 1]!;
+  if ((TITLE.test(word) || ETC.test(word)) && CAPITALIZED.test(next)) return true;
+  if (!SCALE.test(next) || !MONEY.test(words[first]!)) return false;
+  return words.slice(first + 1, last + 1).every((w) => SCALE.test(w));
+}
+
+export function createPhonemizer(gold: Lexicon, silver: Lexicon): (text: string) => string {
+  const phonemizeWords = createWordPhonemizer(gold, silver);
+  return (text) => phonemizeWords(text.split(/\s+/).filter((word) => word !== "")).phonemes;
 }

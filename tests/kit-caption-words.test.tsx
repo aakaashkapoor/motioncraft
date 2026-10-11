@@ -17,6 +17,7 @@ import {
   buildTimeline,
   captionBand,
   captionLimits,
+  CAPTION_LEAD_MS,
   captionTrack,
   captionType,
   darkTheme,
@@ -221,6 +222,16 @@ function drawAt(ms: number, text: string, opts: { theme?: Theme; aspect?: Aspect
   );
 }
 
+/** Like `drawAt`, with measured `words` (on the narration clock) given to the caption. */
+function drawAtSpoken(ms: number, text: string, words: TimedWord[]) {
+  const frame = Math.round((ms * 30) / 1000);
+  return renderToStaticMarkup(
+    <SceneClockContext.Provider value={{ fps: 30, frame, frames: 301 }}>
+      <Caption progress={frame / 300} theme={lightTheme} aspect="9:16" text={text} words={words} />
+    </SceneClockContext.Provider>,
+  );
+}
+
 interface WordSpan {
   index: number;
   text: string;
@@ -249,8 +260,8 @@ function transformOf(style: string): { y: number; scale: number } {
 describe("Caption on the scene clock", () => {
   const text = "You write a prompt. The agent plans a storyboard, renders every frame, and checks the layout.";
   const endMs = (301 - 1) * (1000 / 30);
-  /** The frame time in the middle of a word's fully lit stretch. */
-  const litMs = (word: { startMs: number; endMs: number }) => Math.round(((word.startMs + word.endMs) / 2) * 0.03) / 0.03;
+  /** The scene time (on a frame) at which the middle of a word's fully lit stretch is shown: the caption runs CAPTION_LEAD_MS ahead. */
+  const litMs = (word: { startMs: number; endMs: number }) => Math.round(((word.startMs + word.endMs) / 2 - CAPTION_LEAD_MS) * 0.03) / 0.03;
 
   describe.each(["standard", "punch"] as const)("%s", (style) => {
     const track = captionTrack(lightTheme, "9:16", text, style, endMs);
@@ -264,12 +275,12 @@ describe("Caption on the scene clock", () => {
       track.words.forEach((word, i) => {
         const ms = litMs(word);
         const spans = wordSpans(drawAt(ms, text, { captionStyle: style }));
-        const page = track.pages[pageIndexAt(track.pages, ms)]!;
+        const page = track.pages[pageIndexAt(track.pages, ms + CAPTION_LEAD_MS)]!;
         expect(spans.map((s) => s.index)).toEqual(Array.from({ length: page.end - page.start }, (_, k) => page.start + k));
         expect(spans.length).toBeGreaterThanOrEqual(min);
         expect(spans.length).toBeLessThanOrEqual(max);
         expect(spans.map((s) => s.text)).toEqual(track.words.slice(page.start, page.end).map((w) => w.text));
-        const light = (index: number) => wordLight(track.words[index]!, ms, ramp);
+        const light = (index: number) => wordLight(track.words[index]!, ms + CAPTION_LEAD_MS, ramp);
         // The spoken word is the one most lit; a word that just finished may still be dimming.
         expect(light(i)).toBeGreaterThanOrEqual(0.5);
         for (const span of spans) expect(light(span.index)).toBeLessThanOrEqual(light(i));
@@ -294,13 +305,13 @@ describe("Caption on the scene clock", () => {
       const { fromScale, risePx, ms } = lightTheme.motion.caption;
       expect({ fromScale, risePx }).toEqual({ fromScale: 0.9, risePx: 24 });
       for (const page of track.pages.slice(1)) {
-        const first = Math.ceil(page.startMs * 0.03) / 0.03;
+        const first = Math.ceil((page.startMs - CAPTION_LEAD_MS) * 0.03) / 0.03;
         const entering = transformOf(plateStyle(drawAt(first, text, { captionStyle: style })));
-        if (first - page.startMs < ms / 2) {
+        if (first + CAPTION_LEAD_MS - page.startMs < ms / 2) {
           expect(entering.scale).toBeLessThan(0.96);
           expect(entering.y).toBeGreaterThan(8);
         }
-        const landed = transformOf(plateStyle(drawAt(page.startMs + ms + 34, text, { captionStyle: style })));
+        const landed = transformOf(plateStyle(drawAt(page.startMs - CAPTION_LEAD_MS + ms + 34, text, { captionStyle: style })));
         expect(landed).toEqual({ y: 0, scale: 1 });
       }
     });
@@ -512,10 +523,34 @@ describe("measured word times", () => {
     expect(captionTrack(lightTheme, "9:16", text + " Now", "standard", endMs, spoken).words).toHaveLength(7);
   });
 
+  it("lights a word CAPTION_LEAD_MS (100 ms) before it is spoken", () => {
+    const words = [{ text: "Hello", startMs: 1000, endMs: 1600 }];
+    const lit = (ms: number) => transformOf(wordSpans(drawAtSpoken(ms, "Hello", words))[0]!.style).scale;
+    expect(CAPTION_LEAD_MS).toBe(100);
+    // The track is shifted by the theme lead; the caption runs 100 ms ahead of it.
+    const startsAt = leadMs + 1000;
+    expect(lit(startsAt - 140)).toBe(1); // before the ramp begins
+    expect(lit(startsAt - 100 + 20)).toBeGreaterThan(1);
+    expect(lit(startsAt - 100 + 133)).toBeCloseTo(1.04, 3);
+    expect(lit(startsAt + 300)).toBeCloseTo(1.04, 6);
+  });
+
+  it("does not start the first page's pop before the caption's own fade-in, though its first word lights early", () => {
+    // The first word is spoken at the scene lead, so its page would start CAPTION_LEAD_MS before the fade.
+    const frameMs = Math.ceil(leadMs * 0.03) / 0.03; // the first frame at or after the lead
+    const html = drawAtSpoken(frameMs, text, spoken);
+    const { fromScale } = lightTheme.motion.caption;
+    const elapsed = frameMs - leadMs; // under one frame (34 ms) into the fade
+    expect(transformOf(plateStyle(html)).scale).toBeLessThan(fromScale + 0.5 * (1 - fromScale));
+    expect(elapsed).toBeLessThan(34);
+    // The word light still leads: the first word is already lit at that frame.
+    expect(transformOf(wordSpans(html)[0]!.style).scale).toBeGreaterThan(1);
+  });
+
   it("captionTrack falls back to even times without measured words", () => {
     const even = captionTrack(lightTheme, "9:16", text, "standard", endMs);
     expect(captionTrack(lightTheme, "9:16", text, "standard", endMs, [])).toEqual(even);
-    expect(even.words[0]!.startMs).toBe(leadMs);
+    expect(even.words[0]!.startMs).toBe(leadMs + CAPTION_LEAD_MS);
   });
 
   it("lights the measured word at its time, through Frame's narration input", () => {

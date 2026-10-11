@@ -213,7 +213,8 @@ buttons. In 9:16, `safe` picks which platform UI the frame keeps clear of:
 Narration is burned in as a caption, a page of a few words at a time, centered
 in the caption band. The word being spoken lights up in the accent and scales
 up a touch, and each page pops in (scale 0.9 to 1, rising 24 px, in 170 ms).
-With a voice track the words light up as they are spoken; without one
+With a voice track the words are timed from the voice itself and light up
+about 100 ms ahead of being spoken; without one
 (`--no-narration`) they are spread evenly over the scene, each taking time in
 proportion to its length. `captionStyle` picks the look:
 
@@ -241,7 +242,7 @@ The storyboard's `voice` picks it:
 - A narrated scene without `durationMs` follows its audio: a short lead, the
   audio, then a tail that leaves room for the outgoing transition. Set
   `durationMs` only when the scene's choreography needs longer.
-- Captions light each word as it is spoken.
+- Captions light each word from the voice's own word times, about 100 ms ahead.
 - The `narration-fit` check is an error when an explicit `durationMs` is
   shorter than lead + audio + tail. It names the total needed; lengthen the
   scene or remove `durationMs`.

@@ -26,6 +26,8 @@ repo already skips browser tests when none is found).
 
 ## Task 1: Local voice (Kokoro on onnxruntime-node) and word timings
 
+> Superseded on the voice-quality branch: misaki context rules, word times from the timestamped model's durations, cache version 6.
+
 New folder `src/narration/`, one responsibility per file:
 
 - `assets.ts`: the pinned files and a fetcher.

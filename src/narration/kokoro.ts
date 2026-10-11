@@ -5,7 +5,9 @@
 // Ported from `generate_from_ids` in kokoro-js
 // (https://github.com/hexgrad/kokoro, Apache-2.0, hexgrad): the style vector is
 // row `min(max(ids - 2, 0), 509)` of the voice file, and the model takes
-// `input_ids`, `style` and `speed` and returns a 24 kHz mono `waveform`.
+// `input_ids`, `style` and `speed` and returns a 24 kHz mono `waveform`. The
+// timestamped export also returns `durations`, one per input id in 600-sample
+// frames; `wordSamples` turns them into each word's start and end in the audio.
 
 import { readFile } from "node:fs/promises";
 import type { InferenceSession } from "onnxruntime-node";
@@ -18,14 +20,15 @@ import {
   TOKENIZER_FILE,
   VOICE_FILES,
 } from "./assets";
-import { normalizeText } from "./normalize";
-import { createPhonemizer, type Lexicon } from "./phonemes";
+import { createWordPhonemizer, type Lexicon, type WordPhonemes } from "./phonemes";
 import { tooLongError } from "./pieces";
-import { countPhonemes, encodePhonemes, MAX_PHONEME_IDS } from "./tokenizer";
+import { countPhonemes, encodePhonemesMapped, MAX_PHONEME_IDS } from "./tokenizer";
 
 export interface Speech {
   samples: Float32Array;
   sampleRate: number;
+  /** One per display word of the spoken text (split on whitespace): when it is said, in samples of `samples`. */
+  words?: { startSample: number; endSample: number }[];
 }
 
 export interface Synthesizer {
@@ -35,11 +38,70 @@ export interface Synthesizer {
 const SAMPLE_RATE = 24000;
 const STYLE_SIZE = 256;
 const MAX_STYLE_ROW = 509;
+/** The model's frame: one duration unit is this many samples. */
+const SAMPLES_PER_FRAME = 600;
+
+/**
+ * When each word is said, from the model's per-id `durations` (a value of `d`
+ * lasts `max(1, round(d))` frames of 600 samples). `idOfChar` maps each index
+ * of the phoneme string to its index in the ids (undefined: no id) and `spans`
+ * are the words' [start, end) in the phoneme string. A word with no ids sits,
+ * with no length, where the last id before it ends. When the total is more
+ * than one frame off `waveformLength`, every time is scaled to fit it.
+ */
+export function wordSamples(
+  durations: ArrayLike<number>,
+  idOfChar: readonly (number | undefined)[],
+  spans: readonly { start: number; end: number }[],
+  waveformLength?: number,
+): { startSample: number; endSample: number }[] {
+  const starts: number[] = [];
+  let total = 0;
+  for (let i = 0; i < durations.length; i++) {
+    starts.push(total);
+    // Math.round rounds halves up where torch rounds them to even; the scale below absorbs any drift.
+    total += Math.max(1, Math.round(durations[i]!)) * SAMPLES_PER_FRAME;
+  }
+  starts.push(total);
+  const scale =
+    waveformLength !== undefined && total > 0 && Math.abs(total - waveformLength) > SAMPLES_PER_FRAME ? waveformLength / total : 1;
+
+  return spans.map(({ start, end }) => {
+    let first: number | undefined;
+    let last: number | undefined;
+    let before = 0; // the id of the last character ahead of the word: the pad, when there is none
+    for (let c = 0; c < end; c++) {
+      const id = idOfChar[c];
+      if (id === undefined) continue;
+      if (c < start) before = id;
+      else {
+        first ??= id;
+        last = id;
+      }
+    }
+    // With no ids of its own, a word is a point at the end of the id before it.
+    const startSample = starts[first ?? before + 1]!;
+    const endSample = starts[last === undefined ? before + 1 : last + 1]!;
+    return { startSample: startSample * scale, endSample: endSample * scale };
+  });
+}
+
+/** `wordSamples`, or undefined (the caller falls back to an estimate) when the model gave no `durations` or not one per id. */
+export function speechWords(
+  durations: ArrayLike<number> | undefined,
+  idCount: number,
+  idOfChar: readonly (number | undefined)[],
+  spans: readonly { start: number; end: number }[],
+  waveformLength: number,
+): { startSample: number; endSample: number }[] | undefined {
+  if (durations === undefined || durations.length !== idCount) return undefined;
+  return wordSamples(durations, idOfChar, spans, waveformLength);
+}
 
 interface Loaded {
   session: InferenceSession;
   vocab: Record<string, number>;
-  phonemize: (text: string) => string;
+  phonemizeWords: (words: readonly string[]) => WordPhonemes;
   voices: Map<string, Float32Array>;
 }
 
@@ -61,7 +123,7 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
       readJson<Lexicon>(goldPath),
       readJson<Lexicon>(silverPath),
     ]);
-    return { session, vocab: tokenizer.model.vocab, phonemize: createPhonemizer(gold, silver), voices: new Map() };
+    return { session, vocab: tokenizer.model.vocab, phonemizeWords: createWordPhonemizer(gold, silver), voices: new Map() };
   }
 
   async function voiceStyles(loaded: Loaded, voice: string): Promise<Float32Array> {
@@ -83,8 +145,8 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
         throw error;
       });
       const loaded = await loading;
-      const phonemes = loaded.phonemize(normalizeText(text));
-      const ids = encodePhonemes(phonemes, loaded.vocab);
+      const { phonemes, spans } = loaded.phonemizeWords(text.split(/\s+/).filter((word) => word !== ""));
+      const { ids, idOfChar } = encodePhonemesMapped(phonemes, loaded.vocab);
       const known = countPhonemes(phonemes, loaded.vocab);
       if (known > MAX_PHONEME_IDS) throw tooLongError(known, text);
       const row = Math.min(Math.max(ids.length - 2, 0), MAX_STYLE_ROW);
@@ -96,7 +158,8 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
         style: new ort.Tensor("float32", styles.slice(row * STYLE_SIZE, (row + 1) * STYLE_SIZE), [1, STYLE_SIZE]),
         speed: new ort.Tensor("float32", Float32Array.of(1), [1]),
       });
-      return { samples: Float32Array.from(output["waveform"]!.data as Float32Array), sampleRate: SAMPLE_RATE };
+      const samples = Float32Array.from(output["waveform"]!.data as Float32Array);
+      return { samples, sampleRate: SAMPLE_RATE, words: speechWords(output["durations"]?.data as ArrayLike<number> | undefined, ids.length, idOfChar, spans, samples.length) };
     },
   };
 }

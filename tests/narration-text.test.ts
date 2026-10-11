@@ -1,7 +1,8 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { splitForSpeech } from "../src/narration/pieces";
 import { normalizeText } from "../src/narration/normalize";
-import { createPhonemizer, type Lexicon } from "../src/narration/phonemes";
+import { createPhonemizer, createWordPhonemizer, type Lexicon } from "../src/narration/phonemes";
 import { encodePhonemes } from "../src/narration/tokenizer";
 import { splitSentences } from "../src/narration/sentences";
 import { alignWords } from "../src/narration/wordTimes";
@@ -95,13 +96,13 @@ describe("createPhonemizer", () => {
     );
 
     it.each([
-      ["generated", "ʤˈɛnəɹˌAɾᵻd"],
+      ["generated", "ʤˈɛnəɹˌATᵻd"],
       ["walked", "wˈɔkt"],
       ["played", "plˈAd"],
       ["added", "ˈædᵻd"],
       ["making", "mˈAkɪŋ"],
       ["running", "ɹˈʌnɪŋ"],
-      ["getting", "ɡˈɛɾɪŋ"],
+      ["getting", "ɡˈɛTɪŋ"],
       ["boxes", "bˈɑksᵻz"],
       ["stories", "stˈɔɹiz"],
       ["motioncraft", "mˈOʃənkɹˌæft"],
@@ -249,5 +250,188 @@ describe("splitForSpeech", () => {
 
   it("throws when one word alone is too long", () => {
     expect(() => splitForSpeech(`Start ${"x".repeat(600)}`)).toThrow(/sentence too long to speak \(\d+ phonemes, max 510\): "x+/);
+  });
+});
+
+describe("phonemes in context", () => {
+  const lex: Lexicon = {
+    the: "ði",
+    a: "A",
+    an: "æn",
+    to: "tu",
+    in: "ɪn",
+    cat: "kæt",
+    egg: "ˈɛɡ",
+    go: "ɡˈO",
+    by: { DEFAULT: "bI", None: "bˈI" },
+    use: { NOUN: "jˈus", VERB: "jˈuz", DEFAULT: "jus" },
+    abuse: { NN: "əbjˈus", VB: "əbjˈuz", DEFAULT: "əbjus" }, // NN and VB mirror misaki's tags
+    read: { DEFAULT: "ɹˈid", VBP: "ɹˈɛd" },
+    it: "ɪt",
+    eight: "ˈAt",
+    type: "tˈIp",
+    one: "wˈʌn",
+    prompt: "pɹˈɑmpt",
+    and: "ænd",
+    videos: "vˈɪdioz",
+    water: "wˈɔɾəɹ",
+    stop: "stˈɑp",
+    is: "ɪz",
+    here: "hˈɪɹ",
+    A: "ˈA",
+    I: "ˈI",
+  };
+  const phonemize = createPhonemizer(lex, {});
+
+  it("says the as ði before a vowel and ðə otherwise", () => {
+    expect(phonemize("the cat")).toBe("ðə kæt");
+    expect(phonemize("the egg")).toBe("ði ˈɛɡ");
+    expect(phonemize("cat the.")).toBe("kæt ðə.");
+  });
+
+  it("says a, an and I in their weak forms", () => {
+    expect(phonemize("a cat")).toBe("ɐ kæt");
+    expect(phonemize("A cat")).toBe("ɐ kæt");
+    expect(phonemize("an egg")).toBe("ɐn ˈɛɡ");
+    expect(phonemize("I go")).toBe("ˌI ɡˈO");
+  });
+
+  it("says to as tə before a consonant, tʊ before a vowel and the entry before punctuation", () => {
+    expect(phonemize("to cat")).toBe("tə kæt");
+    expect(phonemize("to egg")).toBe("tʊ ˈɛɡ");
+    expect(phonemize("go to.")).toBe("ɡˈO tu.");
+    expect(phonemize("go to")).toBe("ɡˈO tu");
+  });
+
+  it("stresses in only before punctuation or the end", () => {
+    expect(phonemize("go in, cat")).toBe("ɡˈO ˈɪn, kæt");
+    expect(phonemize("go in cat")).toBe("ɡˈO ɪn kæt");
+    expect(phonemize("In egg")).toBe("ɪn ˈɛɡ");
+  });
+
+  it("uses the None form of an entry at the end of a clause and DEFAULT mid-sentence", () => {
+    expect(phonemize("go by.")).toBe("ɡˈO bˈI.");
+    expect(phonemize("go by cat")).toBe("ɡˈO bI kæt");
+  });
+
+  it("picks the noun or verb form by the word before", () => {
+    expect(phonemize("the use")).toBe("ðə jˈus");
+    expect(phonemize("to use")).toBe("tə jˈuz");
+    expect(phonemize("cat use")).toBe("kæt jus");
+    expect(phonemize("the abuse")).toBe("ði əbjˈus");
+    expect(phonemize("to abuse")).toBe("tʊ əbjˈuz");
+  });
+
+  it("keeps DEFAULT when the verb tag is one the entry has no plain form for", () => {
+    expect(phonemize("to read")).toBe("tə ɹˈid");
+  });
+
+  it("stresses a capitalized dictionary word", () => {
+    expect(phonemize("It go")).toBe("ˌɪt ɡˈO");
+    expect(phonemize("IT go")).toBe("ˈɪt ɡˈO");
+    expect(phonemize("Cat")).toBe("kˌæt");
+  });
+
+  it("does not stress the special cases or spelled-out acronyms", () => {
+    expect(phonemize("The cat")).toBe("ðə kæt");
+    expect(phonemize("AI")).toBe("ˈAˈI");
+  });
+
+  it("applies the special cases in all caps too", () => {
+    expect(phonemize("THE cat")).toBe("ðə kæt");
+    expect(phonemize("AN egg")).toBe("ɐn ˈɛɡ");
+    expect(phonemize("TO cat")).toBe("tə kæt");
+    expect(phonemize("go IN, cat")).toBe("ɡˈO ˈɪn, kæt");
+  });
+
+  it("spells a dotted acronym out letter by letter, with no inner periods", () => {
+    expect(phonemize("A.I. is here")).toBe("ˈAˈI ɪz hˈɪɹ");
+    expect(phonemize("the A.I. is here")).toBe("ði ˈAˈI ɪz hˈɪɹ");
+  });
+
+  it("keeps the final period of a dotted acronym only at the end of the text", () => {
+    expect(phonemize("go A.I.")).toBe("ɡˈO ˈAˈI.");
+    expect(phonemize("A.I. go")).toBe("ˈAˈI ɡˈO");
+  });
+
+  it("turns a flap into T", () => {
+    expect(phonemize("water")).toBe("wˈɔTəɹ");
+  });
+});
+
+describe("createWordPhonemizer", () => {
+  const lex: Lexicon = {
+    type: "tˈIp",
+    one: "wˈʌn",
+    prompt: "pɹˈɑmpt",
+    and: "ænd",
+    eight: "ˈAt",
+    videos: "vˈɪdioz",
+  };
+  const run = createWordPhonemizer(lex, {});
+
+  it("reports where each word's phonemes sit, without punctuation", () => {
+    const words = ["Type", "one", "prompt,", "and", "8", "videos."];
+    const { phonemes, spans } = run(words);
+    expect(spans).toHaveLength(6);
+    const slices = spans.map(({ start, end }) => phonemes.slice(start, end));
+    expect(slices).toEqual(["tˈIp", "wˈʌn", "pɹˈɑmpt", "ænd", "ˈAt", "vˈɪdioz"]);
+    expect(phonemes).toBe("tˈIp wˈʌn pɹˈɑmpt, ænd ˈAt vˈɪdioz.");
+  });
+
+  it("gives a word with no sounds an empty span", () => {
+    const { spans } = run(["one", "...", "and"]);
+    expect(spans[1]!.start).toBe(spans[1]!.end);
+  });
+
+  it("reads each group's words as the whole-text normalizer would (assumes one-to-one words, no digits)", () => {
+    // "8" is normalized per group to "eight", same as in the whole text.
+    const line = "one and 8";
+    expect(run(line.split(/\s+/)).phonemes).toBe(run(normalizeText(line).split(/\s+/).filter(Boolean)).phonemes);
+  });
+
+  it("gives empty input no phonemes and no spans", () => {
+    expect(run([])).toEqual({ phonemes: "", spans: [] });
+  });
+
+  it("gives a leading pause an empty span at the start", () => {
+    const { phonemes, spans } = run(["...", "one"]);
+    expect(phonemes).toBe("... wˈʌn");
+    expect(spans[0]).toEqual({ start: 0, end: 0 });
+    expect(phonemes.slice(spans[1]!.start, spans[1]!.end)).toBe("wˈʌn");
+  });
+
+  it("reads a title with the capitalized name after it, with no period, and one shared span", () => {
+    const { phonemes, spans } = run(["Dr.", "Smith", "said"]);
+    expect(phonemes).not.toContain(".");
+    expect(spans[0]).toEqual(spans[1]);
+    expect(spans[2]!.end).toBeGreaterThan(spans[2]!.start);
+    expect(spans[2]).not.toEqual(spans[0]);
+    const line = "Dr. Smith said hi.";
+    expect(run(line.split(/\s+/)).phonemes).toBe(run(normalizeText(line).split(/\s+/).filter(Boolean)).phonemes);
+  });
+
+  it("reads an amount and its scale as the whole-text normalizer does", () => {
+    const whole = normalizeText("$5 million");
+    expect(whole).toBe("five million dollars");
+    const { phonemes, spans } = run(["$5", "million"]);
+    expect(phonemes).toBe(createWordPhonemizer(lex, {})(whole.split(" ")).phonemes);
+    expect(spans[0]).toEqual(spans[1]);
+  });
+
+  it("keeps the period of etc. before a capital", () => {
+    expect(run(["etc.", "The", "end"]).phonemes).toContain(".");
+    expect(run(["etc.", "the", "end"]).phonemes).not.toContain(".");
+  });
+
+  it("gives the same phonemes per group as for the whole normalized line, for every showcase line", () => {
+    const storyboard = JSON.parse(
+      readFileSync(new URL("../examples/showcase/storyboard.json", import.meta.url), "utf8"),
+    ) as { scenes: { narration?: string }[] };
+    const lines = storyboard.scenes.flatMap((scene) => (scene.narration === undefined ? [] : splitSentences(scene.narration)));
+    expect(lines.length).toBeGreaterThan(5);
+    for (const line of [...lines, "Dr. Smith said hi.", "It cost $5 million."]) {
+      expect(run(line.split(/\s+/).filter(Boolean)).phonemes).toBe(run(normalizeText(line).split(/\s+/).filter(Boolean)).phonemes);
+    }
   });
 });

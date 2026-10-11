@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureFile, GOLD_FILE, KOKORO_REVISION, MODEL_FILE, SILVER_FILE, VOICE_FILES, type PinnedFile } from "../src/narration/assets";
+import { ensureFile, GOLD_FILE, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MODEL_FILE, SILVER_FILE, VOICE_FILES, type PinnedFile } from "../src/narration/assets";
 
 const bytes = new TextEncoder().encode("pinned file contents");
 const file: PinnedFile = {
@@ -84,7 +84,13 @@ describe("ensureFile", () => {
 
 describe("the pinned files", () => {
   it("point at the pinned revisions", () => {
-    expect(MODEL_FILE.url).toBe(`https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/${KOKORO_REVISION}/onnx/model_quantized.onnx`);
+    expect(KOKORO_TIMESTAMPED_REVISION).toBe("dd4401a9add81ac692d20e240d22ec9dda82cc29");
+    expect(MODEL_FILE.url).toBe(
+      `https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX-timestamped/resolve/${KOKORO_TIMESTAMPED_REVISION}/onnx/model_quantized.onnx`,
+    );
+    expect(MODEL_FILE.path).toBe(join("kokoro-timestamped", KOKORO_TIMESTAMPED_REVISION, "onnx", "model_quantized.onnx"));
+    expect(MODEL_FILE.bytes).toBe(92361055);
+    expect(MODEL_FILE.sha256).toBe("c0c02b3299fd97c34ea92a98e6d41eaa1a739c8f77bf685aac34bd7b34c1132c");
     expect(GOLD_FILE.url).toMatch(/raw\.githubusercontent\.com\/hexgrad\/misaki\/fba1236595f2d2bf21d414ba6e57d25256afada3\/misaki\/data\/us_gold\.json$/);
     expect(SILVER_FILE.bytes).toBe(3099517);
     expect(Object.keys(VOICE_FILES)).toEqual(["af_heart", "af_bella", "am_michael"]);

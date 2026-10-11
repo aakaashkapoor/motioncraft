@@ -11,8 +11,9 @@ function signal(lead: number, tone: number, tail: number): Float32Array {
 
 describe("trimSilence", () => {
   it("drops leading and trailing silence, keeping 30 ms before and 60 ms after the speech", () => {
-    const { samples: trimmed, leadSamples, tailSamples } = trimSilence(signal(300, 1000, 200), RATE);
+    const { samples: trimmed, leadSamples, tailSamples, startSample } = trimSilence(signal(300, 1000, 200), RATE);
     expect([leadSamples, tailSamples]).toEqual([30, 60]);
+    expect(startSample).toBe(270); // where the kept samples begin in the original
     expect(trimmed).toHaveLength(30 + 1000 + 60);
     expect(trimmed[29]).toBe(0);
     expect(trimmed[30]).toBe(0.5);
@@ -40,7 +41,7 @@ describe("trimSilence", () => {
   });
 
   it("returns nothing for all-silent input", () => {
-    expect(trimSilence(new Float32Array(500), RATE)).toEqual({ samples: new Float32Array(0), leadSamples: 0, tailSamples: 0 });
+    expect(trimSilence(new Float32Array(500), RATE)).toEqual({ samples: new Float32Array(0), leadSamples: 0, tailSamples: 0, startSample: 0 });
     expect(trimSilence(new Float32Array(0), RATE).samples).toHaveLength(0);
   });
 });

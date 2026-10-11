@@ -17,7 +17,7 @@ import { readableColor, relativeLuminance } from "../theme/contrast";
 import { accentInk } from "../theme/roles";
 import type { Theme } from "../theme/types";
 import type { CaptionLimits } from "./captionPages";
-import { evenWordTimes, pageIndexAt, timedPages, wordLight, type TimedPage, type TimedWord } from "./captionWords";
+import { CAPTION_LEAD_MS, evenWordTimes, pageIndexAt, timedPages, wordLight, type TimedPage, type TimedWord } from "./captionWords";
 import { useSceneTime } from "./frameContext";
 import { exitMs, exitOpacity, fade, tween } from "./motion";
 import type { KitProps } from "./types";
@@ -60,7 +60,8 @@ export function captionTrack(
   const words =
     spoken !== undefined && spoken.length > 0 && spoken.length === text.split(/\s+/).filter(Boolean).length
       ? spoken.map((word) => ({ ...word, startMs: word.startMs + leadMs, endMs: word.endMs + leadMs }))
-      : evenWordTimes(text, leadMs, endMs - exitMs(theme, theme.motion.fx.ms));
+      : // An estimate has no voice to run ahead of, so it starts late by the caption's own lead: its first word still lights as the caption has entered.
+        evenWordTimes(text, leadMs + CAPTION_LEAD_MS, endMs - exitMs(theme, theme.motion.fx.ms) + CAPTION_LEAD_MS);
   return { words, pages: timedPages(words, captionLimits(theme, aspect, style)) };
 }
 
@@ -94,13 +95,16 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
   if (captionStyle === "off") return null;
   const { words, pages } = captionTrack(theme, aspect, text, captionStyle, time.endMs, spoken);
   if (pages.length === 0) return null;
-  const page = pages[pageIndexAt(pages, time.ms)]!;
+  // Words are shown a little before they are spoken (see CAPTION_LEAD_MS).
+  const spokenMs = time.ms + CAPTION_LEAD_MS;
+  const page = pages[pageIndexAt(pages, spokenMs)]!;
   const shown = words.slice(page.start, page.end);
 
   const band = captionBand(theme, aspect);
   const { leadMs, fx, caption: motion } = theme.motion;
   const opacity = Math.min(fade(fx, time.ms - leadMs), exitOpacity(theme, time, fx.ms));
-  const enter = tween(motion, time.ms - page.startMs);
+  // A page never starts its tween before the caption has begun to fade in; its words may still light ahead.
+  const enter = tween(motion, spokenMs - Math.max(page.startMs, leadMs + CAPTION_LEAD_MS));
   const pageScale = 1 - (1 - motion.fromScale) * (1 - enter);
   const pageRise = motion.risePx * (1 - enter);
 
@@ -119,7 +123,7 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
   const ramp = { ms: motion.wordMs, curve: theme.motion["fx.fast"].curve };
 
   const wordStyle = (word: TimedWord): CSSProperties => {
-    const light = wordLight(word, time.ms, ramp);
+    const light = wordLight(word, spokenMs, ramp);
     const lit: CSSProperties = { display: "inline-block", transform: `scale(${1 + (motion.wordScale - 1) * light})` };
     if (highlight === "plate") {
       // The plate switches at half light, so the letters always read on what is behind them.
