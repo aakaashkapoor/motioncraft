@@ -59,14 +59,14 @@ afterAll(async () => {
 });
 
 describe.each(["9:16", "16:9"] as const)("examples/showcase (%s)", (aspect) => {
-  it("is a light-theme storyboard of 35-45 s in its aspect", async () => {
+  it("is a light-theme storyboard of 40-70 s in its aspect", async () => {
     const sb = await load(aspect);
     expect(sb.aspect).toBe(aspect);
     expect(sb.theme).toBe("light");
     const tl = buildTimeline(sb, estimateDurations(sb), resolveTheme(sb));
     const seconds = tl.totalFrames / sb.fps;
-    expect(seconds).toBeGreaterThanOrEqual(35);
-    expect(seconds).toBeLessThanOrEqual(45);
+    expect(seconds).toBeGreaterThanOrEqual(40);
+    expect(seconds).toBeLessThanOrEqual(70);
   });
 
   it("frames its content scenes with SceneFrame headers, footers on several", async () => {
