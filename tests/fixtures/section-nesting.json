@@ -511,6 +511,20 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "word-swap",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A word that swaps in the slot",
+        "content": {
+          "component": "WordSwap",
+          "props": { "prefix": "Ship", "options": ["faster", "smarter", "together"] }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

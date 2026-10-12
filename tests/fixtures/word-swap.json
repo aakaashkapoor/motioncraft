@@ -1,0 +1,58 @@
+{
+  "title": "WordSwap kit component: one word that keeps changing",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "ship",
+      "component": "WordSwap",
+      "props": {
+        "prefix": "Ship",
+        "options": [
+          "faster",
+          "smarter",
+          "together"
+        ]
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "suffix",
+      "component": "WordSwap",
+      "props": {
+        "prefix": "Built for",
+        "options": [
+          "teams",
+          "launches",
+          "everyone"
+        ],
+        "suffix": "today"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "cued",
+      "component": "WordSwap",
+      "props": {
+        "prefix": "Ship",
+        "options": [
+          "faster",
+          "smarter",
+          "together"
+        ],
+        "cuesMs": [
+          900,
+          1600
+        ]
+      },
+      "durationMs": 3500
+    }
+  ]
+}
