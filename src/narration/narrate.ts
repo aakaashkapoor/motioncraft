@@ -10,9 +10,10 @@ import { KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION } from ".
 import type { Speech, Synthesizer } from "./kokoro";
 import type { CachedNarration, SceneNarration } from "./types";
 import { splitForSpeech } from "./pieces";
-import { pronunciationsIn, sayAs } from "./pronounce";
+import { pronunciationsIn, spokenPlan } from "./pronounce";
 import { splitSentences } from "./sentences";
 import { trimSilence, type Trimmed } from "./silence";
+import { BUILTIN_PRONOUNCE } from "./terms";
 import { encodeWav } from "./wav";
 import { alignWords } from "./wordTimes";
 
@@ -54,28 +55,38 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+/** How the voice says words: the built-in developer terms, then the storyboard's own entries over them. */
+function pronounceMap(storyboard: Storyboard): Readonly<Record<string, string>> {
+  return { ...BUILTIN_PRONOUNCE, ...storyboard.pronounce };
+}
+
 /**
- * The words of one piece timed by the voice, on the scene clock. `pieceStart`
- * is where the piece's kept sound begins in the scene (in samples), `trimmed`
- * how it was cut from `speech`. Undefined when the voice gave no word times
- * or not one per word.
+ * The words of one piece timed by the voice, on the scene clock. `counts[i]` is
+ * how many spoken words the i-th written word became; a written word runs from
+ * the start of its first spoken word to the end of its last. `pieceStart` is
+ * where the piece's kept sound begins in the scene (in samples), `trimmed` how
+ * it was cut from `speech`. Undefined when the voice gave no word times or not
+ * one per spoken word.
  */
 function spokenWords(
   piece: string,
+  counts: readonly number[],
   speech: Speech,
   trimmed: Trimmed,
   pieceStart: number,
   msAt: (samples: number) => number,
 ): TimedWord[] | undefined {
   const words = piece.split(/\s+/).filter(Boolean);
-  if (speech.words === undefined || speech.words.length !== words.length) return undefined;
+  const spoken = counts.reduce((sum, n) => sum + n, 0);
+  if (speech.words === undefined || counts.length !== words.length || speech.words.length !== spoken) return undefined;
   const clamp = (sample: number): number => Math.min(Math.max(sample, 0), trimmed.samples.length);
   const at = (sample: number): number => msAt(pieceStart + clamp(sample - trimmed.startSample));
-  return words.map((text, i) => ({
-    text,
-    startMs: at(speech.words![i]!.startSample),
-    endMs: at(speech.words![i]!.endSample),
-  }));
+  let next = 0;
+  return words.map((text, i) => {
+    const first = speech.words![next]!;
+    next += counts[i]!;
+    return { text, startMs: at(first.startSample), endMs: at(speech.words![next - 1]!.endSample) };
+  });
 }
 
 /**
@@ -86,7 +97,7 @@ async function speakScene(
   text: string,
   voice: string,
   synthesizer: Synthesizer,
-  pronounce: Storyboard["pronounce"],
+  pronounce: Readonly<Record<string, string>>,
 ): Promise<{ samples: Float32Array; sampleRate: number; audioMs: number; words: TimedWord[] }> {
   const chunks: Float32Array[] = [];
   const words: TimedWord[] = [];
@@ -98,7 +109,8 @@ async function speakScene(
     // A long sentence is spoken in pieces back to back; only sentences get a gap.
     // Each piece is trimmed of the silence around it, so word times match the sound.
     for (const [i, piece] of splitForSpeech(sentence).entries()) {
-      const speech = await synthesizer.speak(sayAs(piece, pronounce), voice);
+      const plan = spokenPlan(piece, pronounce);
+      const speech = await synthesizer.speak(plan.text, voice);
       if (sampleRate === 0) sampleRate = speech.sampleRate;
       const trimmed = trimSilence(speech.samples, speech.sampleRate);
       const { samples: sound, leadSamples, tailSamples } = trimmed;
@@ -112,7 +124,7 @@ async function speakScene(
       total += sound.length;
       // Words the voice timed keep its times. Otherwise they share the sound itself, not the margins kept around it.
       words.push(
-        ...(spokenWords(piece, speech, trimmed, pieceStart, msAt) ??
+        ...(spokenWords(piece, plan.counts, speech, trimmed, pieceStart, msAt) ??
           alignWords([{ text: piece, startMs: msAt(pieceStart + leadSamples), endMs: msAt(total - tailSamples) }])),
       );
     }
@@ -143,11 +155,12 @@ interface SceneFiles {
 function sceneFiles(storyboard: Storyboard, outDir: string, voice: string | undefined): { voice: string; files: SceneFiles[] } {
   const chosen = voice ?? storyboard.voice ?? DEFAULT_VOICE;
   const files: SceneFiles[] = [];
+  const pronounce = pronounceMap(storyboard);
   for (const scene of storyboard.scenes) {
     if (scene.narration === undefined || splitSentences(scene.narration).length === 0) continue;
     const parts = [NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, chosen, scene.narration];
     // Only the pronunciations this scene uses, so a scene without any keeps its key.
-    const said = pronunciationsIn(scene.narration, storyboard.pronounce);
+    const said = pronunciationsIn(scene.narration, pronounce);
     if (said.length > 0) parts.push(JSON.stringify(said));
     const key = createHash("sha1").update(parts.join("\0")).digest("hex");
     files.push({ sceneId: scene.id, text: scene.narration, wavPath: join(outDir, `${key}.wav`), jsonPath: join(outDir, `${key}.json`) });
@@ -199,7 +212,7 @@ export async function narrateStoryboard(
       result[file.sceneId] = cached;
       continue;
     }
-    const spoken = await speakScene(file.text, voice, options.synthesizer, storyboard.pronounce);
+    const spoken = await speakScene(file.text, voice, options.synthesizer, pronounceMap(storyboard));
     await writeFile(file.wavPath, encodeWav(spoken.samples, spoken.sampleRate));
     await writeFile(file.jsonPath, JSON.stringify({ audioMs: spoken.audioMs, words: spoken.words }, null, 2));
     result[file.sceneId] = { sceneId: file.sceneId, wavPath: file.wavPath, audioMs: spoken.audioMs, words: spoken.words };

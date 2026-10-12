@@ -160,18 +160,41 @@ describe("narrateStoryboard", () => {
   });
 
   it("re-speaks when a pronunciation the scene uses changes, and only then", async () => {
-    const narration = "A JSON report.";
+    const narration = "A nsh report.";
     const plain = await narrateStoryboard(board({}, narration), { synthesizer: fakeSynth(), outDir });
-    const unused = await narrateStoryboard(board({ pronounce: { nsh: "NSH" } }, narration), { synthesizer: fakeSynth(), outDir });
+    const unused = await narrateStoryboard(board({ pronounce: { qux: "Kwux" } }, narration), { synthesizer: fakeSynth(), outDir });
     expect(unused["a"]!.wavPath).toBe(plain["a"]!.wavPath);
 
-    const first = await narrateStoryboard(board({ pronounce: { JSON: "Jaysawn" } }, narration), { synthesizer: fakeSynth(), outDir });
+    const first = await narrateStoryboard(board({ pronounce: { nsh: "NSH" } }, narration), { synthesizer: fakeSynth(), outDir });
     const changed = fakeSynth();
-    const second = await narrateStoryboard(board({ pronounce: { JSON: "Jayson" } }, narration), { synthesizer: changed, outDir });
+    const second = await narrateStoryboard(board({ pronounce: { nsh: "N S H" } }, narration), { synthesizer: changed, outDir });
     expect(first["a"]!.wavPath).not.toBe(plain["a"]!.wavPath);
     expect(second["a"]!.wavPath).not.toBe(first["a"]!.wavPath);
-    expect(changed.calls.map((c) => c.text)).toEqual(["A Jayson report."]);
+    expect(changed.calls.map((c) => c.text)).toEqual(["A N S H report."]);
     expect(await readdir(outDir)).toHaveLength(6);
+  });
+
+  it("says developer terms from the built-in table, and a storyboard entry overrides it", async () => {
+    const synth = fakeSynth();
+    const builtin = await narrateStoryboard(board({}, "Run npm on the JSON file."), { synthesizer: synth, outDir });
+    expect(synth.calls.map((c) => c.text)).toEqual(["Run N P M on the Jaysawn file."]);
+    expect(builtin["a"]!.words.map((w) => w.text)).toEqual(["Run", "npm", "on", "the", "JSON", "file."]);
+
+    const override = fakeSynth();
+    const mine = await narrateStoryboard(board({ pronounce: { JSON: "Jayson" } }, "Run npm on the JSON file."), { synthesizer: override, outDir });
+    expect(override.calls.map((c) => c.text)).toEqual(["Run N P M on the Jayson file."]);
+    expect(mine["a"]!.wavPath).not.toBe(builtin["a"]!.wavPath);
+  });
+
+  it("keys a scene that uses a built-in term by it, and one that uses none as before", async () => {
+    const keyOf = (text: string, extra: string[] = []) =>
+      createHash("sha1")
+        .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, "af_heart", text, ...extra].join("\0"))
+        .digest("hex");
+    const plain = await narrateStoryboard(board({}, "Hi there."), { synthesizer: fakeSynth(), outDir });
+    expect(plain["a"]!.wavPath).toBe(join(outDir, `${keyOf("Hi there.")}.wav`));
+    const term = await narrateStoryboard(board({}, "Use npm."), { synthesizer: fakeSynth(), outDir });
+    expect(term["a"]!.wavPath).toBe(join(outDir, `${keyOf("Use npm.", [JSON.stringify([["npm", "N P M"]])])}.wav`));
   });
 });
 
@@ -311,6 +334,28 @@ describe("word times from the synthesizer", () => {
     expect(words[0]!.startMs).toBeCloseTo(30, 3);
     expect(words[1]!.endMs).toBeCloseTo(1030, 3);
     expect(words[0]!.endMs).toBeCloseTo(words[1]!.startMs, 6); // an even estimate has no gaps
+  });
+
+  it("merges the times of a term said as several words back onto the written word", async () => {
+    // One timed word per spoken word: "Run N P M install" in 100 ms steps from 300 ms.
+    const synth = timed({ "Run N P M install": [[300, 400], [400, 500], [500, 600], [600, 700], [700, 1300]] });
+    const scene = (await narrateStoryboard(board({}, "Run npm install"), { synthesizer: synth, outDir }))["a"]!;
+    expect(scene.words.map((w) => w.text)).toEqual(["Run", "npm", "install"]);
+    const npm = scene.words[1]!;
+    expect(npm.startMs).toBeCloseTo(130, 3); // start of "N"
+    expect(npm.endMs).toBeCloseTo(430, 3); // end of "M"
+    expect(scene.words[2]!.startMs).toBeCloseTo(430, 3);
+    const sidecar = JSON.parse(await readFile(scene.wavPath.replace(/\.wav$/, ".json"), "utf8")) as { words: unknown[] };
+    expect(sidecar.words).toEqual(scene.words);
+  });
+
+  it("falls back to the estimate when the voice's words do not match the spoken words", async () => {
+    const synth = timed({ "Run N P M install": [[300, 600], [600, 900], [900, 1300]] });
+    const words = (await narrateStoryboard(board({}, "Run npm install"), { synthesizer: synth, outDir }))["a"]!.words;
+    expect(words.map((w) => w.text)).toEqual(["Run", "npm", "install"]);
+    expect(words[0]!.startMs).toBeCloseTo(30, 3);
+    expect(words[2]!.endMs).toBeCloseTo(1030, 3);
+    expect(words[0]!.endMs).toBeCloseTo(words[1]!.startMs, 6);
   });
 
   it("is a new cache version, so estimated times are never reused", () => {

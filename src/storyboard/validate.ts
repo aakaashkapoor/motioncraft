@@ -142,15 +142,15 @@ function validateScenes(raw: unknown, errors: string[]): StoryboardScene[] {
   return scenes;
 }
 
-/** Problems with the storyboard's `pronounce` map: one written word to one spoken word. */
+/** Problems with the storyboard's `pronounce` map: one written word to one to four spoken words. */
 function pronounceErrors(raw: unknown): string[] {
   if (!isObject(raw)) return [`pronounce must be an object mapping a written word to how it is spoken (got ${describe(raw)})`];
   const errors: string[] = [];
   for (const [key, value] of Object.entries(raw)) {
     const at = `pronounce[${JSON.stringify(key)}]`;
     if (key === "" || /\s/.test(key)) errors.push(`${at}: the written word must be non-empty with no whitespace`);
-    if (typeof value !== "string" || !/^[A-Za-z']+$/.test(value)) {
-      errors.push(`${at} must be one word of letters and apostrophes (got ${describe(value)})`);
+    if (typeof value !== "string" || !/^[A-Za-z']+( [A-Za-z']+){0,3}$/.test(value)) {
+      errors.push(`${at} must be 1 to 4 words of letters and apostrophes, separated by single spaces (got ${describe(value)})`);
     }
   }
   return errors;
