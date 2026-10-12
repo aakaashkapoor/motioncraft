@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pronunciationsIn, sayAs } from "../src/narration/pronounce";
+import { pronunciationsIn, sayAs, spokenPlan } from "../src/narration/pronounce";
 import { validateStoryboard } from "../src/index";
 
 const MAP = { JSON: "Jaysawn", nsh: "NSH" };
@@ -34,6 +34,15 @@ describe("sayAs", () => {
   });
 });
 
+describe("spokenPlan", () => {
+  it("counts how many spoken words each written word became", () => {
+    expect(spokenPlan("Open the nsh JSON file", { nsh: "N S H" })).toEqual({ text: "Open the N S H JSON file", counts: [1, 1, 3, 1, 1] });
+    expect(spokenPlan("  a	b  ", { b: "bee bee" })).toEqual({ text: "  a	bee bee  ", counts: [1, 2] });
+    expect(spokenPlan("", { b: "bee" })).toEqual({ text: "", counts: [] });
+    expect(spokenPlan("a b", undefined)).toEqual({ text: "a b", counts: [1, 1] });
+  });
+});
+
 describe("pronunciationsIn", () => {
   it("lists the entries a text uses, sorted by key", () => {
     expect(pronunciationsIn("nsh writes JSON. JSON!", MAP)).toEqual([
@@ -65,8 +74,17 @@ describe("storyboard pronounce", () => {
     expect(validate({ dont: "don't" }).ok).toBe(true);
   });
 
+  it("accepts up to four spoken words", () => {
+    expect(validate({ JSON: "Jay sawn" }).ok).toBe(true);
+    expect(validate({ npm: "N P M" }).ok).toBe(true);
+    expect(validate({ PostgreSQL: "post gress Q L" }).ok).toBe(true);
+  });
+
   it.each([
-    ["a space", "Jay sawn"],
+    ["five words", "a b c d e"],
+    ["a double space", "Jay  sawn"],
+    ["a leading space", " Jaysawn"],
+    ["a trailing space", "Jaysawn "],
     ["a digit", "Jay2"],
     ["an empty string", ""],
     ["a non-string", 3],

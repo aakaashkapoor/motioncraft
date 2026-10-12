@@ -263,15 +263,22 @@ The storyboard's `voice` picks it:
 { "voice": "af_bella" }
 ```
 
+Common developer terms are said right by default: `JSON`, `README`, `npm`, `npx`,
+`gh`, `Node.js`, `nginx`, `kubectl`, `sudo`, `stdin` and about thirty more. The
+table is `BUILTIN_PRONOUNCE` in `src/narration/terms.ts`; you do not need to list
+those words yourself.
+
 When the voice says a word wrong, add it to the top-level `pronounce` map: each
-written word maps to one word, letters and apostrophes only, respelled the way it
-should sound. The voice says the respelling; captions keep the word as written.
+written word maps to 1 to 4 words of letters and apostrophes, separated by single
+spaces, respelled the way it should sound. An entry here overrides the built-in
+one for the same word. The voice says the respelling; captions keep the word as
+written, timed from the start of its first spoken word to the end of its last.
 Matching is exact case, word by word, with punctuation around the word kept
 (`JSON:` is said "Jaysawn:"; `JSONL` and `json` are left alone). Here `JSON` is said
-"Jaysawn" instead of J-S-O-N, and `nsh` is spelled out as N-S-H:
+"Jayson" instead of the built-in "Jaysawn", and `nsh` is spelled out as N-S-H:
 
 ```json
-{ "pronounce": { "JSON": "Jaysawn", "nsh": "NSH" } }
+{ "pronounce": { "JSON": "Jayson", "nsh": "N S H" } }
 ```
 
 ## 3. Theme and overrides
