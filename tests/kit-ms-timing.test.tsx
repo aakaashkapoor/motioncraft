@@ -87,6 +87,13 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
     total: { amount: 8.91 },
     highlight: 1,
   },
+  Notification: {
+    notifications: [
+      { app: "Deploys", title: "Deploy finished", body: "web-app is live", icon: "check", time: "now" },
+      { app: "Messages", title: "New message", body: "Is the intro ready?", icon: "chat" },
+    ],
+    atMs: [150, 650],
+  },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 

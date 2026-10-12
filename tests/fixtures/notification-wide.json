@@ -1,0 +1,70 @@
+{
+  "title": "Notification kit component: banners over a scene",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "deploy",
+      "component": "Notification",
+      "props": {
+        "notifications": [
+          {
+            "app": "Deploys",
+            "title": "Deploy finished",
+            "body": "web-app is live on production",
+            "icon": "check",
+            "time": "now"
+          }
+        ],
+        "content": {
+          "component": "TerminalWindow",
+          "props": {
+            "lines": [
+              {
+                "prompt": true,
+                "text": "npm run deploy"
+              },
+              {
+                "text": "building web-app..."
+              },
+              {
+                "text": "uploaded 42 files"
+              },
+              {
+                "text": "done in 4.2s"
+              }
+            ]
+          }
+        }
+      },
+      "durationMs": 7500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "stack",
+      "component": "Notification",
+      "props": {
+        "notifications": [
+          {
+            "app": "Deploys",
+            "title": "Deploy finished",
+            "body": "web-app is live on production",
+            "icon": "check",
+            "time": "2m ago"
+          },
+          {
+            "app": "Messages",
+            "title": "New message from Maya",
+            "body": "Is the intro ready to ship?",
+            "icon": "chat",
+            "time": "now"
+          }
+        ]
+      },
+      "durationMs": 7500
+    }
+  ]
+}
