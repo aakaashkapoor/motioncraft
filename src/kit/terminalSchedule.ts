@@ -215,6 +215,13 @@ export function terminalSchedule(theme: Theme, aspect: Aspect, lines: readonly T
   return { size: mono.size, rowHeight, visibleRows, padding, rows, entries, scrolls };
 }
 
+/** When the schedule has settled, in ms: every line is in, every scroll is done and the fresh prompt waits. */
+export function terminalSettledMs(theme: Theme, schedule: TerminalSchedule): number {
+  const { enter, typing, fx } = theme.motion;
+  const last = Math.max(schedule.entries.at(-1)!.start, ...schedule.scrolls.map((s) => s.at));
+  return last + enter.ms + typing.ms + fx.ms;
+}
+
 export interface TerminalEntryFrame {
   /** Drawn: it has appeared and not yet scrolled away. */
   shown: boolean;
