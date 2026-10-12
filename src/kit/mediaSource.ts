@@ -75,3 +75,26 @@ export function clipMediaTime(sceneMs: number, { trimStartMs = 0, trimEndMs, rat
   if (trimEndMs !== undefined) ms = Math.min(ms, trimEndMs - SEEK_NUDGE_MS);
   return Math.max(0, ms) / 1000;
 }
+
+/** The components that take a brand image as their `logo` (see `BrandMark`). */
+export const LOGO_COMPONENTS: ReadonlySet<string> = new Set(["EndCard", "TitleCard"]);
+
+/** Image files a `logo` may be, by extension, with the type they are served as. */
+export const LOGO_TYPES: Readonly<Record<string, string>> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+};
+
+/** Problems with a `logo` (and `icon`) prop pair, for a component's own prop check; empty if fine. Pure. */
+export function logoErrors(logo: unknown, icon?: unknown): string[] {
+  if (logo === undefined) return [];
+  if (typeof logo !== "string" || logo.trim() === "") return ["logo must be the path to a local image file"];
+  const errors: string[] = [];
+  const ext = /\.[^./\\]+$/.exec(logo)?.[0].toLowerCase() ?? "";
+  if (!Object.hasOwn(LOGO_TYPES, ext)) errors.push(`logo "${logo}" must be a ${Object.keys(LOGO_TYPES).join(", ")} image`);
+  if (icon !== undefined) errors.push("logo and icon cannot be set together: the logo replaces the icon mark");
+  return errors;
+}

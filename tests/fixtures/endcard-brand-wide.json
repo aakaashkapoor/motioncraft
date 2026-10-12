@@ -1,0 +1,40 @@
+{
+  "title": "End card with a brand logo and a call to action (16:9)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "intro",
+      "component": "TitleCard",
+      "props": { "logo": "media/logo.svg", "kicker": "Splitly", "title": "Split every bill in seconds", "subtitle": "No more awkward math" },
+      "durationMs": 4500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "end",
+      "component": "EndCard",
+      "props": {
+        "name": "Splitly",
+        "logo": "media/logo.svg",
+        "line": "Split your next bill",
+        "accent": "Free forever",
+        "cta": { "label": "Download free · iOS & Android", "note": "Link in bio" }
+      },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "end-card",
+      "component": "EndCard",
+      "props": {
+        "name": "Splitly",
+        "logo": "media/logo.svg",
+        "line": "Split your next bill",
+        "cta": { "label": "Get the app", "note": "Link in bio" },
+        "card": { "component": "PromptCard", "props": { "text": "Dinner for six, split by what each person ordered", "typed": false } }
+      },
+      "durationMs": 7500
+    }
+  ]
+}
