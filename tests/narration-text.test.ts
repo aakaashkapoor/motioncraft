@@ -391,7 +391,7 @@ describe("createWordPhonemizer", () => {
   });
 
   it("gives empty input no phonemes and no spans", () => {
-    expect(run([])).toEqual({ phonemes: "", spans: [] });
+    expect(run([])).toEqual({ phonemes: "", spans: [], guessed: [] });
   });
 
   it("gives a leading pause an empty span at the start", () => {
