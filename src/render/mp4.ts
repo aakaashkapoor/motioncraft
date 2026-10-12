@@ -30,8 +30,9 @@ const AUDIO_TRACK_ID = 2;
 
 // --- colr (nclx) --------------------------------------------------------------
 
-const PRIMARIES: Record<string, number> = { bt709: 1, bt470bg: 5, smpte170m: 6, bt2020: 9, smpte432: 12 };
-const TRANSFER: Record<string, number> = {
+/** ITU-T H.273 codes for the WebCodecs colour names, as the `colr` box and H.264 write them. */
+export const PRIMARIES: Record<string, number> = { bt709: 1, bt470bg: 5, smpte170m: 6, bt2020: 9, smpte432: 12 };
+export const TRANSFER: Record<string, number> = {
   bt709: 1,
   smpte170m: 6,
   linear: 8,
@@ -39,7 +40,7 @@ const TRANSFER: Record<string, number> = {
   pq: 16,
   hlg: 18,
 };
-const MATRIX_COEFFICIENTS: Record<string, number> = { rgb: 0, bt709: 1, bt470bg: 5, smpte170m: 6, "bt2020-ncl": 9 };
+export const MATRIX_COEFFICIENTS: Record<string, number> = { rgb: 0, bt709: 1, bt470bg: 5, smpte170m: 6, "bt2020-ncl": 9 };
 
 /** An nclx `colr` box, or nothing if the color space is incomplete or unknown. */
 export function colrBox(colorSpace: VideoColorSpaceInit | undefined): Bytes[] {

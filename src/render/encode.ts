@@ -4,14 +4,21 @@
 //
 // How a frame becomes pixels: the driver renders the frame's DOM, takes a
 // screenshot of the page through the DevTools protocol and hands the PNG back
-// to the page, which decodes it into a `VideoFrame`. That is the same
-// compositor output stills and checks use, so the video shows exactly the
-// pixels that were checked, at exactly the frame size (the viewport is the
-// frame, at device scale 1). Drawing the DOM into a canvas ourselves (SVG
-// foreignObject, html2canvas) would be a second renderer with its own font and
-// layout quirks. PNG is lossless, so nothing is lost before the encoder.
+// to the page, which decodes it and converts it to I420 in limited-range
+// BT.709 (`rgbaToI420`) for the encoder. That is the same compositor output
+// stills and checks use, so the video shows exactly the pixels that were
+// checked, at exactly the frame size (the viewport is the frame, at device
+// scale 1). Drawing the DOM into a canvas ourselves (SVG foreignObject,
+// html2canvas) would be a second renderer with its own font and layout quirks.
+// PNG is lossless, so nothing is lost before the encoder.
+//
+// Why convert ourselves: given RGBA, Chrome picks full-range YUV with an sRGB
+// transfer (yuvj420p), which many players refuse or show washed out. An I420
+// frame tagged limited BT.709 is encoded as is, and the encoder reports that
+// colour space for the SPS and the MP4 `colr` box.
 
 import { toBase64, toBytes } from "./pageBytes";
+import { BT709_LIMITED, rgbaToI420 } from "./yuv";
 
 /** About 8 Mbps: plenty for code-drawn 1080p graphics. */
 export const VIDEO_BITRATE = 8_000_000;
@@ -131,6 +138,8 @@ export function createPageEncoder(): PageEncoder {
   let encoder: VideoEncoder | undefined;
   let setup: EncoderSetup | undefined;
   let failure: unknown;
+  /** Where each captured frame is drawn to read its pixels back. */
+  let canvas: OffscreenCanvasRenderingContext2D | undefined;
   let pending: EncodedChunk[] = [];
   /** Wakes `encodeFrame` when it waits for the queue to drain, or on an error. */
   let wake: (() => void) | undefined;
@@ -145,6 +154,7 @@ export function createPageEncoder(): PageEncoder {
   return {
     async start(next) {
       setup = next;
+      canvas = undefined;
       const { width, height, fps, bitrate = VIDEO_BITRATE, constantBitrate = false } = next;
       const tried: string[] = [];
       for (const codec of avcCodecCandidates(width, height, fps)) {
@@ -193,20 +203,30 @@ export function createPageEncoder(): PageEncoder {
 
     async encodeFrame(png, frame) {
       if (encoder === undefined || setup === undefined) throw new Error("encoder not started");
+      const { width, height, fps } = setup;
       const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob());
+      let rgba: Uint8ClampedArray;
       try {
-        if (bitmap.width !== setup.width || bitmap.height !== setup.height) {
-          throw new Error(
-            `frame ${frame} captured at ${bitmap.width}x${bitmap.height}, expected ${setup.width}x${setup.height}`,
-          );
+        if (bitmap.width !== width || bitmap.height !== height) {
+          throw new Error(`frame ${frame} captured at ${bitmap.width}x${bitmap.height}, expected ${width}x${height}`);
         }
-        const plan = planFrame(frame, setup.fps);
-        const videoFrame = new VideoFrame(bitmap, { timestamp: plan.timestampUs, duration: plan.durationUs });
-        encoder.encode(videoFrame, { keyFrame: plan.keyFrame });
-        videoFrame.close();
+        canvas ??= new OffscreenCanvas(width, height).getContext("2d", { willReadFrequently: true })!;
+        canvas.drawImage(bitmap, 0, 0);
+        rgba = canvas.getImageData(0, 0, width, height).data;
       } finally {
         bitmap.close();
       }
+      const plan = planFrame(frame, fps);
+      const videoFrame = new VideoFrame(rgbaToI420(rgba, width, height), {
+        format: "I420",
+        codedWidth: width,
+        codedHeight: height,
+        timestamp: plan.timestampUs,
+        duration: plan.durationUs,
+        colorSpace: BT709_LIMITED,
+      });
+      encoder.encode(videoFrame, { keyFrame: plan.keyFrame });
+      videoFrame.close();
       while (encoder.encodeQueueSize > MAX_QUEUE && failure === undefined) {
         await new Promise<void>((resolve) => (wake = resolve));
         wake = undefined;

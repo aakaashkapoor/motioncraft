@@ -13,6 +13,7 @@ import { kokoroSynthesizer } from "../src/narration/kokoro";
 import { narrateStoryboard, narrationDir } from "../src/narration/narrate";
 import { planRender } from "../src/render/renderPlan";
 import { resolveTheme } from "../src/render/themes";
+import { describeMp4Color, readMp4Color } from "../src/render/mp4Color";
 import { renderVideo, type VideoProgress } from "../src/render/video";
 
 /** Progress on one updating line in a terminal; every 10% otherwise (logs, CI). */
@@ -94,7 +95,7 @@ async function main(argv: string[]): Promise<void> {
   console.log(resolve(result.path));
   console.log(
     `${result.width}x${result.height}, ${result.fps} fps, ${result.frames} frames, ` +
-      `${(result.durationMs / 1000).toFixed(2)} s, ${formatBytes(result.bytes)} (${budget}video ${formatBitrate(result.videoBitrate)}, ${result.codec}, ${result.audioCodec === undefined ? "no audio" : result.audioCodec})`,
+      `${(result.durationMs / 1000).toFixed(2)} s, ${formatBytes(result.bytes)} (${budget}video ${formatBitrate(result.videoBitrate)}, ${result.codec}, ${describeMp4Color(await readMp4Color(result.path))}, ${result.audioCodec === undefined ? "no audio" : result.audioCodec})`,
   );
   if (result.audioSkipped !== undefined && result.audioSkipped.length > 0) console.log(`audio skipped: ${result.audioSkipped.join(", ")}`);
   if (args.maxMb > 0 && result.bytes > args.maxMb * 1024 * 1024) {
