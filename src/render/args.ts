@@ -6,24 +6,29 @@ import { DEFAULT_MAX_MB } from "./budget";
 import { parseFrameList } from "./frames";
 
 export const STILLS_USAGE =
-  "usage: npx tsx scripts/stills.ts <storyboard.json> --out <dir> [--frames 0,15,30 | --per-scene]";
+  "usage: npx tsx scripts/stills.ts <storyboard.json> --out <dir> [--frames 0,15,30 | --per-scene | --slides [ids]]";
 
 export interface StillsArgs {
   storyboard: string;
   out: string;
   /** Explicit frames, or "per-scene" for the start, middle and end of each scene. */
   frames: number[] | "per-scene";
+  /** Render finished slides instead: every scene (true) or the listed scene ids. Never with `--frames`. */
+  slides?: true | string[];
 }
 
 /** Parses the arguments. With neither `--frames` nor `--per-scene`, renders per scene. */
 export function parseStillsArgs(argv: readonly string[]): StillsArgs {
+  // A bare `--slides` means every scene: give it an empty value rather than the next option.
+  const args = argv.map((arg, i) => (arg === "--slides" && (i + 1 === argv.length || argv[i + 1]!.startsWith("--")) ? "--slides=" : arg));
   const { values, positionals } = parseArgs({
-    args: [...argv],
+    args,
     allowPositionals: true,
     options: {
       out: { type: "string" },
       frames: { type: "string" },
       "per-scene": { type: "boolean" },
+      slides: { type: "string" },
     },
   });
 
@@ -33,10 +38,17 @@ export function parseStillsArgs(argv: readonly string[]): StillsArgs {
     throw new Error(`use either --frames or --per-scene, not both\n${STILLS_USAGE}`);
   }
 
+  if (values.slides !== undefined && (values.frames !== undefined || values["per-scene"])) {
+    throw new Error(`--slides cannot be combined with --frames or --per-scene\n${STILLS_USAGE}`);
+  }
+  const ids = values.slides?.split(",").map((id) => id.trim()).filter((id) => id !== "");
+  const slides = ids === undefined ? undefined : ids.length === 0 ? true : ids;
+
   return {
     storyboard: positionals[0]!,
     out: values.out,
     frames: values.frames === undefined ? "per-scene" : parseFrameList(values.frames),
+    ...(slides === undefined ? {} : { slides }),
   };
 }
 

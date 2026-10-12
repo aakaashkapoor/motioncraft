@@ -1,5 +1,5 @@
 // Renders chosen frames of a storyboard to PNG in the installed Chrome or Edge.
-//   npx tsx scripts/stills.ts <storyboard.json> --out <dir> [--frames 0,15,30 | --per-scene]
+//   npx tsx scripts/stills.ts <storyboard.json> --out <dir> [--frames 0,15,30 | --per-scene | --slides [ids]]
 
 import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
@@ -10,7 +10,7 @@ import { loadCachedNarration, missingNarrationNotice, narrationDir } from "../sr
 import { sceneDurations } from "../src/render/durations";
 import { perSceneFrames } from "../src/render/frames";
 import { prepareMedia } from "../src/render/media";
-import { renderStills } from "../src/render/stills";
+import { renderSlides, renderStills } from "../src/render/stills";
 import { resolveTheme } from "../src/render/themes";
 
 async function main(argv: string[]): Promise<void> {
@@ -29,6 +29,11 @@ async function main(argv: string[]): Promise<void> {
   if (notice !== undefined) console.log(notice);
   const narration = cached.scenes;
   const { input } = await prepareMedia({ storyboard, theme, durations: sceneDurations(storyboard, narration, theme), mediaDir, narration });
+  if (args.slides !== undefined) {
+    const ids = args.slides === true ? undefined : args.slides;
+    for (const path of await renderSlides({ ...input, ids, outDir: args.out })) console.log(path);
+    return;
+  }
   const frames = args.frames === "per-scene" ? perSceneFrames(buildTimeline(storyboard, input.durations, theme)) : args.frames;
 
   const paths = await renderStills({ ...input, frames, outDir: args.out });

@@ -1,6 +1,6 @@
 // Which frames to render as stills. Pure, so it is easy to test.
 
-import type { Timeline, TimelineScene } from "../engine/timeline";
+import { soloFrames, type Timeline, type TimelineScene } from "../engine/timeline";
 
 /** Sorted, de-duplicated frame numbers. */
 function unique(frames: Iterable<number>): number[] {
@@ -19,6 +19,29 @@ export function sceneMiddleFrame({ startFrame, frames }: TimelineScene): number 
 export function perSceneFrames(timeline: Timeline): number[] {
   return unique(
     timeline.scenes.flatMap((scene) => [scene.startFrame, sceneMiddleFrame(scene), scene.startFrame + scene.frames - 1]),
+  );
+}
+
+export interface SlideFrame {
+  sceneId: string;
+  /** `<NN>-<sceneId>.png`, NN being the scene's place in the storyboard, from 01. */
+  fileName: string;
+  frame: number;
+}
+
+/**
+ * The frame to render as each chosen scene's slide (every scene by default):
+ * the last one before its exit begins, when everything has entered. Throws on
+ * an id that is not a scene.
+ */
+export function slideFrames(timeline: Timeline, ids?: readonly string[]): SlideFrame[] {
+  const known = timeline.scenes.map((scene) => scene.id);
+  const unknown = (ids ?? []).filter((id) => !known.includes(id));
+  if (unknown.length > 0) throw new Error(`--slides: no scene ${unknown.map((id) => `"${id}"`).join(", ")} (scenes: ${known.join(", ")})`);
+  return timeline.scenes.flatMap((scene, index) =>
+    ids === undefined || ids.length === 0 || ids.includes(scene.id)
+      ? [{ sceneId: scene.id, fileName: `${String(index + 1).padStart(2, "0")}-${scene.id}.png`, frame: soloFrames(timeline, index).last }]
+      : [],
   );
 }
 
