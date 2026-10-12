@@ -147,10 +147,16 @@ export function beforeAfterLayout(theme: Theme, aspect: Aspect, direction: Befor
   const card = { ...area, x: area.x + (area.width - width) / 2, width };
   const label = theme.type.label[aspect];
   const chip = Math.ceil(label.size * label.lineHeight + 2 * spacing.xs + 2 * hairline);
-  const chipInset = spacing.md;
+  // In tall aspects (9:16, 4:5) the halves are stacked in a narrow card: the
+  // chips sit closer to the card's edges and the halves run nearly its full
+  // width, so the nested components keep their own readable size. The divider
+  // side keeps its padding, clear of the handle.
+  const tall = isTall(aspect);
+  const chipInset = tall ? spacing.xs : spacing.md;
   const pad = spacing.lg;
+  const side = tall ? spacing.xs : pad;
   // The chips' band: content starts below it (or, for the bottom half's chip, ends above it).
-  const band = chipInset + chip + spacing.sm;
+  const band = chipInset + chip + (tall ? spacing.xs : spacing.sm);
   const inner = { x: card.x + hairline, y: card.y + hairline, width: card.width - 2 * hairline, height: card.height - 2 * hairline };
   let halves: BeforeAfterLayout["halves"];
   if (direction === "horizontal") {
@@ -163,8 +169,8 @@ export function beforeAfterLayout(theme: Theme, aspect: Aspect, direction: Befor
     };
   } else {
     const at = inner.y + inner.height * split;
-    const x = inner.x + pad;
-    const w = inner.width - 2 * pad;
+    const x = inner.x + side;
+    const w = inner.width - 2 * side;
     halves = {
       after: { x, y: inner.y + band, width: w, height: at - inner.y - band - pad },
       before: { x, y: at + pad, width: w, height: inner.y + inner.height - at - band - pad },

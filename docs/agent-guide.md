@@ -433,7 +433,14 @@ ends. At most 3, each with:
   Bottom corners sit above the caption band.
 - `scenes`: the scene ids it shows on (default every scene).
 
-The frame checks warn (`overlay`) when a scene's own text runs under a label.
+A top corner shares its row with a `SceneFrame` or `Section` header. When a
+label would sit closer than 48 px beside the scene's eyebrow or headline (in
+9:16 it usually would), that scene's header and content start just below the
+label instead; the label itself never moves.
+
+The frame checks warn (`overlay`) when a scene's own text runs under a label,
+or when a label crowds the scene's eyebrow or headline (closer than 48 px
+beside it, or 16 px above or below).
 
 ```json
 {
@@ -738,7 +745,8 @@ checks.
   `readability` (time on screen for the words shown). `type-scale` (warn)
   reports rendered text whose size is not a step of the type ramp; text a
   terminal or code window shrank to fit is allowed. `overlay` (warn) reports
-  scene text that runs under an `overlays` label. `centering` (warn, 9:16 and 4:5)
+  scene text that runs under an `overlays` label, or a label that crowds the
+  scene's eyebrow or headline. `centering` (warn, 9:16 and 4:5)
   reports a scene whose main block (its cards, windows and text blocks
   together, without the caption) is more than 8 px off the frame's center line.
   `opening` (warn) renders frame 0 and reports it when it shows no text (the
@@ -849,11 +857,14 @@ fits (`role` starts it lower: `display`, `headline` or `title`).
 - `lines`: 2-4 lines in place of `text`, landing one at a time, each with
   `motion`. A line's `at` is when it starts: ms from the scene's start or a
   word cue (see "Word cues"). A line without `at` follows the line before it.
-  Cues must increase. With `lines`, `emphasis` is a line index (that line in
-  the accent), and `mark` sweeps under its word in the first line that has
-  it. `TitleCard` takes `lines` too; `Section`, `SceneFrame` and `EndCard` do
-  not. `scripts/check.ts` warns when a line lands after the scene starts to
-  leave.
+  Cues must increase. Each line stays on one row: the text steps down the
+  type ramp until every line fits the column on one row, so keep lines short
+  (in 9:16 about 18 characters still sit at the `title` step); a line too long
+  for one row at any step wraps. With `lines`, `emphasis` is a line index
+  (that line in the accent), and `mark` sweeps under its word in the first
+  line that has it. `TitleCard` takes `lines` too; `Section`, `SceneFrame`
+  and `EndCard` do not. `scripts/check.ts` warns when a line lands after the
+  scene starts to leave.
 
 ```json
 {
@@ -993,8 +1004,10 @@ A short line that decodes out of random characters, in the mono font: a
 command, a code name, a reveal. `text` is 1-40 characters on one line (it
 shrinks to fit, never wraps). `style` is `"clean"` (default) or `"terminal"`
 (a framed prompt with a blinking caret); `label` is a small line that fades
-in once the text has locked; `seed` varies the wrong characters. It scrambles
-from 150 ms, then locks left to right, done by about 1.7 s.
+in once the text has locked; `seed` varies the wrong characters. In 9:16 the
+line takes the largest of the hero, display and headline steps it fits at (a
+`terminal` line spans the primary width); 16:9 uses the headline step. It
+scrambles from 150 ms, then locks left to right, done by about 1.7 s.
 
 ```json
 {
@@ -1013,7 +1026,11 @@ the last, in the accent; `prefix` and `suffix` are the still text around the
 slot. `cuesMs` sets when each swap starts: one ascending ms value per option
 after the first, from the scene's start. They are plain ms, not word cues.
 Left out, the swaps spread so the last lands by 60% of the scene, at least
-450 ms apart.
+450 ms apart. The slot is as wide as the word it shows and eases to the next
+word's width as it swaps, so the line re-centres during each swap (and only
+then) and a short last word leaves no gap. The line is set in the largest of
+the hero, display and headline steps it fits at with its widest option, so a
+short line is a hero line; a long one shrinks from the headline step.
 
 ```json
 {
@@ -1034,6 +1051,8 @@ Tip; `total` has an `amount` and a `label` (default "Total"). `title` is the
 merchant line, `highlight` an item index marked in the accent, `tilt` the
 angle in degrees (-4 to 4, default -2). Amounts use `prefix` (default `"$"`),
 `suffix` and `decimals` (default 2). The total pops last, by about 2.2 s.
+In 9:16 the card spans the primary width; the tilted card, corners included,
+stays inside its slot, so a long receipt in a short slot steps its text down.
 `scripts/check.ts` warns when the items and summary do not add up to the
 total; a row labelled Subtotal is checked against the items, not added again.
 
@@ -1535,7 +1554,8 @@ Phone-style banners that drop in from the top: an alert, a message, a "done".
 `notifications` holds 1-3 banners in drop order (the newest lands on top and
 pushes the others down), each with `app`, `title`, an optional one-line
 `body`, an `icon` (default `zap`) and a `time`. `content` is a component drawn
-behind them. `atMs` gives each banner's drop time, one per banner, in order;
+behind them, laid out at full size in the whole slot (in a `Section` too), so
+the banners overlay its top. `atMs` gives each banner's drop time, one per banner, in order;
 they are plain ms, not word cues. By default the first drops at 400 ms, then
 one every 900 ms. Full width in 9:16 and 4:5, a column at the right in 16:9.
 

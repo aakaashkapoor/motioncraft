@@ -13,6 +13,7 @@ import { contentArea } from "../layout/caption";
 import { glyphPad, typeCss } from "../layout/type";
 import { headlineColor } from "../theme/roles";
 import { annotateErrors, annotateLayout, annotateTiming, connectorStroke, markStroke, type AnnotateData, type AnnotateStroke } from "./annotatePlan";
+import { circleMarkStroke } from "./annotateCircle";
 import { entering, useSceneTime } from "./frameContext";
 import { arrive, exitOpacity, fade, pulse, tween } from "./motion";
 import type { KitProps } from "./types";
@@ -67,7 +68,8 @@ export function Annotate(props: AnnotateProps) {
 
   // The mark's box, relative to the marked words' span (which starts at `chars`): stretched to the span's real width.
   const box = layout.mark;
-  const stroke = markStroke(theme, markStyle, box.width, box.height, spec, seedKey);
+  // The loop is drawn closed on its ellipse (annotateCircle.ts); the underline and band as planned.
+  const stroke = markStyle === "circle" ? circleMarkStroke(theme, box.width, box.height, spec, seedKey) : markStroke(theme, markStyle, box.width, box.height, spec, seedKey);
   const over = round(chars.x - box.x);
   const markSvg = (
     <svg

@@ -56,12 +56,12 @@ export interface SlidesOptions extends PageInput {
   outDir: string;
 }
 
-/** Renders each chosen scene's settled hold frame to `<outDir>/<NN>-<sceneId>.png`. Returns the file paths. */
+/** Renders each chosen scene's settled hold frame (the last before its exit) to `<outDir>/<NN>-<sceneId>.png`. Returns the file paths. */
 export async function renderSlides(options: SlidesOptions): Promise<string[]> {
   const { ids, outDir, ...rest } = options;
   checkComponents(rest);
   const { input } = await prepareMedia(rest);
-  const slides = slideFrames(buildTimeline(input.storyboard, input.durations, input.theme), ids);
+  const slides = slideFrames(buildTimeline(input.storyboard, input.durations, input.theme), ids, input.theme);
   await mkdir(outDir, { recursive: true });
 
   return withRenderPage(slideInput(input), (page) => capture(page, slides.map((s) => ({ frame: s.frame, path: join(outDir, s.fileName) }))));

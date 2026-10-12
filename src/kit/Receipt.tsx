@@ -15,7 +15,8 @@ import { cardEntrance } from "./Card";
 import { formatChartValue } from "./chart";
 import { entering, useSceneTime } from "./frameContext";
 import { arrive, exitOpacity, fade, pulse } from "./motion";
-import { fitsOneLine, receiptErrors, rowLabelWidth, receiptLayout, receiptLines, receiptTiming, type ReceiptData, type ReceiptLine } from "./receiptPlan";
+import { receiptFit } from "./receiptFit";
+import { fitsOneLine, receiptErrors, rowLabelWidth, receiptLines, receiptTiming, type ReceiptData, type ReceiptLine } from "./receiptPlan";
 import type { KitProps } from "./types";
 
 export interface ReceiptProps extends KitProps, ReceiptData {}
@@ -74,8 +75,8 @@ export function Receipt(props: ReceiptProps) {
   if (errors.length > 0) throw new Error(`Receipt: ${errors.join("; ")}`);
   const { progress, theme, aspect, area: slot, tilt = -2, highlight, prefix = "$", suffix = "", decimals = 2 } = props;
   const area = slot ?? contentArea(theme, aspect);
-  const layout = receiptLayout(theme, aspect, props, slot);
-  const { box, padding, tooth, divider } = layout;
+  const layout = receiptFit(theme, aspect, props, slot, tilt);
+  const { box, padX, padY, tooth, divider } = layout;
   const { colors, fonts, spacing, motion, hairline, cardShadow, radius } = theme;
   const lines = receiptLines(props);
   const timing = receiptTiming(theme, lines.length);
@@ -85,7 +86,7 @@ export function Receipt(props: ReceiptProps) {
   const format = { prefix, suffix, decimals };
   const money = (amount: number) => formatChartValue(amount, format);
   /** The paper's width inside its padding. */
-  const inner = box.width - 2 * padding;
+  const inner = box.width - 2 * padX;
   const paper = mixColors(colors.surface, CREAM, PAPER_WARMTH);
   const lift = Math.min(1, Math.max(0, entrance.lift));
   const shadow = `drop-shadow(0 ${round(cardShadow.y * lift, 2)}px ${round((cardShadow.blur / 2) * lift, 2)}px ${withAlpha(colors.shadow, cardShadow.opacity * 2)})`;
@@ -170,7 +171,7 @@ export function Receipt(props: ReceiptProps) {
           style={{
             boxSizing: "border-box",
             height: box.height - 2 * tooth,
-            padding,
+            padding: `${padY}px ${padX}px`,
             backgroundColor: paper,
             color: colors.text,
             fontFamily: fonts.mono,

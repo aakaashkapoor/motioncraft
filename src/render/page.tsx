@@ -21,6 +21,7 @@ import { sceneWords } from "../kit/sceneWords";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
 import { Overlays } from "../overlays/Overlays";
+import { sceneAreaUnderOverlays } from "../overlays/sceneHeaders";
 import { WIDE_SHOT, opensSettled, type Storyboard, type StoryboardScene } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { transitionOverlay, transitionStyle } from "../transitions";
@@ -109,6 +110,8 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
   }
   const { aspect } = storyboard;
   const common = { progress: active.progress, theme, aspect };
+  // A top-corner overlay that would crowd this scene's eyebrow or headline: the scene lays out below it instead.
+  const headerArea = sceneAreaUnderOverlays(theme, aspect, scene, storyboard.overlays ?? []);
   const view = cameraAt({
     theme,
     aspect,
@@ -126,7 +129,7 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
     <SceneClockContext.Provider value={{ fps, frame: active.localFrame, frames: active.sceneFrames, settled: opensSettled(storyboard, active.sceneIndex) }}>
       <SceneWordsContext.Provider value={words}>
         <CameraWorld view={view} aspect={aspect} {...(drawEffects ? { effects: scene.id } : {})}>
-          <Component {...scene.props} {...common} />
+          <Component {...scene.props} {...common} {...(headerArea !== undefined && { area: headerArea })} />
           {drawEffects && <SceneEffects sceneId={scene.id} effects={scene.effects!} targets={effectTargets?.get(active.sceneIndex)} {...common} />}
         </CameraWorld>
       </SceneWordsContext.Provider>

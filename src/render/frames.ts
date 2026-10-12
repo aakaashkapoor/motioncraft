@@ -1,6 +1,7 @@
 // Which frames to render as stills. Pure, so it is easy to test.
 
 import { soloFrames, type Timeline, type TimelineScene } from "../engine/timeline";
+import type { ThemeMotion } from "../theme/types";
 
 /** Sorted, de-duplicated frame numbers. */
 function unique(frames: Iterable<number>): number[] {
@@ -29,18 +30,44 @@ export interface SlideFrame {
   frame: number;
 }
 
+/** The theme tokens slides read: how long the entrances (`cascadeMs`) and the longest exit last. */
+export interface SlideTiming {
+  motion: Pick<ThemeMotion, "cascadeMs"> & { exit: Pick<ThemeMotion["exit"], "maxMs"> };
+}
+
+/**
+ * The last frame of scene `index` that is on screen alone and before its
+ * components' exits begin: at least the longest exit (`exit.maxMs`) is still
+ * left on the scene clock. Every exit lands on the scene's last frame, so the
+ * frames before this one are the settled hold. A scene too short for a hold
+ * (its exit would begin before its entrances, `cascadeMs`, have landed) gets
+ * the first frame after the entrances instead, or the solo frame closest to
+ * it, never one mid-entrance when a later solo frame exists. Without a
+ * theme, the last solo frame.
+ */
+export function slideFrame(timeline: Timeline, index: number, theme?: SlideTiming): number {
+  const solo = soloFrames(timeline, index);
+  if (theme === undefined) return solo.last;
+  const scene = timeline.scenes[index]!;
+  const frames = (ms: number) => Math.ceil((ms * timeline.fps) / 1000);
+  const entranceEnd = scene.startFrame + frames(theme.motion.cascadeMs);
+  const beforeExit = scene.startFrame + scene.frames - 1 - frames(theme.motion.exit.maxMs);
+  return Math.min(solo.last, Math.max(solo.first, entranceEnd, beforeExit));
+}
+
 /**
  * The frame to render as each chosen scene's slide (every scene by default):
- * the last one before its exit begins, when everything has entered. Throws on
- * an id that is not a scene.
+ * the last one before its exit and its transition out begin, when everything
+ * has entered (see `slideFrame`; pass the theme the frames render with).
+ * Throws on an id that is not a scene.
  */
-export function slideFrames(timeline: Timeline, ids?: readonly string[]): SlideFrame[] {
+export function slideFrames(timeline: Timeline, ids?: readonly string[], theme?: SlideTiming): SlideFrame[] {
   const known = timeline.scenes.map((scene) => scene.id);
   const unknown = (ids ?? []).filter((id) => !known.includes(id));
   if (unknown.length > 0) throw new Error(`--slides: no scene ${unknown.map((id) => `"${id}"`).join(", ")} (scenes: ${known.join(", ")})`);
   return timeline.scenes.flatMap((scene, index) =>
     ids === undefined || ids.length === 0 || ids.includes(scene.id)
-      ? [{ sceneId: scene.id, fileName: `${String(index + 1).padStart(2, "0")}-${scene.id}.png`, frame: soloFrames(timeline, index).last }]
+      ? [{ sceneId: scene.id, fileName: `${String(index + 1).padStart(2, "0")}-${scene.id}.png`, frame: slideFrame(timeline, index, theme) }]
       : [],
   );
 }

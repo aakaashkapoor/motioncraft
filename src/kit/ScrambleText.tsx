@@ -8,15 +8,17 @@
 import { useContext } from "react";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
+import { safeZones } from "../layout/safe";
 import { estimateTextHeight } from "../layout/textFit";
 import { TEXT_PIECES_ATTRIBUTE, TYPE_FIT_ATTRIBUTE, typeCss } from "../layout/type";
 import { random } from "../engine/random";
 import { readableColor } from "../theme/contrast";
 import type { Aspect } from "../storyboard/types";
-import type { Theme } from "../theme/types";
+import type { Theme, TypeRole } from "../theme/types";
 import { Caret } from "./Caret";
 import { SceneClockContext, entering, useSceneTime } from "./frameContext";
+import { largestFittingStep } from "./heroStep";
 import { arrive, exitOpacity, fade, tween } from "./motion";
 import { caretBlink } from "./typing";
 import type { KitProps } from "./types";
@@ -130,7 +132,9 @@ export function scrambleTextAccent(theme: Theme): string {
 export interface ScrambleTextLayout {
   /** The block: the line (framed, in `terminal`) with the label under it, in frame px. */
   box: Rect;
-  /** The line's font size: the headline step's, smaller when the text would not fit. */
+  /** The ramp step the line is set in (its weight and tracking). */
+  role: TypeRole;
+  /** The line's font size: the step's, smaller when the text would not fit. */
   size: number;
   fitted: boolean;
   /** The line's width in px: every slot, plus the prompt and caret in `terminal`. */
@@ -143,26 +147,37 @@ export interface ScrambleTextLayout {
   labelWidth: number;
 }
 
-/** The line at the headline step in the text column, shrunk to fit on one line, centered with its label. */
+/**
+ * The line on one row, centered with its label. 16:9: the headline step in
+ * the text column. 9:16 (fill the frame): the largest of hero, display and
+ * headline that fits, the bare line in the text column and the terminal frame
+ * across the primary width (its padding keeps the text off the right rail).
+ * A line that fits no step shrinks from the headline step to fit.
+ */
 export function scrambleTextLayout(theme: Theme, aspect: Aspect, text: string, style: ScrambleTextStyle, label: string | undefined, slot?: Rect): ScrambleTextLayout {
   const { spacing, hairline } = theme;
   const area = slot ?? contentArea(theme, aspect);
-  const column = Math.min(area.width, textColumn(theme, aspect).width);
+  const tall = isTall(aspect);
   const terminal = style === "terminal";
-  const padX = terminal ? spacing.lg : 0;
+  const textWidth = Math.min(area.width, textColumn(theme, aspect).width);
+  const column = tall && terminal ? Math.min(area.width, safeZones(aspect, theme.safe).primaryWidth) : textWidth;
+  const padX = terminal ? (tall ? spacing.md : spacing.lg) : 0;
   const padY = terminal ? spacing.md : 0;
   const chrome = terminal ? 2 * (padX + hairline) : 0;
   const ems = [...text].length * SLOT_EM + (terminal ? PROMPT_SLOTS * SLOT_EM + CARET_EM : 0);
-  const step = theme.type.headline[aspect].size;
-  const size = Math.min(step, Math.floor(((column - chrome) / ems) * 100) / 100);
+  const room = column - chrome;
+  // 9:16: the largest step it fits at; 16:9 (and a line that fits none) keeps the headline step.
+  const role = (tall ? largestFittingStep(theme, aspect, room, () => ems) : undefined) ?? "headline";
+  const step = theme.type[role][aspect].size;
+  const size = Math.min(step, Math.floor((room / ems) * 100) / 100);
   const lineWidth = Math.ceil(ems * size * 100) / 100;
   const lineHeight = Math.ceil(size * LINE_EM);
   const mono = theme.type.mono[aspect];
   const gap = label === undefined ? 0 : spacing.md;
-  const labelHeight = label === undefined ? 0 : estimateTextHeight(label, column, mono);
+  const labelHeight = label === undefined ? 0 : estimateTextHeight(label, textWidth, mono);
   const height = lineHeight + 2 * (padY + (terminal ? hairline : 0)) + gap + labelHeight;
-  const box = placeBlock(area, { width: column, height }, blockCenterY(theme, aspect, slot));
-  return { box, size, fitted: size < step, lineWidth, lineHeight, padX, padY, gap, labelWidth: column };
+  const box = placeBlock(area, { width: Math.max(column, textWidth), height }, blockCenterY(theme, aspect, slot));
+  return { box, role, size, fitted: size < step, lineWidth, lineHeight, padX, padY, gap, labelWidth: textWidth };
 }
 
 export function ScrambleText(props: ScrambleTextProps) {
@@ -181,7 +196,7 @@ export function ScrambleText(props: ScrambleTextProps) {
   const rise = round((1 - move) * spacing.md, 2);
   const line = scrambleTextLine(text, seed, timing, ms, Math.floor(((ms - motion.leadMs) * fps) / 1000));
   const after = ms - timing.lockedMs;
-  const spec = theme.type.headline[aspect];
+  const spec = theme.type[layout.role][aspect];
   const accent = scrambleTextAccent(theme);
   const colorOf = { scrambled: colors.textMuted, locking: accent, locked: colors.text };
 

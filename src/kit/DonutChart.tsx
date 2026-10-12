@@ -9,6 +9,7 @@
 import { contentArea } from "../layout/caption";
 import { isTall, type Rect } from "../layout/frame";
 import { blockCenterY, placeBlock } from "../layout/block";
+import { safeZones } from "../layout/safe";
 import { AVG_CHAR_EM } from "../layout/textFit";
 import { TYPE_FIT_ATTRIBUTE, glyphPad, textBoxHeight, typeCss } from "../layout/type";
 import { mixColors, withAlpha } from "../theme/color";
@@ -48,8 +49,7 @@ const CENTER_ROLES: TypeRole[] = ["hero", "display", "headline", "title", "subti
 /** Share of the hole's diameter the center value and label may be wide and tall. */
 const HOLE_WIDTH_SHARE = 0.76;
 const HOLE_HEIGHT_SHARE = 0.7;
-/** Share of the area's width the ring may take when the legend is below it, and of the height when it is beside. */
-const BELOW_RING_SHARE = 0.8;
+/** Share of the area's height the ring may take when the legend is beside it. Below it (tall aspects) the ring may take the primary width. */
 const BESIDE_RING_SHARE = 0.85;
 
 const round = (n: number, places = 2) => Math.round(n * 10 ** places) / 10 ** places || 0;
@@ -164,9 +164,13 @@ export function donutChartLayout(theme: Theme, aspect: Aspect, input: LayoutInpu
 
   const titleSpec = theme.type.title[aspect];
   const titleWidth = input.title ? Math.min(area.width, textWidth(input.title, titleSpec)) : 0;
-  const titleHeight = input.title ? textBoxHeight(input.title, titleWidth, titleSpec) : 0;
+  // Tall aspects wrap the title with the same glyph width that sized it, so a title that fits one line is given one line's height, and the ring the rest.
+  const titleEm = isTall(aspect) ? AVG_CHAR_EM + titleSpec.tracking : undefined;
+  const titleHeight = input.title ? textBoxHeight(input.title, titleWidth, titleSpec, titleEm) : 0;
   const titleGap = input.title ? spacing.md : 0;
   const room = area.height - titleHeight - titleGap;
+  // Over the legend (tall aspects) the ring may take the primary width, keeping a margin inside a narrower slot; the height usually limits it first.
+  const belowRing = Math.min(area.width - 2 * spacing.md, safeZones(aspect, theme.safe).primaryWidth);
 
   const columns = arrangement === "below" && n >= 4 ? 2 : 1;
   const rows = Math.ceil(n / columns);
@@ -180,7 +184,7 @@ export function donutChartLayout(theme: Theme, aspect: Aspect, input: LayoutInpu
     const ring =
       arrangement === "beside"
         ? Math.min(Math.floor(room * BESIDE_RING_SHARE), area.width - width - spacing.xl)
-        : Math.min(Math.floor(area.width * BELOW_RING_SHARE), room - height - spacing.lg);
+        : Math.min(Math.floor(belowRing), room - height - spacing.lg);
     return { spec, swatch, rowWidth, rowHeight, width, height, ring };
   };
   const roomy = legendFor("body");

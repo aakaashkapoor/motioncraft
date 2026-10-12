@@ -8,6 +8,7 @@
 import { contentArea, textColumn } from "../layout/caption";
 import { isTall, type Rect } from "../layout/frame";
 import { blockCenterY, placeBlock } from "../layout/block";
+import { safeZones } from "../layout/safe";
 import { AVG_CHAR_EM } from "../layout/textFit";
 import { TYPE_FIT_ATTRIBUTE, glyphPad, textBoxHeight, typeCss } from "../layout/type";
 import { easeInOutCubic } from "../engine/easing";
@@ -51,6 +52,12 @@ const STROKE_SHARE = 0.22;
 const EMPHASIS_DOT_SHARE = 0.42;
 /** The plot's height at most this share of its width in 9:16, so a tall slot does not stretch the line. */
 const TALL_PLOT_SHARE = 1;
+/**
+ * In tall aspects the outer category labels may sit up to this share of the
+ * widest label's width inward of their points, so the plot can run wider than
+ * the text column while the labels stay inside it.
+ */
+const TALL_LABEL_SHIFT = 0.15;
 
 const round = (n: number, places = 2) => Math.round(n * 10 ** places) / 10 ** places || 0;
 
@@ -78,8 +85,16 @@ export interface LineChartLayout {
   /** The title's box, inside `box`; height 0 without a title. */
   title: Rect;
   titleSpec: TypeSpec;
-  /** The chart under the title, in x inside `box`: clear of the 9:16 right rail. */
+  /**
+   * The chart under the title, in x inside `box`. In 16:9 the text column; in
+   * tall aspects (9:16, 4:5) the primary width, the line and area running a
+   * little wider than the text.
+   */
   chart: { x: number; width: number };
+  /** Where labels and values stay, in x inside `box`: clear of the 9:16 right rail. */
+  text: { x: number; width: number };
+  /** Whether each category label is a box its text's width, kept inside `text` (tall aspects), rather than a box the points' pitch wide. */
+  clampLabels: boolean;
   /** The plot, inside `box`: its bottom edge is the baseline, its top the value `max`. */
   plot: Rect;
   max: number;
@@ -115,6 +130,7 @@ export function lineChartLayout(theme: Theme, aspect: Aspect, input: LayoutInput
   const titleHeight = input.title ? textBoxHeight(input.title, titleWidth, titleSpec) : 0;
   const titleGap = input.title ? spacing.md : 0;
 
+  const tall = isTall(aspect);
   const baseLabel = theme.type.label[aspect];
   const valueSpec = { ...baseLabel };
   const calloutSpec = theme.type.body[aspect];
@@ -129,19 +145,41 @@ export function lineChartLayout(theme: Theme, aspect: Aspect, input: LayoutInput
   // Above the highest possible point: the callout, or the last point's value.
   const headroom = Math.max(calloutHeight + gap + emphasisDot, lineHeight(valueSpec) + gap + dot);
 
-  // Labels are centered under their points; the points are inset so the outer labels and the last value stay inside.
-  const widestLabel = Math.max(...data.map((d) => textWidth(d.label, baseLabel)));
-  const inset = Math.ceil(Math.max(widestLabel / 2, textWidth(lastValue, valueSpec) / 2, emphasisDot + stroke));
-  // Labels and values run the full width, so the chart keeps to the text column (clear of the 9:16 right rail).
+  // Labels and values run the full width, so they keep to the text column (clear of the 9:16 right rail).
   // The title sits above the rail, so it may be wider; the chart centers under it.
-  const chartWidth = Math.min(area.width, textColumn(theme, aspect).width);
+  const column = textColumn(theme, aspect).width;
+  // In tall aspects the line and its area take the primary width (not text, so the rail does not limit them).
+  const chartWidth = tall ? Math.min(area.width, Math.max(column, safeZones(aspect, theme.safe).primaryWidth)) : Math.min(area.width, column);
+  const textSpan = Math.min(chartWidth, column);
+  const margin = (chartWidth - textSpan) / 2;
   const width = Math.min(area.width, Math.max(chartWidth, titleWidth));
   const left = round((width - chartWidth) / 2);
+  const widest = (spec: TypeSpec) => Math.max(...data.map((d) => textWidth(d.label, spec)));
+  const lastWidth = textWidth(lastValue, valueSpec);
+  // How far the outer points sit in from the chart's edges.
+  const insetFor = (spec: TypeSpec) =>
+    tall
+      ? // The outer labels shift inward up to a share of their width to stay in the text column; the last value is kept inside it.
+        Math.ceil(Math.max(margin + widest(spec) * (0.5 - TALL_LABEL_SHIFT), emphasisDot + stroke))
+      : // Labels are centered under their points; the points are inset so the outer labels and the last value stay inside.
+        Math.ceil(Math.max(widest(spec) / 2, lastWidth / 2, emphasisDot + stroke));
+  const pitchFor = (spec: TypeSpec) => Math.max(1, chartWidth - 2 * insetFor(spec)) / (n - 1);
+  // How much of the widest label's width a pair of neighbours may lose to the
+  // outer labels' inward shift (tall aspects): one shifted label per pair, or
+  // both when there are only two points.
+  const shift = tall ? TALL_LABEL_SHIFT * (n === 2 ? 2 : 1) : 0;
+  // The room a set of labels `w` wide at most needs between points: their width plus the shift.
+  const needs = (w: number) => w * (1 + shift);
+  // Tall aspects set the labels at the body step when they fit between the points, else the label step.
+  const body = theme.type.body[aspect];
+  const stepSpec = tall && needs(widest(body)) <= pitchFor(body) - spacing.xs ? body : baseLabel;
+  const inset = insetFor(stepSpec);
   const spanX = Math.max(1, chartWidth - 2 * inset);
   const pitch = spanX / (n - 1);
   const labelRoom = pitch - spacing.xs;
-  const labelFitted = widestLabel > labelRoom;
-  const labelSpec = labelFitted ? { ...baseLabel, size: Math.max(1, Math.floor(baseLabel.size * (labelRoom / widestLabel))) } : baseLabel;
+  const widestLabel = widest(stepSpec);
+  const labelFitted = needs(widestLabel) > labelRoom;
+  const labelSpec = labelFitted ? { ...stepSpec, size: Math.max(1, Math.floor(stepSpec.size * (labelRoom / needs(widestLabel)))) } : stepSpec;
   const below = spacing.sm + lineHeight(labelSpec);
 
   const room = area.height - titleHeight - titleGap - headroom - below;
@@ -155,6 +193,8 @@ export function lineChartLayout(theme: Theme, aspect: Aspect, input: LayoutInput
     title: { x: 0, y: 0, width, height: titleHeight },
     titleSpec,
     chart: { x: left, width: chartWidth },
+    text: { x: round(left + margin), width: textSpan },
+    clampLabels: tall,
     plot: { x: left + inset, y: plotTop, width: round(spanX), height: plotHeight },
     max,
     axis: { x0: left + Math.max(0, inset - emphasisDot - stroke), x1: left + Math.min(chartWidth, inset + spanX + emphasisDot + stroke) },
@@ -240,6 +280,22 @@ export interface LineValueBox extends Rect {
   text: string;
 }
 
+/**
+ * Each category label's box in x, inside the chart's box: the points' pitch
+ * wide and centered on its point, or in tall aspects its text's width, centered
+ * on its point but kept inside the text column (the outer ones shift inward a little).
+ */
+export function lineChartLabels(layout: Pick<LineChartLayout, "plot" | "text" | "clampLabels" | "labelSpec">, points: LinePoint[], data: ChartDatum[]): Array<{ x: number; width: number }> {
+  const pitch = layout.plot.width / (data.length - 1);
+  const { text } = layout;
+  return data.map((d, i) => {
+    const at = points[i]!.x;
+    if (!layout.clampLabels) return { x: round(at - pitch / 2), width: round(pitch) };
+    const width = textWidth(d.label, layout.labelSpec);
+    return { x: round(Math.min(Math.max(at - width / 2, text.x), text.x + text.width - width)), width };
+  });
+}
+
 const overlap = (a: Rect, b: Rect, margin: number) =>
   a.x < b.x + b.width + margin && b.x < a.x + a.width + margin && a.y < b.y + b.height + margin && b.y < a.y + a.height + margin;
 
@@ -250,7 +306,7 @@ const overlap = (a: Rect, b: Rect, margin: number) =>
  * emphasized one).
  */
 export function lineChartValues(layout: LineChartLayout, points: LinePoint[], data: ChartDatum[], format: ChartValueFormat): { callout: LineValueBox; lastValue?: LineValueBox } {
-  const { chart, gap, calloutPad, calloutSpec, valueSpec, emphasisDot, dot } = layout;
+  const { text: span, gap, calloutPad, calloutSpec, valueSpec, emphasisDot, dot } = layout;
   const emphasized = emphasisIndex(data);
   const anchor = points[emphasized]!;
   const calloutText = formatChartValue(data[emphasized]!.value, format);
@@ -258,7 +314,7 @@ export function lineChartValues(layout: LineChartLayout, points: LinePoint[], da
   const height = lineHeight(calloutSpec) + 2 * calloutPad.y;
   const callout = {
     text: calloutText,
-    x: round(Math.min(Math.max(anchor.x - width / 2, chart.x), chart.x + chart.width - width)),
+    x: round(Math.min(Math.max(anchor.x - width / 2, span.x), span.x + span.width - width)),
     y: round(anchor.y - emphasisDot - gap - height),
     width,
     height,
@@ -270,7 +326,7 @@ export function lineChartValues(layout: LineChartLayout, points: LinePoint[], da
   const text = formatChartValue(data[last]!.value, format);
   const lastWidth = textWidth(text, valueSpec);
   const lastHeight = lineHeight(valueSpec);
-  const x = round(Math.min(point.x - lastWidth / 2, chart.x + chart.width - lastWidth));
+  const x = round(Math.max(span.x, Math.min(point.x - lastWidth / 2, span.x + span.width - lastWidth)));
   const above = { text, x, y: round(point.y - dot - gap - lastHeight), width: lastWidth, height: lastHeight };
   if (!overlap(above, callout, gap)) return { callout, lastValue: above };
   const below = { ...above, y: round(point.y + dot + gap) };
@@ -314,7 +370,7 @@ export function LineChart(props: LineChartProps) {
   const lastValue = arrive(theme, ms, reachMs[last]! + VALUE_DELAY_MS);
 
   const step = cascadeStep(theme, data.length);
-  const pitch = layout.plot.width / (data.length - 1);
+  const labelBoxes = lineChartLabels(layout, points, data);
 
   return (
     <div data-block="LineChart" style={{ position: "absolute", left: layout.box.x, top: layout.box.y, width: layout.box.width, height: layout.box.height, opacity, transform: `translateY(${rise}px)` }}>
@@ -386,9 +442,9 @@ export function LineChart(props: LineChartProps) {
             {...(layout.labelFitted && { [TYPE_FIT_ATTRIBUTE]: "" })}
             style={{
               position: "absolute",
-              left: round(points[i]!.x - pitch / 2),
+              left: labelBoxes[i]!.x,
               top: layout.labelTop,
-              width: round(pitch),
+              width: labelBoxes[i]!.width,
               fontFamily: fonts.body,
               ...typeCss(layout.labelSpec),
               color: colors.textMuted,

@@ -21,7 +21,7 @@ import { withAlpha } from "../theme/color";
 import { accentInk, headlineColor } from "../theme/roles";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { entering, useSceneTime, type SceneTime } from "./frameContext";
-import { markedLine, settlingLines, useHeadlineLinesCheck, useLineStarts, type HeadlineLine } from "./headlineLines";
+import { lineStep, linesOnOneRow, markedLine, ONE_ROW_CHAR_EM, settlingLines, useHeadlineLinesCheck, useLineStarts, type HeadlineLine } from "./headlineLines";
 import {
   charPose,
   HEADLINE_MOTIONS,
@@ -260,7 +260,7 @@ export interface HeadlineProps extends KitProps {
  * The headline's box: the text column's width, as tall as its text (or its
  * lines, each a block of its own), on the frame's optical center or centered
  * in its slot; and the step it is set in, the largest from `role` down at
- * which it fits.
+ * which it fits (with lines, each on one row where a step allows it).
  */
 export function headlineBox(theme: Theme, aspect: Aspect, text: string | readonly string[], role: HeadlineRole = "hero", slot?: Rect): { box: Rect; step: TypeRole } {
   if (!HEADLINE_ROLES.includes(role)) throw new Error(`Headline: role must be one of ${oneOf(HEADLINE_ROLES)} (got ${JSON.stringify(role)})`);
@@ -269,12 +269,15 @@ export function headlineBox(theme: Theme, aspect: Aspect, text: string | readonl
   const steps: TypeRole[] = [...HEADLINE_ROLES.slice(HEADLINE_ROLES.indexOf(role)), LAST_STEP];
   const texts = typeof text === "string" ? [text] : text;
   // The lines share one heading, so its glyph padding is counted once.
-  const heightAt = (step: TypeRole) => {
+  const heightAt = (step: TypeRole, charEm?: number) => {
     const spec = theme.type[step][aspect];
-    return texts.reduce((height, t) => height + textBoxHeight(t, width, spec), 0) - (texts.length - 1) * 2 * glyphPad(spec);
+    return texts.reduce((height, t) => height + textBoxHeight(t, width, spec, charEm), 0) - (texts.length - 1) * 2 * glyphPad(spec);
   };
-  const step = steps.find((s) => heightAt(s) <= area.height) ?? LAST_STEP;
-  return { box: placeBlock(area, { width, height: heightAt(step) }, blockCenterY(theme, aspect, slot)), step };
+  const fits = (step: TypeRole, charEm?: number) => heightAt(step, charEm) <= area.height;
+  // Lines keep one row each where a step allows it; a single text wraps as it must.
+  const step = (typeof text === "string" ? steps.find((s) => fits(s)) : lineStep(theme, aspect, steps, texts, width, fits)) ?? LAST_STEP;
+  const charEm = typeof text !== "string" && linesOnOneRow(texts, width, theme.type[step][aspect].size) ? ONE_ROW_CHAR_EM : undefined;
+  return { box: placeBlock(area, { width, height: heightAt(step, charEm) }, blockCenterY(theme, aspect, slot)), step };
 }
 
 export function Headline(props: HeadlineProps) {
