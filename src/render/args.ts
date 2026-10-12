@@ -1,6 +1,7 @@
 // Command-line arguments for scripts/stills.ts, scripts/render.ts and scripts/narrate.ts.
 
 import { parseArgs } from "node:util";
+import { isVoiceSpeed, MAX_VOICE_SPEED, MIN_VOICE_SPEED } from "../storyboard/validate";
 import { DEFAULT_MAX_MB } from "./budget";
 import { parseFrameList } from "./frames";
 
@@ -84,11 +85,13 @@ ${RENDER_USAGE}`);
   return { storyboard: positionals[0]!, out: values.out, narration: values["no-narration"] !== true, maxMb };
 }
 
-export const NARRATE_USAGE = "usage: npx tsx scripts/narrate.ts <storyboard.json> [--offline]";
+export const NARRATE_USAGE = "usage: npx tsx scripts/narrate.ts <storyboard.json> [--offline] [--speed 0.8-1.4]";
 
 export interface NarrateArgs {
   storyboard: string;
   offline: boolean;
+  /** Overrides the storyboard's `voiceSpeed`. */
+  speed?: number;
 }
 
 /** Parses the arguments for speaking a storyboard's narration. */
@@ -96,10 +99,17 @@ export function parseNarrateArgs(argv: readonly string[]): NarrateArgs {
   const { values, positionals } = parseArgs({
     args: [...argv],
     allowPositionals: true,
-    options: { offline: { type: "boolean" } },
+    options: { offline: { type: "boolean" }, speed: { type: "string" } },
   });
 
   if (positionals.length !== 1) throw new Error(`expected one storyboard file
 ${NARRATE_USAGE}`);
-  return { storyboard: positionals[0]!, offline: values.offline === true };
+  const result: NarrateArgs = { storyboard: positionals[0]!, offline: values.offline === true };
+  if (values.speed !== undefined) {
+    const speed = Number(values.speed);
+    if (values.speed.trim() === "" || !isVoiceSpeed(speed)) throw new Error(`--speed must be a number from ${MIN_VOICE_SPEED} to ${MAX_VOICE_SPEED} (got "${values.speed}")
+${NARRATE_USAGE}`);
+    result.speed = speed;
+  }
+  return result;
 }

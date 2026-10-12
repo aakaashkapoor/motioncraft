@@ -20,6 +20,7 @@ import { alignWords } from "./wordTimes";
 /** Bump to discard every cached narration when how it is made changes. */
 export const NARRATION_CACHE_VERSION = 6;
 export const DEFAULT_VOICE = "af_heart";
+export const DEFAULT_SPEED = 1;
 /** Silence between two sentences of a scene. */
 export const SENTENCE_GAP_MS = 250;
 
@@ -96,6 +97,7 @@ function spokenWords(
 async function speakScene(
   text: string,
   voice: string,
+  speed: number,
   synthesizer: Synthesizer,
   pronounce: Readonly<Record<string, string>>,
 ): Promise<{ samples: Float32Array; sampleRate: number; audioMs: number; words: TimedWord[] }> {
@@ -110,7 +112,7 @@ async function speakScene(
     // Each piece is trimmed of the silence around it, so word times match the sound.
     for (const [i, piece] of splitForSpeech(sentence).entries()) {
       const plan = spokenPlan(piece, pronounce);
-      const speech = await synthesizer.speak(plan.text, voice);
+      const speech = await synthesizer.speak(plan.text, voice, speed);
       if (sampleRate === 0) sampleRate = speech.sampleRate;
       const trimmed = trimSilence(speech.samples, speech.sampleRate);
       const { samples: sound, leadSamples, tailSamples } = trimmed;
@@ -152,8 +154,14 @@ interface SceneFiles {
 }
 
 /** The narrated scenes of a storyboard and where each one's cached files live. */
-function sceneFiles(storyboard: Storyboard, outDir: string, voice: string | undefined): { voice: string; files: SceneFiles[] } {
+function sceneFiles(
+  storyboard: Storyboard,
+  outDir: string,
+  voice: string | undefined,
+  speed: number | undefined,
+): { voice: string; speed: number; files: SceneFiles[] } {
   const chosen = voice ?? storyboard.voice ?? DEFAULT_VOICE;
+  const chosenSpeed = speed ?? storyboard.voiceSpeed ?? DEFAULT_SPEED;
   const files: SceneFiles[] = [];
   const pronounce = pronounceMap(storyboard);
   for (const scene of storyboard.scenes) {
@@ -162,10 +170,12 @@ function sceneFiles(storyboard: Storyboard, outDir: string, voice: string | unde
     // Only the pronunciations this scene uses, so a scene without any keeps its key.
     const said = pronunciationsIn(scene.narration, pronounce);
     if (said.length > 0) parts.push(JSON.stringify(said));
+    // Only a changed speed, so narration made at the default pace keeps its key.
+    if (chosenSpeed !== DEFAULT_SPEED) parts.push(`speed=${chosenSpeed}`);
     const key = createHash("sha1").update(parts.join("\0")).digest("hex");
     files.push({ sceneId: scene.id, text: scene.narration, wavPath: join(outDir, `${key}.wav`), jsonPath: join(outDir, `${key}.json`) });
   }
-  return { voice: chosen, files };
+  return { voice: chosen, speed: chosenSpeed, files };
 }
 
 async function readCached(file: SceneFiles): Promise<SceneNarration | undefined> {
@@ -179,10 +189,10 @@ async function readCached(file: SceneFiles): Promise<SceneNarration | undefined>
  */
 export async function loadCachedNarration(
   storyboard: Storyboard,
-  options: { outDir: string; voice?: string },
+  options: { outDir: string; voice?: string; speed?: number },
 ): Promise<CachedNarration> {
   const result: CachedNarration = { scenes: {}, missing: [] };
-  for (const file of sceneFiles(storyboard, options.outDir, options.voice).files) {
+  for (const file of sceneFiles(storyboard, options.outDir, options.voice, options.speed).files) {
     const cached = await readCached(file);
     if (cached === undefined) result.missing.push(file.sceneId);
     else result.scenes[file.sceneId] = cached;
@@ -199,9 +209,9 @@ export function missingNarrationNotice(cached: CachedNarration): string | undefi
 
 export async function narrateStoryboard(
   storyboard: Storyboard,
-  options: { synthesizer: Synthesizer; outDir: string; voice?: string; onProgress?: (done: number, total: number) => void },
+  options: { synthesizer: Synthesizer; outDir: string; voice?: string; speed?: number; onProgress?: (done: number, total: number) => void },
 ): Promise<Record<string, SceneNarration>> {
-  const { voice, files } = sceneFiles(storyboard, options.outDir, options.voice);
+  const { voice, speed, files } = sceneFiles(storyboard, options.outDir, options.voice, options.speed);
   const result: Record<string, SceneNarration> = {};
   await mkdir(options.outDir, { recursive: true });
 
@@ -212,7 +222,7 @@ export async function narrateStoryboard(
       result[file.sceneId] = cached;
       continue;
     }
-    const spoken = await speakScene(file.text, voice, options.synthesizer, pronounceMap(storyboard));
+    const spoken = await speakScene(file.text, voice, speed, options.synthesizer, pronounceMap(storyboard));
     await writeFile(file.wavPath, encodeWav(spoken.samples, spoken.sampleRate));
     await writeFile(file.jsonPath, JSON.stringify({ audioMs: spoken.audioMs, words: spoken.words }, null, 2));
     result[file.sceneId] = { sceneId: file.sceneId, wavPath: file.wavPath, audioMs: spoken.audioMs, words: spoken.words };

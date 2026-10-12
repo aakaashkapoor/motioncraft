@@ -13,12 +13,15 @@ import type { Storyboard } from "../src/index";
 const SAMPLE_RATE = 24000;
 
 /** 100 ms of audio per character of text, so durations are easy to predict. */
-function fakeSynth(): Synthesizer & { calls: { text: string; voice: string }[] } {
+function fakeSynth(): Synthesizer & { calls: { text: string; voice: string }[]; speeds: (number | undefined)[] } {
   const calls: { text: string; voice: string }[] = [];
+  const speeds: (number | undefined)[] = [];
   return {
     calls,
-    async speak(text, voice) {
+    speeds,
+    async speak(text, voice, speed) {
       calls.push({ text, voice });
+      speeds.push(speed);
       return { samples: new Float32Array(text.length * 2400).fill(0.1), sampleRate: SAMPLE_RATE };
     },
   };
@@ -103,6 +106,34 @@ describe("narrateStoryboard", () => {
     const c = fakeSynth();
     await narrateStoryboard(board(), { synthesizer: c, outDir });
     expect(new Set(c.calls.map((x) => x.voice))).toEqual(new Set(["af_heart"]));
+  });
+
+  it("speaks at the option speed, else the storyboard voiceSpeed, else 1", async () => {
+    const a = fakeSynth();
+    await narrateStoryboard(board({ voiceSpeed: 1.2 }), { synthesizer: a, outDir, speed: 0.9 });
+    expect(new Set(a.speeds)).toEqual(new Set([0.9]));
+
+    const b = fakeSynth();
+    await narrateStoryboard(board({ voiceSpeed: 1.2 }), { synthesizer: b, outDir });
+    expect(new Set(b.speeds)).toEqual(new Set([1.2]));
+
+    const c = fakeSynth();
+    await narrateStoryboard(board(), { synthesizer: c, outDir });
+    expect(new Set(c.speeds)).toEqual(new Set([1]));
+  });
+
+  it("re-narrates at a different speed and reuses the cache at the same one", async () => {
+    await narrateStoryboard(board({ voiceSpeed: 1.3 }), { synthesizer: fakeSynth(), outDir });
+    const same = fakeSynth();
+    await narrateStoryboard(board({ voiceSpeed: 1.3 }), { synthesizer: same, outDir });
+    expect(same.calls).toEqual([]);
+
+    const other = fakeSynth();
+    await narrateStoryboard(board({ voiceSpeed: 1 }), { synthesizer: other, outDir });
+    expect(other.calls.length).toBeGreaterThan(0);
+    expect((await readdir(outDir)).sort()).toHaveLength(4);
+    expect((await loadCachedNarration(board({ voiceSpeed: 1.1 }), { outDir })).missing).toEqual(["a"]);
+    expect((await loadCachedNarration(board(), { outDir, speed: 1.3 })).missing).toEqual([]);
   });
 
   it("keeps separate files per voice and per text", async () => {

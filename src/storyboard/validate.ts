@@ -24,7 +24,15 @@ import { cueErrors } from "../kit/cues";
 import { STOCK_VOICES } from "../narration/voices";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "pronounce", "scenes"]);
+export const MIN_VOICE_SPEED = 0.8;
+export const MAX_VOICE_SPEED = 1.4;
+
+/** Whether `value` is a speed the voice can be run at. */
+export function isVoiceSpeed(value: unknown): value is number {
+  return typeof value === "number" && value >= MIN_VOICE_SPEED && value <= MAX_VOICE_SPEED;
+}
+
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "scenes"]);
 const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition", "shots"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
 
@@ -207,6 +215,11 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
     else if (!(STOCK_VOICES as readonly string[]).includes(voice)) errors.push(`voice must be one of ${STOCK_VOICES.join(", ")} (got ${describe(voice)})`);
   }
 
+  const { voiceSpeed } = input;
+  if (voiceSpeed !== undefined && !isVoiceSpeed(voiceSpeed)) {
+    errors.push(`voiceSpeed must be a number from ${MIN_VOICE_SPEED} to ${MAX_VOICE_SPEED} (got ${describe(voiceSpeed)})`);
+  }
+
   const { pronounce } = input;
   if (pronounce !== undefined) errors.push(...pronounceErrors(pronounce));
 
@@ -221,6 +234,7 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (captionStyle !== undefined) storyboard.captionStyle = captionStyle as CaptionStyle;
   if (opening !== undefined) storyboard.opening = opening as Opening;
   if (voice !== undefined) storyboard.voice = voice as string;
+  if (voiceSpeed !== undefined) storyboard.voiceSpeed = voiceSpeed as number;
   if (pronounce !== undefined) storyboard.pronounce = pronounce as Record<string, string>;
   return { ok: true, storyboard };
 }

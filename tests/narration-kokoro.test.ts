@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { kokoroSynthesizer, speechWords, wordSamples } from "../src/narration/kokoro";
+import { kokoroSynthesizer, modelInputs, speechWords, wordSamples } from "../src/narration/kokoro";
 import { normalizeText } from "../src/narration/normalize";
 import { createWordPhonemizer } from "../src/narration/phonemes";
 import { encodePhonemes, encodePhonemesMapped } from "../src/narration/tokenizer";
@@ -59,6 +59,19 @@ describe("kokoroSynthesizer", () => {
     },
     600_000,
   );
+});
+
+describe("modelInputs", () => {
+  it("passes the speed as the model's float32 speed tensor, 1 included", async () => {
+    const { Tensor } = await import("onnxruntime-node");
+    const inputs = (speed: number) => modelInputs(Tensor, [0, 5, 0], new Float32Array(256), speed);
+    expect(Array.from(inputs(1.3).speed.data as Float32Array)).toEqual([Math.fround(1.3)]);
+    expect(inputs(1.3).speed.type).toBe("float32");
+    expect(inputs(1.3).speed.dims).toEqual([1]);
+    expect(Array.from(inputs(1).speed.data as Float32Array)).toEqual([1]);
+    expect(inputs(1).input_ids.dims).toEqual([1, 3]);
+    expect(inputs(1).style.dims).toEqual([1, 256]);
+  });
 });
 
 describe("wordSamples", () => {

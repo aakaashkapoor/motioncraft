@@ -19,6 +19,7 @@ async function main(argv: string[]): Promise<void> {
   const narrations = await narrateStoryboard(validation.storyboard, {
     synthesizer: kokoroSynthesizer({ offline: args.offline }),
     outDir,
+    speed: args.speed,
   });
   for (const { sceneId, audioMs, words } of Object.values(narrations)) {
     console.log(`${sceneId}  ${(audioMs / 1000).toFixed(2)} s  ${words.length} words`);
