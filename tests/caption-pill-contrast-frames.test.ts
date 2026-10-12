@@ -1,18 +1,19 @@
 // Pill captions measured in the browser on every frame the pill fades in under
-// a page's first word, and on the frame it lands on each next word. The
+// a page's first word and every frame it slides to each next word. The
 // layer-1 contrast check samples only a few frames per scene, which missed the
 // spoken word fading through a mid tone on a half-faded pill (issue #159,
 // finding 4: "renders" at frame 345 of captions-pill.json measured 2.16:1).
-// Frames mid-slide are left to tests/caption-pill-contrast.test.tsx: there the
-// pill's edge crosses a word, so part of it is on the pill and part is not,
-// and which side the check's one sample point lands on depends on glyph widths.
+// Mid-slide the pill's edge crosses a word; the two-layer ink (light letters
+// everywhere, dark ones clipped to the pill) keeps every glyph readable, and
+// the check judges each layer against what is behind it (issue #163: "a" at
+// frame 192 of the what's-new example measured 1.00:1).
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, type TestContext } from "vitest";
 import { checkContrast, type FrameMeasurement } from "../src/checks";
-import { buildTimeline, CAPTION_LEAD_MS, captionTrack, pageIndexAt, validateStoryboard, type Storyboard } from "../src/index";
-import { PILL_SLIDE, pillAt } from "../src/kit/captionPill";
+import { buildTimeline, CAPTION_LEAD_MS, captionTrack, validateStoryboard, type Storyboard } from "../src/index";
+import { PILL_SLIDE } from "../src/kit/captionPill";
 import { BrowserNotFoundError } from "../src/render/browser";
 import { estimateDurations } from "../src/render/durations";
 import { showFrame, withRenderPage } from "../src/render/session";
@@ -42,15 +43,13 @@ describe("pill caption words pass the contrast check on every frame the pill mov
     const frames = new Set<number>();
     timeline.scenes.forEach((scene, i) => {
       const endMs = ((scene.frames - 1) * 1000) / timeline.fps;
-      const { words, pages } = captionTrack(theme, storyboard.aspect, storyboard.scenes[i]!.narration!, "pill", endMs);
+      const { words } = captionTrack(theme, storyboard.aspect, storyboard.scenes[i]!.narration!, "pill", endMs);
       for (const word of words) {
-        // The frames from a word's start (on the spoken clock) until the pill has arrived on it, but not mid-slide.
+        // The frames from a word's start (on the spoken clock) until the pill has arrived on it, mid-slide included.
         const first = Math.floor(((word.startMs - CAPTION_LEAD_MS) * timeline.fps) / 1000);
         const last = Math.ceil(((word.startMs - CAPTION_LEAD_MS + PILL_SLIDE.ms) * timeline.fps) / 1000);
         for (let f = Math.max(0, first); f <= Math.min(last, scene.frames - 1); f++) {
-          const spokenMs = (f * 1000) / timeline.fps + CAPTION_LEAD_MS;
-          const state = pillAt(words, pages[pageIndexAt(pages, spokenMs)]!, spokenMs);
-          if (state === undefined || state.from === state.word || state.move >= 1) frames.add(scene.startFrame + f);
+          frames.add(scene.startFrame + f);
         }
       }
     });

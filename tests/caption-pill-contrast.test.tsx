@@ -10,7 +10,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ASPECTS, CAPTION_LEAD_MS, Caption, SceneClockContext, captionTrack, contrastRatio, pageIndexAt, type Aspect, type Theme } from "../src/index";
 import { captionColors } from "../src/kit/Caption";
-import { PILL_PAD_EM, PILL_SLIDE, estimateWordBoxes, pillAt, pillBox, pillLayout } from "../src/kit/captionPill";
+import { PILL_PAD_EM, PILL_SLIDE, estimateWordBoxes, pillAt, pillBox, pillInsets, pillLayout } from "../src/kit/captionPill";
 import { mixColors } from "../src/theme/color";
 import { AA_CONTRAST } from "../src/theme/contrast";
 import { resolveTheme, themes } from "../src/theme/resolve";
@@ -61,6 +61,70 @@ function framesAround(startMs: number): number[] {
   const last = Math.ceil(((startMs - CAPTION_LEAD_MS + PILL_SLIDE.ms) * FPS) / 1000) + 1;
   return Array.from({ length: last - first + 1 }, (_, i) => first + i).filter((f) => f >= 0 && f < FRAMES);
 }
+
+/** The pill span's insets, the on-pill ink's clip insets and the page's own (base) layers' colors on a frame, by word. */
+function layers(html: string) {
+  const pill = /data-caption-word="(\d+)"[^>]*><span data-caption-pill="" style="([^"]*)"/.exec(html);
+  const inks = [...html.matchAll(/data-caption-ink="" style="([^"]*)"/g)].map((m) => m[1]!);
+  const base = [...html.matchAll(/data-caption-word="(\d+)"[^>]*>(?:<span data-caption-pill=""[^>]*><\/span>)?<span style="([^"]*)"/g)].map((m) => ({
+    word: Number(m[1]),
+    color: /(?:^|;)color:(#[0-9a-f]{6})/i.exec(m[2]!)?.[1],
+  }));
+  return { pill: pill === null ? undefined : { word: Number(pill[1]), style: pill[2]! }, inks, base };
+}
+
+describe("pill captions: two-layer ink while the pill slides", () => {
+  it.each(CASES)("%s: halfway between two words, the dark layer is clipped to the pill and the page layer is all light", (_, theme) => {
+    const aspect: Aspect = "9:16";
+    const { words, pages } = captionTrack(theme, aspect, text, "pill", endMs);
+    const colors = captionColors(theme, "pill");
+    const size = theme.type.headline[aspect].size;
+    const pad = { x: PILL_PAD_EM.x * size, y: PILL_PAD_EM.y * size };
+    const page = pages.find((p) => p.end - p.start >= 2)!;
+    const k = page.start + 1;
+    // The frame nearest the middle of the slide (move ~ 0.5).
+    const frame = Math.round((((words[k]!.startMs - CAPTION_LEAD_MS + PILL_SLIDE.ms * 0.3) * FPS) / 1000));
+    const spokenMs = (frame * 1000) / FPS + CAPTION_LEAD_MS;
+    const state = pillAt(words, page, spokenMs)!;
+    expect(state.word).toBe(1);
+    expect(state.move).toBeGreaterThan(0.2);
+    expect(state.move).toBeLessThan(0.95);
+    const html = drawFrame(theme, aspect, frame);
+    const { pill, inks, base } = layers(html);
+    // The page layer never holds dark ink: every word is the off-pill color.
+    expect(base.length).toBe(page.end - page.start);
+    for (const { color } of base) expect(color).toBe(colors.text);
+    // The ink layer of the pill's own word is clipped to exactly the pill's box.
+    const boxes = estimateWordBoxes(words.slice(page.start, page.end).map((w) => w.text), pillLayout(theme, aspect, size));
+    const insets = pillInsets(boxes, state, pad);
+    // Inks are in word order: the word the pill is leaving, then the one it is on.
+    expect(inks).toHaveLength(2);
+    const [leaving, own] = inks as [string, string];
+    expect(own).toContain("color:" + colors.active);
+    const clipOf = (style: string) =>
+      (/clip-path:inset\((.*?) round/.exec(style)?.[1] ?? "")
+        .replace(/calc\(100% \+ (-?[0-9.e-]+)px\)/, "$1")
+        .split(" ")
+        .map((v) => parseFloat(v));
+    // The pill's own word: clipped to exactly the pill's box.
+    const px = (prop: string) => Number(new RegExp("(?:^|;)" + prop + ":(-?[0-9.e-]+)px").exec(pill!.style)?.[1]);
+    expect(clipOf(own)).toEqual([px("top"), px("right"), px("bottom"), px("left")]);
+    expect(clipOf(own)[0]).toBeCloseTo(insets.top, 6);
+    expect(clipOf(own)[3]).toBeCloseTo(insets.left, 6);
+    // The word it is leaving is half covered: its ink is clipped to the same box seen from that word, with the
+    // left edge a word gap past that word's end (calc(100% + x), so it follows the width the word really drew at).
+    expect(leaving).toContain("calc(100% + ");
+    const [top, right, bottom, left] = clipOf(leaving) as [number, number, number, number];
+    const gap = boxes[state.word]!.x - (boxes[state.from]!.x + boxes[state.from]!.width);
+    expect(left).toBeCloseTo(gap + insets.left, 6);
+    expect(left).toBeLessThan(0);
+    expect(top).toBeCloseTo(insets.top, 6);
+    expect(bottom).toBeCloseTo(insets.bottom, 6);
+    expect(right).toBeLessThan(0);
+    // Both layers carry the same letters; the ink layer is hidden from readers of the text.
+    expect(html.match(/aria-hidden="true"/g)).toHaveLength(2);
+  });
+});
 
 describe("pill captions: the spoken word reads on its pill", () => {
   it.each(CASES)("%s: the word on the arrived pill is the text-on-accent color, at AA", (_, theme) => {
