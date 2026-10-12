@@ -20,6 +20,7 @@ import {
 import { sceneComponents } from "./components";
 import { shotsErrors } from "./shots";
 import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
+import { cueErrors } from "../kit/cues";
 import { STOCK_VOICES } from "../narration/voices";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
@@ -140,6 +141,15 @@ function validateScenes(raw: unknown, errors: string[]): StoryboardScene[] {
     if (scene) scenes.push(scene);
   });
   return scenes;
+}
+
+/**
+ * Problems with a cue prop (see `Cue`) at `at` (a path such as
+ * `props.at`), checked against the scene's `narration`: for a component's
+ * prop check to call on each cue it takes.
+ */
+export function validateCue(cue: unknown, narration: string | undefined, at: string): string[] {
+  return cueErrors(cue, narration).map((error) => `${at}: ${error}`);
 }
 
 /** Problems with the storyboard's `pronounce` map: one written word to one to four spoken words. */

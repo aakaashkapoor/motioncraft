@@ -289,6 +289,34 @@ Words in all caps (`API`) are spelled out letter by letter and not reported. The
 warning needs the voice's dictionaries, so it appears once narration has been
 downloaded.
 
+### Word cues
+
+A timed prop that takes a cue can start on a word of the scene's narration
+instead of a fixed ms, so the motion lands as the word is said, whatever the
+voice's pace. A cue is either a number (ms from the scene start) or an object:
+
+- `word`: a word or phrase of this scene's narration. Matching ignores case and
+  the punctuation around a word (`"wagyu"` matches `Wagyu,`). A phrase
+  (`"split the bill"`) matches consecutive words and starts on its first.
+- `occurrence` (default 1): which match, counting from 1, when the word is said
+  more than once.
+- `offsetMs` (default 0): added to the word's start; negative starts early.
+
+The word is timed from the voice's own word times; with `--no-narration` or no
+cached audio, from an even estimate over the scene, like the caption. Validation
+is an error when the word (or that occurrence) is not in the scene's narration,
+or when the scene has no narration. Here `at` starts on the second "wagyu",
+100 ms early:
+
+```json cue
+{
+  "narration": "Wagyu for four. Split the bill, not the wagyu.",
+  "at": { "word": "wagyu", "occurrence": 2, "offsetMs": -100 }
+}
+```
+
+Only props that say they take a cue accept one; the component's entry below says so.
+
 ## 3. Theme and overrides
 
 Themes are defaults, not rules. Anything the user asks for must be possible;
