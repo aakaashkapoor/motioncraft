@@ -9,9 +9,9 @@ import { parseStillsArgs } from "../src/render/args";
 import { BrowserNotFoundError } from "../src/render/browser";
 import { pageHtml } from "../src/render/bundle";
 import { estimateDurations, estimateNarrationMs } from "../src/render/durations";
-import { checkFrames, parseFrameList, perSceneFrames } from "../src/render/frames";
+import { checkFrames, parseFrameList, perSceneFrames, slideFrames } from "../src/render/frames";
 import { Frame } from "../src/render/page";
-import { renderStills } from "../src/render/stills";
+import { renderStills, slideInput } from "../src/render/stills";
 import { resolveTheme } from "../src/render/themes";
 
 function storyboard(input: Partial<StoryboardInput> = {}): Storyboard {
@@ -105,6 +105,52 @@ describe("parseStillsArgs", () => {
     expect(() => parseStillsArgs(["sb.json"])).toThrow(/--out/);
     expect(() => parseStillsArgs(["sb.json", "--out", "o", "--frames", "1", "--per-scene"])).toThrow(/not both/);
     expect(() => parseStillsArgs(["sb.json", "--out", "o", "--bogus"])).toThrow();
+  });
+});
+
+describe("slides", () => {
+  const sb = storyboard({
+    scenes: [
+      { id: "a", component: "TitleCard", props: { title: "A" }, durationMs: 2000, transition: { type: "fade", durationMs: 333 } },
+      { id: "b", component: "TitleCard", props: { title: "B" }, durationMs: 2000, narration: "Spoken words", shots: [{ atMs: 0, target: "wide" }] },
+      { id: "c", component: "TitleCard", props: { title: "C" }, durationMs: 2000 },
+    ],
+  });
+  const timeline = buildTimeline(sb, {});
+
+  it("parses --slides with and without ids", () => {
+    expect(parseStillsArgs(["sb.json", "--out", "o", "--slides"]).slides).toBe(true);
+    expect(parseStillsArgs(["sb.json", "--slides", "--out", "o"]).slides).toBe(true);
+    expect(parseStillsArgs(["sb.json", "--out", "o", "--slides", "a,b"]).slides).toEqual(["a", "b"]);
+    expect(parseStillsArgs(["sb.json", "--out", "o"]).slides).toBeUndefined();
+  });
+
+  it("rejects --slides with --frames or --per-scene", () => {
+    expect(() => parseStillsArgs(["sb.json", "--out", "o", "--slides", "--frames", "1"])).toThrow(/--slides cannot be combined/);
+    expect(() => parseStillsArgs(["sb.json", "--out", "o", "--slides", "a", "--per-scene"])).toThrow(/--slides cannot be combined/);
+  });
+
+  it("picks each scene's last frame before its exit begins", () => {
+    const frames = slideFrames(timeline);
+    expect(frames.map((s) => s.fileName)).toEqual(["01-a.png", "02-b.png", "03-c.png"]);
+    // The next scene starts on the first frame of the transition out; the slide is the frame before it.
+    expect(frames[0]!.frame).toBe(timeline.transitions[0]!.startFrame - 1);
+    expect(frames[1]!.frame).toBe(timeline.transitions[1]!.startFrame - 1);
+    expect(frames[2]!.frame).toBe(timeline.totalFrames - 1);
+  });
+
+  it("renders only the chosen scenes, and rejects unknown ones", () => {
+    expect(slideFrames(timeline, ["c", "a"]).map((s) => s.fileName)).toEqual(["01-a.png", "03-c.png"]);
+    expect(() => slideFrames(timeline, ["nope"])).toThrow(/no scene "nope" \(scenes: a, b, c\)/);
+  });
+
+  it("draws no captions, shots or breathing, and keeps the timing", () => {
+    const input = slideInput({ storyboard: sb, theme: neutralTheme, durations: {} });
+    expect(input.storyboard.scenes.every((s) => s.shots === undefined)).toBe(true);
+    expect(input.theme.motion.breathe.on).toBe(false);
+    const html = renderToStaticMarkup(createElement(Frame, { storyboard: input.storyboard, theme: input.theme, timeline, frame: 90 }));
+    expect(html.replace(/<[^>]*>/g, "")).not.toContain("Spoken");
+    expect(buildTimeline(input.storyboard, {})).toEqual(timeline);
   });
 });
 
