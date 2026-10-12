@@ -6,7 +6,7 @@ first time. Read this before writing a storyboard. The design behind it is in
 kit and media).
 
 Every `json` example below is tested: it validates, passes the storyboard
-checks in both 9:16 and 16:9, and renders (`tests/guide.test.ts`). Examples
+checks in every aspect (9:16, 16:9 and 4:5), and renders (`tests/guide.test.ts`). Examples
 marked **Incorrect** show a mistake on purpose.
 
 ## 1. Plan before you write
@@ -44,6 +44,37 @@ to its line:
   scenes minus the sum of the transitions, so a 600 ms transition takes 600 ms
   out of the scenes on both sides of it.
 
+### Word cues
+
+A timed prop that takes a cue can start on a word of the scene's narration
+instead of a fixed ms, so the motion lands as the word is said, whatever the
+voice's pace. A cue is either a number (ms from the scene start) or an object:
+
+- `word`: a word or phrase of this scene's narration. Matching ignores case and
+  the punctuation around a word (`"wagyu"` matches `Wagyu,`). A phrase
+  (`"split the bill"`) matches consecutive words and starts on its first.
+- `occurrence` (default 1): which match, counting from 1, when the word is said
+  more than once.
+- `offsetMs` (default 0): added to the word's start; negative starts early.
+
+The word is timed from the voice's own word times; with `--no-narration` or no
+cached audio, from an even estimate over the scene, like the caption. Validation
+is an error when the word (or that occurrence) is not in the scene's narration,
+or when the scene has no narration. Here `at` starts on the second "wagyu",
+100 ms early:
+
+```json cue
+{
+  "narration": "Wagyu for four. Split the bill, not the wagyu.",
+  "at": { "word": "wagyu", "occurrence": 2, "offsetMs": -100 }
+}
+```
+
+Only these props take a cue: `BigNumber` `at`, `lines[].at` on `Headline` and
+`TitleCard`, and a scene's `effects[].at` (below). `WordSwap` `cuesMs` and
+`Notification` `atMs` are plain ms. A `BigNumber` word cue is checked only by
+`scripts/check.ts` and the render, not by validation.
+
 ### A transition for every boundary
 
 Choose a `transition` on every scene except the last. Leaving it out falls back
@@ -56,10 +87,16 @@ choice should be deliberate:
 | `fade` | A change of subject, or anywhere a shared element is the star (the morph reads best over a fade). |
 | `zoomBlur` | An energetic reveal: the old scene scales up and blurs out, the new one sharpens in. Use sparingly. |
 | `wipe` | A before/after or a hard change of section. Takes a `direction`. |
+| `iris` | A reveal from one point: the new scene grows inside a circle with an accent ring on its edge. `origin` `{ "x", "y" }` (each 0-1 of the frame, default the center; `{ "x": 0, "y": 1 }` is the bottom-left corner) sets where it starts. Only `iris` takes `origin`. |
+| `whipPan` | A fast camera whip to the next scene, blurred at the cut. Takes a `direction` like `slide` (`left` moves the content left, so the next scene enters from the right). |
 | `cut` | A deliberate hard cut, such as landing on a punchline. |
 
 `durationMs` sets the length (default 600 ms, the theme's `motion.transitionMs`);
 400-900 ms reads well.
+
+```json
+{ "id": "open", "component": "TitleCard", "props": { "title": "Iris and whip pan" }, "durationMs": 3000, "transition": { "type": "iris", "durationMs": 900, "origin": { "x": 0, "y": 1 } } }
+```
 
 ### Shared elements for continuity
 
@@ -133,14 +170,50 @@ of the frame than a shot may.
 }
 ```
 
+### Scene effects
+
+A scene's `effects` point at one element at the moment the narration names it:
+a ring around it, a highlight band behind it, a shake (something is wrong) or a
+pulse. Each effect has:
+
+- `target` (required): a `shareId` in the scene, nested ones included. Besides
+  windows, `VideoClip` and `Image`, a `Card` and a `BigNumber` take a `shareId`,
+  and a `StepList` takes `shareIds` (one per step). Shots cannot target a
+  single step.
+- `kind` (required): `"ring"`, `"highlight"`, `"shake"` or `"pulse"`. A ring
+  draws on over 400 ms and a highlight sweeps in over 300 ms; both hold until
+  the scene leaves and move with the camera. A shake (360 ms) and a pulse
+  (320 ms, scale to 1.06 and back) play once.
+- `at` (required): a cue, a ms or a word (see "Word cues"). A ms must be before
+  the scene's `durationMs`.
+- `color`: `"accent"` (the default), `"positive"`, `"negative"`, `"text"` or
+  `"muted"`. Only a ring and a highlight show it.
+- `durationMs`: 100-2000, for a shake or a pulse.
+
+A ring or highlight counts as a key element, so the safe-area check flags one
+that pokes out of the safe area.
+
+```json
+{
+  "id": "steps",
+  "component": "StepList",
+  "props": { "title": "Split a bill in three steps", "items": ["Scan the receipt", "Split it by item", "Settle up in one tap"], "shareIds": ["scan", "split", "settle"] },
+  "narration": "Scan the receipt, then split it by item, and settle up in one tap.",
+  "durationMs": 7500,
+  "effects": [{ "target": "split", "kind": "ring", "at": { "word": "split" } }]
+}
+```
+
 ## 2. The storyboard
 
 A storyboard is one JSON document. Top-level fields: `title`, `aspect`
-(`"9:16"`, the primary format, or `"16:9"`), `fps` (default 30), `theme`
-(default `"light"`), the theme fields in section 3, `safe` and
-`captionStyle` (below), `opening` (below), and `scenes`. Each scene has an `id` (unique), a
-`component` (a kit name from section 5), `props`, and optionally `narration`,
-`durationMs`, `transition` and camera `shots` (section 1).
+(`"9:16"`, the primary format, `"16:9"` or `"4:5"`; see "Output"), `fps`
+(default 30), `theme` (default `"light"`), the theme fields and brand `fonts`
+in section 3, `safe`, `captionStyle`, `voice`, `voiceSpeed`, `pronounce` and
+`overlays` (below), `opening` (below), and `scenes`. Each scene has an `id`
+(unique), a `component` (a kit name from section 5), `props`, and optionally
+`narration`, `audio` (your own recording, below), `durationMs`, `transition`,
+camera `shots` and `effects` (section 1).
 
 `opening` is `"settled"` (the default) or `"build"`. The first frame of a video
 is its thumbnail on GitHub, Slack, X and most players until someone presses
@@ -208,12 +281,18 @@ buttons. In 9:16, `safe` picks which platform UI the frame keeps clear of:
 - `"crosspost"`: safe on TikTok, Reels and Shorts at once. Text stays in
   x 200-880 between y 290 and 1240. This leaves less room: a docked window
   becomes an icon chip, and long text steps down sooner.
+- `"tiktok"`: TikTok only. Text stays in x 120-960 between y 250 and 1520
+  (the right 120 px and the bottom 400 px are TikTok's), the caption sits
+  lower, and windows and card stacks are 840 px wide. Content fills more of
+  the frame, and `Headline` and `CardRow` pick a larger type step where it
+  fits.
 
-16:9 has no overlaid UI (96 px at the sides, 64 px at the top and bottom), so
-`safe` changes nothing there.
+16:9 has no overlaid UI (96 px at the sides, 64 px at the top and bottom), and
+4:5 keeps a 64 px margin all round with no button rail (primary width 760 px),
+so `safe` changes nothing in either.
 
 ```json
-{ "safe": "crosspost" }
+{ "safe": "tiktok" }
 ```
 
 ### Captions
@@ -231,6 +310,9 @@ proportion to its length. `captionStyle` picks the look:
 - `"punch"`: pages of 1-3 big uppercase words on one line, in the ramp's
   `headline` at heavy, white letters on a dark outline. For high-energy hooks.
   A word too long for the line shrinks to fit.
+- `"pill"`: pages like `punch` (1-3 words on one line, `headline` size) but
+  bold and in sentence case, with an accent pill that slides behind the word
+  being spoken. In the light theme a dark band sits behind the page.
 - `"off"`: no caption; the narration is still the scene's length.
 
 ```json
@@ -263,6 +345,16 @@ The storyboard's `voice` picks it:
 { "voice": "af_bella" }
 ```
 
+`voiceSpeed` sets how fast the voice talks, from 0.8 to 1.4 (default 1). A
+faster voice is shorter audio, so narrated scenes without `durationMs` get
+shorter. Set it in the storyboard: `scripts/narrate.ts --speed` only tries a
+speed, because check, stills and render read the narration made at the
+storyboard's `voiceSpeed`.
+
+```json
+{ "voiceSpeed": 1.15 }
+```
+
 Common developer terms are said right by default: `JSON`, `README`, `npm`, `npx`,
 `gh`, `Node.js`, `nginx`, `kubectl`, `sudo`, `stdin` and about thirty more. The
 table is `BUILTIN_PRONOUNCE` in `src/narration/terms.ts`; you do not need to list
@@ -289,33 +381,100 @@ Words in all caps (`API`) are spelled out letter by letter and not reported. The
 warning needs the voice's dictionaries, so it appears once narration has been
 downloaded.
 
-### Word cues
+### Your own narration audio
 
-A timed prop that takes a cue can start on a word of the scene's narration
-instead of a fixed ms, so the motion lands as the word is said, whatever the
-voice's pace. A cue is either a number (ms from the scene start) or an object:
+To use a recorded voice-over instead of the built-in voice, give the scene an
+`audio` with:
 
-- `word`: a word or phrase of this scene's narration. Matching ignores case and
-  the punctuation around a word (`"wagyu"` matches `Wagyu,`). A phrase
-  (`"split the bill"`) matches consecutive words and starts on its first.
-- `occurrence` (default 1): which match, counting from 1, when the word is said
-  more than once.
-- `offsetMs` (default 0): added to the word's start; negative starts early.
+- `file` (required): a `.wav` file, 16- or 24-bit PCM or 32-bit float, mono or
+  stereo, any sample rate. MP3 and AAC are not supported.
+- `words`: a `.json` file of word times, one entry per narration word, in ms
+  from the start of the audio (format below).
 
-The word is timed from the voice's own word times; with `--no-narration` or no
-cached audio, from an even estimate over the scene, like the caption. Validation
-is an error when the word (or that occurrence) is not in the scene's narration,
-or when the scene has no narration. Here `at` starts on the second "wagyu",
-100 ms early:
+Both paths are relative to the storyboard. The scene still needs its
+`narration`, written as spoken: captions, word cues and checks use its text.
+The audio sizes the scene like spoken narration (lead + audio + tail, and
+`narration-fit` applies to an explicit `durationMs`), and `narrate.ts` skips
+the scene. Captions and word cues use the words file when it has one entry per
+narration word; otherwise, or without one, the words are spread evenly over the
+audio and `scripts/check.ts` warns. Missing or unreadable files are `media`
+errors from `scripts/check.ts`, not validation errors.
 
-```json cue
+```json
 {
-  "narration": "Wagyu for four. Split the bill, not the wagyu.",
-  "at": { "word": "wagyu", "occurrence": 2, "offsetMs": -100 }
+  "id": "split",
+  "component": "BigNumber",
+  "props": { "value": 42, "prefix": "$", "label": "each, split evenly" },
+  "narration": "Split any bill in seconds, right from your phone.",
+  "audio": { "file": "audio/split.wav", "words": "audio/split.words.json" }
 }
 ```
 
-Only props that say they take a cue accept one; the component's entry below says so.
+The words file:
+
+```text
+[
+  { "text": "Split", "startMs": 200, "endMs": 452 },
+  { "text": "any", "startMs": 452, "endMs": 620 },
+  ...
+]
+```
+
+### Overlays
+
+`overlays` put a small persistent label in a corner of the safe area, such as
+"Sponsored" or "Example bill", across chosen scenes. It stays still through
+transitions and camera moves, and fades only where its run of scenes starts or
+ends. At most 3, each with:
+
+- `text` (required): at most 28 characters, drawn uppercase.
+- `corner`: `"top-left"` (the default), `"top-right"`, `"bottom-left"` or
+  `"bottom-right"`. Two overlays cannot share a corner on the same scene.
+  Bottom corners sit above the caption band.
+- `scenes`: the scene ids it shows on (default every scene).
+
+The frame checks warn (`overlay`) when a scene's own text runs under a label.
+
+```json
+{
+  "title": "Overlay corner tags",
+  "aspect": "9:16",
+  "overlays": [{ "text": "Example bill", "corner": "top-left", "scenes": ["intro"] }],
+  "scenes": [
+    { "id": "intro", "component": "Headline", "props": { "text": "Split any bill" }, "durationMs": 3000, "transition": { "type": "fade" } },
+    { "id": "outro", "component": "Headline", "props": { "text": "No more math" }, "durationMs": 3000 }
+  ]
+}
+```
+
+### Output
+
+`aspect` (required) picks the frame:
+
+- `"9:16"` (1080x1920, the primary format): Shorts, TikTok and Reels.
+- `"16:9"` (1920x1080): a landscape video; type is about 0.92x of 9:16.
+- `"4:5"` (1080x1350): feed posts and carousels. It is tall, so every
+  component uses its 9:16 layout (a `BarChart` turns horizontal, a
+  `BeforeAfter` stacks), at 9:16's type sizes, in a 952 px column with 64 px
+  margins and no button rail.
+
+```json
+{
+  "title": "A feed post",
+  "aspect": "4:5",
+  "scenes": [
+    { "id": "hook", "component": "Headline", "props": { "text": "Split any bill" }, "durationMs": 3000, "transition": { "type": "fade" } },
+    { "id": "total", "component": "BigNumber", "props": { "value": 42, "prefix": "$", "label": "each" }, "durationMs": 3000 }
+  ]
+}
+```
+
+For a carousel or still posts, `npx tsx scripts/stills.ts <storyboard.json>
+--out <dir> --slides` writes one finished PNG per scene, `<dir>/<NN>-<id>.png`
+(`NN` is the scene's position, so `03-total.png`). Each is the scene's settled
+last frame before its transition, with captions off and the camera wide.
+`--slides hook,total` picks scenes by id. It cannot be combined with `--frames`
+or `--per-scene`.
 
 `scripts/render.ts` keeps the MP4 under a size budget: `--max-mb <n>` (default
 `9.5`, under GitHub's 10 MB per video) lowers the video bitrate to fit the
@@ -353,8 +512,13 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
   `full` (the accent becomes the ground).
 - `themeOverrides`: any token of the theme, deep-merged over it:
   - `colors`: the roles `ground`, `surface`, `surfaceAlt`, `text`, `textMuted`,
-    `textSubtle`, `accent`, `accentText`, `border`, `shadow` (hex only). Keep
-    neutrals tinted, never pure `#000000` or `#ffffff`.
+    `textSubtle`, `accent`, `accentText`, `border`, `shadow`, and `positive`
+    and `negative` (good and bad marks, with `positiveText` and `negativeText`
+    for text on them) (hex only). Keep neutrals tinted, never pure `#000000` or
+    `#ffffff`. `positive` and `negative` are used by `BigNumber` `color`, scene
+    `effects` `color` and `Arrow` `color`; they must reach 3:1 on the ground
+    and surface (their text 4.5:1 on them, picked for you if you leave it out),
+    or the theme throws when the storyboard is checked or rendered.
   - `ground.style`: `solid` (flat, the light theme's), `vignette`, `grid` (a
     faint dot grid that breathes, 1.00 -> 1.04 over 8 s), `noise` (still
     grain) or `mesh` (three soft blobs of the accent and a tint of it drifting
@@ -369,7 +533,10 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     default sans), `mc-mono` (Source Code Pro, the default mono), and `mc-geist`
     and `mc-geist-mono` (Geist and Geist Mono, an alternative). All four are
     variable fonts, so every weight is drawn as itself. There is no serif;
-    emphasis is weight or the accent color.
+    emphasis is weight or the accent color. A stack may name only bundled
+    fonts, brand fonts declared in `fonts` (below), CSS generic families and
+    the system fonts of the built-in stacks; any other family (`"Inter"`) is a
+    validation error.
   - `type`: the type ramp (below). Override a step per aspect, e.g.
     `{ "type": { "headline": { "9:16": { "size": 104 } } } }`.
   - `weights`: the five weights, `regular` 400, `medium` 500, `semibold` 600,
@@ -415,6 +582,42 @@ shows as a burnt orange in text and as itself in fills, rings and icons.
     reaching `platePadY` and `platePadX` px past the word); `strokePx`, the
     punch style's outline (16).
 
+Deeper good and bad colors on the light theme:
+
+```json
+{ "themeOverrides": { "colors": { "positive": "#0f7a3d", "negative": "#b42318" } } }
+```
+
+### Brand fonts
+
+To set the video in the brand's own font, declare its file in the top-level
+`fonts`, then name it in `themeOverrides.fonts`. Each entry is one file:
+
+- `name` (required): the family name you use in `themeOverrides.fonts`. Not a
+  bundled font's name or a CSS generic family.
+- `file` (required): a `.woff2`, `.woff`, `.ttf` or `.otf` file, relative to
+  the storyboard.
+- `license` (required): `"OFL-1.1"`, `"Apache-2.0"`, `"MIT"`, `"CC0-1.0"` or
+  `"UFL-1.0"`. Never a GPL or personal-use font.
+- `weights`: `[min, max]` from 1 to 1000 (default `[400, 400]`); a variable
+  font gives its range.
+- `italic`: `true` for an italic face (default `false`).
+
+A family split over several files (regular, bold, italic) is several entries
+with the same `name` and weights that do not overlap. The bundled sans (or
+mono) and the system stack are added after a brand font, so a missing glyph
+still draws. `scripts/check.ts` reports a missing or broken font file as a
+`brand-font` error, and warns whenever a brand font is used: text fitting
+measures the bundled fonts, so open the stills and look for text that
+overflows or wraps badly.
+
+```json
+{
+  "fonts": [{ "name": "Splitly Sans", "file": "media/brand-sans.woff2", "license": "OFL-1.1", "weights": [100, 900] }],
+  "themeOverrides": { "fonts": { "display": "Splitly Sans", "body": "Splitly Sans" } }
+}
+```
+
 ### The type ramp
 
 Every piece of text in the kit is set in one step of one ramp, with that
@@ -422,6 +625,7 @@ step's size, weight, tracking and line height; nothing else picks a size.
 Components that need to fit long text step down the ramp (a long title goes
 from `display` to `headline` to `title`), so sizes always stay on it. 16:9 is
 about 0.92x of 9:16, never smaller: a 16:9 video is shown smaller on a phone.
+4:5 uses the 9:16 sizes.
 
 | Step | Used for | 9:16 px | 16:9 px | Weight | Tracking | Line height |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -462,6 +666,11 @@ takes a color, pass a role name such as `"accent"`, or leave it out.
 | "rounder" / "sharper" | `"themeOverrides": { "radius": { "md": 40 } }` / `{ "radius": { "md": 8 } }` |
 | "use Geist" | `"themeOverrides": { "fonts": { "display": "mc-geist, sans-serif", "body": "mc-geist, sans-serif", "mono": "mc-geist-mono, monospace" } }` |
 | "bigger headlines" | `"themeOverrides": { "type": { "headline": { "9:16": { "size": 104 }, "16:9": { "size": 96 } } } }` |
+| "use our brand font" | `"fonts": [{ "name": "Brand Sans", "file": "media/brand-sans.woff2", "license": "OFL-1.1" }]` and `"themeOverrides": { "fonts": { "display": "Brand Sans", "body": "Brand Sans" } }` |
+| "green for good, red for bad" | `"themeOverrides": { "colors": { "positive": "#0f7a3d", "negative": "#b42318" } }`, then `"color": "positive"` on a `BigNumber` |
+| "make it a TikTok" | `"aspect": "9:16"`, `"safe": "tiktok"` |
+| "for an Instagram feed post" / "a carousel" | `"aspect": "4:5"`; for still slides, `scripts/stills.ts --slides` |
+| "talk a bit faster" | `"voiceSpeed": 1.15` |
 
 "Use a dark theme, with lots of orange":
 
@@ -506,20 +715,30 @@ checks.
   - `transition` (warn): a boundary has no chosen transition.
   - `theme-color` (warn): a color in props is not a theme token or a color the
     storyboard set (`accent`, `themeOverrides.colors`).
-  - `media` (error): a `VideoClip` or `Image` file is missing or unreadable.
+  - `media` (error): a `VideoClip` or `Image` file, a `TitleCard` or `EndCard`
+    `logo`, or a scene's `audio` file or words file is missing or unreadable.
     Paths resolve from the storyboard's folder. Frames are not checked until
-    these are fixed.
+    these are fixed. It warns when an `audio` scene has no words file, or its
+    words do not match the narration.
+  - `brand-font` (error): a `fonts` file is missing or is not a font file.
+    (warn): a brand font is in use, so look at the stills for text that
+    overflows.
   - `narration-fit` (error): a scene's `durationMs` is shorter than its lead
     + narration audio + tail (needs the narration spoken first). Lengthen the
     scene or remove `durationMs`.
   - `narration-guess` (warn): a narration word the voice will guess from its
     letters. Listen to it; if it is wrong, add it to `pronounce`.
+  - `receipt-total` (warn): a `Receipt`'s items and summary rows do not add up
+    to its total (or its items to a "Subtotal" row).
+  - `headline-lines` (warn): a `Headline` or `TitleCard` line lands after the
+    scene starts to leave. Cue it earlier or lengthen the scene.
 - **Frame checks** on the start, middle and end of every scene: `overflow`
   (text clipped or off frame), `safe-area` (inside the `safe` profile's UI-free
   zone, with text also off the 9:16 button rail), `contrast` (WCAG) and
   `readability` (time on screen for the words shown). `type-scale` (warn)
   reports rendered text whose size is not a step of the type ramp; text a
-  terminal or code window shrank to fit is allowed. `centering` (warn, 9:16)
+  terminal or code window shrank to fit is allowed. `overlay` (warn) reports
+  scene text that runs under an `overlays` label. `centering` (warn, 9:16 and 4:5)
   reports a scene whose main block (its cards, windows and text blocks
   together, without the caption) is more than 8 px off the frame's center line.
   `opening` (warn) renders frame 0 and reports it when it shows no text (the
@@ -532,8 +751,8 @@ Warnings do not fail the run, but treat them as mistakes unless you meant it.
 ## 5. Component catalog
 
 Every component takes the storyboard props listed here; `progress`, `theme`,
-`aspect` and `area` are supplied by the renderer. All of them lay out in both
-9:16 and 16:9. Icons are names from the bundled set: `chat`, `terminal`,
+`aspect` and `area` are supplied by the renderer. All of them lay out in 9:16,
+16:9 and 4:5. Icons are names from the bundled set: `chat`, `terminal`,
 `code`, `check`, `shield`, `cloud`, `laptop`, `box`, `play`, `search`, `file`,
 `user`, `users`, `lock`, `zap`, `chart`, `clock`, `globe`, `mail`,
 `git-branch`, `settings`, `star`, `arrow-right`, `sparkles` (and the rest of
@@ -547,7 +766,14 @@ Every component takes the storyboard props listed here; `progress`, `theme`,
 A title with an optional `kicker` above and `subtitle` below. Openers, chapter
 cards and endings. The lines land one after another; the title lands as a
 whole unless `titleMotion` says `"words"` or `"chars"` (see `Headline`), and
-takes `emphasis`, `mark` and `markStyle` like a `Headline`.
+takes `emphasis`, `mark` and `markStyle` like a `Headline`. `lines` replaces
+`title` with 2-4 lines that land one at a time, each on its own cue (see
+`Headline`); the subtitle waits for them.
+
+`logo` puts a small image mark above the kicker: a `.png`, `.jpg`, `.jpeg`,
+`.svg` or `.webp` file, its path relative to the storyboard's folder like a
+media `src`. The `media` check reports it when the file is missing. The logo
+pops in first, then the lines follow.
 
 ```json
 {
@@ -581,6 +807,29 @@ card arrives.
 }
 ```
 
+`logo` draws an image in the mark instead of the icon, with the same file
+rules as `TitleCard`'s: relative to the storyboard's folder, checked by the
+`media` check. Set `logo` or `icon`, not both. `cta` adds a call to action
+under the lines: an accent pill with a `label` (at most 32 characters) and an
+optional small `note` under it. The pill pops in after the last line and
+pulses once; a `card` waits for it.
+
+```json
+{
+  "id": "end",
+  "component": "EndCard",
+  "props": {
+    "name": "Splitly",
+    "logo": "media/logo.svg",
+    "line": "Split your next bill",
+    "accent": "Free forever",
+    "cta": { "label": "Download free · iOS & Android", "note": "Link in bio" }
+  },
+  "narration": "Split your next bill. It is free, forever.",
+  "durationMs": 6000
+}
+```
+
 #### `Headline`
 
 One line of big text on its own: a hook, an end line, or a statement in
@@ -597,6 +846,14 @@ fits (`role` starts it lower: `display`, `headline` or `title`).
   landed; `markStyle` `"bar"` (default) or `"underline"`. One mark per scene,
   never on an emphasized word. `Section`, `SceneFrame` and `TitleCard` take
   the same three props for their headline.
+- `lines`: 2-4 lines in place of `text`, landing one at a time, each with
+  `motion`. A line's `at` is when it starts: ms from the scene's start or a
+  word cue (see "Word cues"). A line without `at` follows the line before it.
+  Cues must increase. With `lines`, `emphasis` is a line index (that line in
+  the accent), and `mark` sweeps under its word in the first line that has
+  it. `TitleCard` takes `lines` too; `Section`, `SceneFrame` and `EndCard` do
+  not. `scripts/check.ts` warns when a line lands after the scene starts to
+  leave.
 
 ```json
 {
@@ -607,11 +864,30 @@ fits (`role` starts it lower: `display`, `headline` or `title`).
 }
 ```
 
+Line by line, each line on the word that says it:
+
+```json
+{
+  "id": "hook",
+  "component": "Headline",
+  "props": {
+    "lines": [
+      { "text": "Dinner was $184.", "at": { "word": "Dinner" } },
+      { "text": "Four friends.", "at": { "word": "Four friends" } },
+      { "text": "Who owes what?", "at": { "word": "Who owes" } }
+    ],
+    "motion": "words",
+    "emphasis": 2
+  },
+  "narration": "Dinner was a hundred and eighty four dollars. Four friends. Who owes what?"
+}
+```
+
 #### `Caption`
 
 Text a page of a few words at a time, the word being spoken lit in the accent
-(see "Captions" in section 2), with an optional `captionStyle` (`"standard"`
-or `"punch"`). Narration is captioned automatically; use `Caption` only for a
+(see "Captions" in section 2), with an optional `captionStyle` (`"standard"`,
+`"punch"` or `"pill"`). Narration is captioned automatically; use `Caption` only for a
 text-only beat.
 
 ```json
@@ -628,7 +904,9 @@ text-only beat.
 A number that rolls into place like an odometer, with `prefix`, `suffix`,
 `decimals` and a `label`. Its digits roll in from the right, an accent bar
 fills under it, and as it lands it pops, a shine crosses it and the `suffix`
-(the unit) fades in.
+(the unit) fades in. `color` is `"accent"` (default), `"positive"` or
+`"negative"`, deepened in the text until it reads; `shareId` makes it a target
+for scene `effects`.
 
 ```json
 {
@@ -639,10 +917,31 @@ fills under it, and as it lands it pops, a shine crosses it and the `suffix`
 }
 ```
 
+To show a change, give the old value as `from` (it must differ from `value`).
+At `at` (default 600 ms; takes a word cue) a line strikes through the old
+value, the number counts to `value` over 900 ms, then pops. `fromStyle`
+`"strike"` (default) keeps the struck value small and muted above the new
+one; `"replace"` fades it out before the count. `fromStyle` and `at` need
+`from`. Keep `at` early: the change takes about 1.2 s after it (1.4 s for
+`replace`) and must land before the scene starts to leave, or the render
+stops. Validation does not check `at`; `scripts/check.ts` does (a word not in
+the narration, a strike that lands too late).
+
+```json
+{
+  "id": "fees",
+  "component": "BigNumber",
+  "props": { "value": 4.5, "from": 2.25, "decimals": 2, "prefix": "$", "fromStyle": "replace", "color": "negative", "at": { "word": "doubled" }, "label": "Card fees per payment" },
+  "narration": "Card fees doubled overnight, and nobody told you.",
+  "durationMs": 4500
+}
+```
+
 #### `StepList`
 
 2-6 short steps in order, with an optional `title`, a `highlight` index drawn
-in the accent, and `marker` `"number"` (default) or `"dot"`.
+in the accent, and `marker` `"number"` (default) or `"dot"`. `shareIds` (one
+per step) make single steps targets for scene `effects`.
 
 ```json
 {
@@ -665,6 +964,173 @@ lights up, one node at a time, for as long as the scene holds.
   "component": "FlowDiagram",
   "props": { "nodes": ["Commit", "Build", "Deploy"], "caption": "Every push, automatically" },
   "narration": "Every push is built and deployed automatically."
+}
+```
+
+#### `Annotate`
+
+A sentence with one phrase marked by hand and a short note pointing at it, for
+the point a viewer should remember. `text` is one or two lines (`\n` breaks
+it); `mark` is a phrase that occurs in `text` exactly, case included, on one
+line; `note` is at most 40 characters. `markStyle` is `"underline"` (default),
+`"circle"` or `"highlight"`; `notePosition` is `"below"` (default) or
+`"above"`; `seed` varies the strokes. The sentence lands, the mark draws over
+the phrase from about 700 ms, then a line draws to the note; settled by about
+1.4 s.
+
+```json
+{
+  "id": "note",
+  "component": "Annotate",
+  "props": { "text": "Ship the story, not the spec", "mark": "story", "note": "what people remember" },
+  "narration": "Ship the story, not the spec. The story is what people remember."
+}
+```
+
+#### `ScrambleText`
+
+A short line that decodes out of random characters, in the mono font: a
+command, a code name, a reveal. `text` is 1-40 characters on one line (it
+shrinks to fit, never wraps). `style` is `"clean"` (default) or `"terminal"`
+(a framed prompt with a blinking caret); `label` is a small line that fades
+in once the text has locked; `seed` varies the wrong characters. It scrambles
+from 150 ms, then locks left to right, done by about 1.7 s.
+
+```json
+{
+  "id": "decode",
+  "component": "ScrambleText",
+  "props": { "text": "npm run render", "style": "terminal", "label": "Renders on your machine" },
+  "narration": "One command renders the whole video on your machine."
+}
+```
+
+#### `WordSwap`
+
+One line with a slot that rolls through words ("Ship faster", "smarter",
+"together"). `options` holds 2-6 one-line words, shown in order and settling on
+the last, in the accent; `prefix` and `suffix` are the still text around the
+slot. `cuesMs` sets when each swap starts: one ascending ms value per option
+after the first, from the scene's start. They are plain ms, not word cues.
+Left out, the swaps spread so the last lands by 60% of the scene, at least
+450 ms apart.
+
+```json
+{
+  "id": "swap",
+  "component": "WordSwap",
+  "props": { "prefix": "Built for", "options": ["teams", "launches", "everyone"], "cuesMs": [900, 1600] },
+  "narration": "Built for teams, for launches, for everyone.",
+  "durationMs": 4000
+}
+```
+
+#### `Receipt`
+
+An itemized bill that prints in line by line on a tilted paper card, in the
+mono font. `items` (1-12) each have a `label`, an `amount` and an optional
+`note` under the label; `summary` adds up to 4 rows such as Subtotal, Tax and
+Tip; `total` has an `amount` and a `label` (default "Total"). `title` is the
+merchant line, `highlight` an item index marked in the accent, `tilt` the
+angle in degrees (-4 to 4, default -2). Amounts use `prefix` (default `"$"`),
+`suffix` and `decimals` (default 2). The total pops last, by about 2.2 s.
+`scripts/check.ts` warns when the items and summary do not add up to the
+total; a row labelled Subtotal is checked against the items, not added again.
+
+```json
+{
+  "id": "bill",
+  "component": "Receipt",
+  "props": {
+    "title": "Trattoria Roma",
+    "items": [
+      { "label": "Margherita pizza", "amount": 14.5 },
+      { "label": "Truffle pasta", "amount": 22 },
+      { "label": "Caesar salad", "amount": 11.25, "note": "no croutons" }
+    ],
+    "summary": [{ "label": "Subtotal", "amount": 47.75 }, { "label": "Tip", "amount": 8 }],
+    "total": { "amount": 55.75 },
+    "highlight": 1
+  },
+  "narration": "Here is the bill. The truffle pasta was the big one.",
+  "durationMs": 6000
+}
+```
+
+### Charts
+
+`DonutChart`, `BarChart` and `LineChart` share one vocabulary. `data` is a
+list of `{ "label", "value" }` items (1-12, each value 0 or more). One item may
+set `"emphasis": true` to take the accent; with none, the largest value takes
+it. The rest are shades of the ink. Values are shown with `prefix`, `suffix`
+and `decimals` (default 0), with thousands separators (`$1,250`). Each takes
+an optional `title`, can sit in a `Section`'s content, and fades out at the
+scene's exit. None takes a cue.
+
+#### `DonutChart`
+
+Shares of a whole: `data` (1-8 items, at least one above 0) as ring segments
+clockwise from 12 o'clock, with a legend. `center` (`{ "value", "label" }`)
+is the text in the hole; by default it is the emphasized item's percent and
+label. A number in `center.value` counts up, prefix and unit kept
+(`"$3.25M"`). The ring sweeps in from 300 ms, settled by about 1.9 s. The
+legend sits beside the ring in 16:9 and below it in 9:16 and 4:5.
+
+```json
+{
+  "id": "share",
+  "component": "DonutChart",
+  "props": {
+    "title": "Market share, 2026",
+    "data": [{ "label": "Acme", "value": 42, "emphasis": true }, { "label": "Globex", "value": 27 }, { "label": "Initech", "value": 19 }, { "label": "Other", "value": 12 }],
+    "suffix": "%"
+  },
+  "narration": "Acme now holds forty-two percent of the market.",
+  "durationMs": 6000
+}
+```
+
+#### `BarChart`
+
+Values side by side: bars grow in a cascade and their values count up,
+landed by about 1.2 s. `orientation` is `"vertical"` (the 16:9 default) or
+`"horizontal"` (the 9:16 and 4:5 default). `max` is the full length (default:
+a round number at or above the largest value); larger values stop at full
+length. `variant` `"progress"` draws one labelled track per item instead,
+always horizontal, filling to `max` (default 100), for completion and scores.
+
+```json
+{
+  "id": "revenue",
+  "component": "BarChart",
+  "props": {
+    "title": "Revenue by month, 2026",
+    "data": [{ "label": "Jan", "value": 480 }, { "label": "Feb", "value": 720 }, { "label": "Mar", "value": 1250, "emphasis": true }, { "label": "Apr", "value": 960 }, { "label": "May", "value": 610 }],
+    "prefix": "$"
+  },
+  "narration": "March was our best month, at twelve hundred and fifty dollars.",
+  "durationMs": 6000
+}
+```
+
+#### `LineChart`
+
+A trend: `data` (2-12 points, left to right) as a line that draws from 150 ms
+over 1.2 s, each point popping as the line reaches it. The emphasized point
+gets an accent chip with its value, and the last point shows its value too;
+settled by about 1.85 s. `areaFill` (default `true`) shades under the line.
+`max` is the top of the axis and must be at least the largest value.
+
+```json
+{
+  "id": "signups",
+  "component": "LineChart",
+  "props": {
+    "title": "Monthly signups, 2026",
+    "data": [{ "label": "Jan", "value": 1200 }, { "label": "Feb", "value": 1850 }, { "label": "Mar", "value": 1540 }, { "label": "Apr", "value": 3120, "emphasis": true }, { "label": "May", "value": 2680 }, { "label": "Jun", "value": 3460 }]
+  },
+  "narration": "Signups jumped in April and kept climbing.",
+  "durationMs": 6000
 }
 ```
 
@@ -746,6 +1212,34 @@ window sits back and the content in front; a shot onto the docked window's
     "content": { "component": "FeatureList", "props": { "items": [{ "icon": "check", "text": "All green" }, { "icon": "clock", "text": "Under a minute" }] } }
   },
   "narration": "All forty-two tests pass in under a minute."
+}
+```
+
+#### `BeforeAfter`
+
+Two states of one thing in one card, revealed by a wipe. `before` and `after`
+are components (`{ "component": ..., "props": ... }`). The card shows
+`before`, then an accent divider sweeps across to show `after` and comes to
+rest at `split` (0.2-0.8 of the way, default 0.5), by about 2 s. `direction`
+is `"horizontal"` (the 16:9 default, `after` from the left) or `"vertical"`
+(the 9:16 and 4:5 default, `after` from the top). `beforeLabel` and
+`afterLabel` (default "Before" and "After"; `""` hides one) are the chips.
+Each side lays out in its own half, which is short in 9:16, so keep each side
+small: two list items, not three. Two full-frame `Image`s give the classic
+photo wipe.
+
+```json
+{
+  "id": "compare",
+  "component": "BeforeAfter",
+  "props": {
+    "before": { "component": "StepList", "props": { "items": ["Animate by hand", "Export again"] } },
+    "after": { "component": "StepList", "props": { "items": ["Write one prompt", "Render"], "highlight": 1 } },
+    "beforeLabel": "By hand",
+    "afterLabel": "With motioncraft"
+  },
+  "narration": "Before, every change meant animating by hand. Now it is one prompt and a render.",
+  "durationMs": 7000
 }
 ```
 
@@ -917,6 +1411,25 @@ Once drawn, an accent dot flows along it every 1.4 s.
 }
 ```
 
+#### `StrokeTrace`
+
+An icon or line drawing that draws itself stroke by stroke behind an accent
+pen dot, for a mark that builds or a hand-drawn idea. Give exactly one of
+`icon` (a bundled icon name) or `paths` (1-12 SVG path strings in a 24 x 24
+box). `label` rises in under the drawing once it is drawn; `fill` (default
+`false`) fills closed shapes with a pale accent; `"nib": false` hides the pen
+dot. It draws from 150 ms over 1.4 s, settled by about 1.8 s.
+
+```json
+{
+  "id": "house",
+  "component": "StrokeTrace",
+  "props": { "paths": ["M3 11 12 3l9 8v10H3Z", "M10 21v-6h4v6"], "fill": true, "label": "Home, drawn by hand" },
+  "narration": "Every line of it is drawn in code.",
+  "durationMs": 4000
+}
+```
+
 #### `Handoff`
 
 One thing handed to another: a source component `from` (a prompt `Card`, say)
@@ -947,7 +1460,7 @@ Under a moving camera the source floats a little nearer than the receiver.
 One card: `icon`, `title`, `subtitle`, an optional `step` number, and
 `highlighted` for the accent fill. A title alone is a label, centered under its
 icon. With a subtitle the text stays left-aligned and the card hugs it,
-centered as a block.
+centered as a block. `shareId` makes it a target for scene `effects`.
 
 ```json
 {
@@ -1013,6 +1526,32 @@ accent after they land.
     ]
   },
   "narration": "Fast builds, private by default, and it runs anywhere."
+}
+```
+
+#### `Notification`
+
+Phone-style banners that drop in from the top: an alert, a message, a "done".
+`notifications` holds 1-3 banners in drop order (the newest lands on top and
+pushes the others down), each with `app`, `title`, an optional one-line
+`body`, an `icon` (default `zap`) and a `time`. `content` is a component drawn
+behind them. `atMs` gives each banner's drop time, one per banner, in order;
+they are plain ms, not word cues. By default the first drops at 400 ms, then
+one every 900 ms. Full width in 9:16 and 4:5, a column at the right in 16:9.
+
+```json
+{
+  "id": "ping",
+  "component": "Notification",
+  "props": {
+    "notifications": [
+      { "app": "Deploys", "title": "Deploy finished", "body": "web-app is live on production", "icon": "check", "time": "2m ago" },
+      { "app": "Messages", "title": "New message from Maya", "body": "Is the intro ready to ship?", "icon": "chat", "time": "now" }
+    ],
+    "content": { "component": "TerminalWindow", "props": { "lines": [{ "prompt": true, "text": "npm run deploy" }, { "text": "done in 4.2s" }] } }
+  },
+  "narration": "The deploy finishes, and the questions start right away.",
+  "durationMs": 7500
 }
 ```
 
