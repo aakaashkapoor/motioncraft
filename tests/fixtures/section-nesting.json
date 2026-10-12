@@ -433,6 +433,25 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "notification",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A notification in the slot",
+        "content": {
+          "component": "Notification",
+          "props": {
+            "notifications": [
+              { "app": "Deploys", "title": "Deploy finished", "body": "web-app is live", "icon": "check", "time": "now" },
+              { "app": "Messages", "title": "New message", "body": "Is the intro ready?", "icon": "chat", "time": "now" }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

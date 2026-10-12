@@ -123,6 +123,8 @@ export { HEADLINE_MOTIONS, HEADLINE_ROLES, Headline, HeadlineText, MARK_STYLES, 
 export { SceneFrame, frameLineSpec, sceneFrameLayout, sceneFrameTiming, type SceneFrameLayout, type SceneFrameProps, type SceneFrameText, type SceneFrameTiming } from "./kit/SceneFrame";
 export { PromptCard, promptCardLayout, promptCardTiming, type PromptCardLayout, type PromptCardProps, type PromptCardTiming } from "./kit/PromptCard";
 export { Receipt, type ReceiptProps } from "./kit/Receipt";
+export { Notification, type NotificationProps } from "./kit/Notification";
+export { NOTIFICATION_DROP_MS, NOTIFICATION_MAX, bannerPoses, dropProgress, notificationErrors, notificationLayout, notificationTiming, type BannerPose, type NotificationItem, type NotificationLayout, type NotificationTiming } from "./kit/notificationPlan";
 export { RECEIPT_MAX_ITEMS, RECEIPT_MAX_SUMMARY, RECEIPT_MAX_TILT, receiptErrors, receiptLayout, receiptLines, receiptTiming, type ReceiptData, type ReceiptItem, type ReceiptLayout, type ReceiptLine, type ReceiptRow, type ReceiptTiming } from "./kit/receiptPlan";
 export { receiptTotalWarnings } from "./checks/receiptTotals";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
