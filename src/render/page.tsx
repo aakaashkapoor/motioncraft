@@ -13,7 +13,8 @@ import type { FrameMeasurement } from "../checks/types";
 import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type SceneDurations, type Timeline } from "../engine/timeline";
 import { Caption, kit } from "../kit";
 import type { PageNarration } from "../narration/types";
-import { SceneClockContext } from "../kit/frameContext";
+import { SceneClockContext, SceneWordsContext } from "../kit/frameContext";
+import { sceneWords } from "../kit/sceneWords";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
 import { WIDE_SHOT, opensSettled, type Storyboard } from "../storyboard/types";
@@ -100,11 +101,15 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
     targets: targets?.get(active.sceneIndex),
     mode: camera,
   });
+  // Word cues resolve against these: the voice's words, or an even estimate without cached audio.
+  const words = scene.narration === undefined ? [] : sceneWords(theme, scene.narration, ((active.sceneFrames - 1) * 1000) / fps, narration?.[scene.id]?.words);
   const content = (
     <SceneClockContext.Provider value={{ fps, frame: active.localFrame, frames: active.sceneFrames, settled: opensSettled(storyboard, active.sceneIndex) }}>
-      <CameraWorld view={view} aspect={aspect}>
-        <Component {...scene.props} {...common} />
-      </CameraWorld>
+      <SceneWordsContext.Provider value={words}>
+        <CameraWorld view={view} aspect={aspect}>
+          <Component {...scene.props} {...common} />
+        </CameraWorld>
+      </SceneWordsContext.Provider>
       {scene.narration !== undefined && storyboard.captionStyle !== "off" && (
         <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
           <Caption {...common} text={scene.narration} captionStyle={storyboard.captionStyle} words={narration?.[scene.id]?.words} />

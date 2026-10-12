@@ -1,11 +1,12 @@
 // What a component can learn about where and when it is drawn, beyond its
 // props: the scene clock (for motion and for media that must show an exact
 // moment) and the part of its frame that is visible (all of it, or a window's
-// content box).
+// content box), and the scene's narration words (for word cues).
 
 import { createContext, createElement, useContext, type ReactNode } from "react";
 import { frameSize, type Rect } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
+import type { TimedWord } from "./captionWords";
 
 export interface SceneClock {
   fps: number;
@@ -76,6 +77,24 @@ const MotionDelayContext = createContext(0);
 export function MotionDelay({ ms, children }: { ms: number; children?: ReactNode }) {
   const outer = useContext(MotionDelayContext);
   return createElement(MotionDelayContext.Provider, { value: outer + ms }, children);
+}
+
+/** The total `MotionDelay` around the component, in ms. */
+export function useMotionDelay(): number {
+  return useContext(MotionDelayContext);
+}
+
+/**
+ * The scene's narration words on the scene clock (see `sceneWords`): the
+ * voice's measured times, or an even estimate without audio. Provided by the
+ * render page per scene (empty for a scene without narration); absent when a
+ * component is drawn on its own.
+ */
+export const SceneWordsContext = createContext<readonly TimedWord[] | undefined>(undefined);
+
+/** The scene's narration words on the scene clock; none when drawn on its own. */
+export function useSceneWords(): readonly TimedWord[] {
+  return useContext(SceneWordsContext) ?? [];
 }
 
 /**
