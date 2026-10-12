@@ -101,6 +101,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
     after: { component: "StepList", props: { items: ["Describe it", "Render"] } },
   },
   ScrambleText: { text: "npm run render", style: "terminal", label: "Renders in 4.2 s" },
+  WordSwap: { prefix: "Ship", options: ["faster", "smarter", "together"], cuesMs: [800, 1300] },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 

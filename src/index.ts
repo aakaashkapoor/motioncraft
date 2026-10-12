@@ -136,6 +136,7 @@ export { receiptTotalWarnings } from "./checks/receiptTotals";
 export { STROKE_TRACE_MAX_PATHS, StrokeTrace, strokeTraceErrors, strokeTraceLayout, strokeTracePaths, strokeTraceTiming, type StrokeTraceLayout, type StrokeTraceProps, type StrokeTraceTiming } from "./kit/StrokeTrace";
 export { pathLength } from "./kit/pathLength";
 export { SCRAMBLE_GLYPHS, SCRAMBLE_TEXT_MAX_CHARS, SCRAMBLE_TEXT_STYLES, ScrambleText, scrambleTextAccent, scrambleTextErrors, scrambleTextLayout, scrambleTextLine, scrambleTextTiming, type ScrambleSlot, type ScrambleSlotState, type ScrambleTextLayout, type ScrambleTextProps, type ScrambleTextStyle, type ScrambleTextTiming } from "./kit/ScrambleText";
+export { WORD_SWAP_MAX_OPTIONS, WORD_SWAP_MIN_OPTIONS, WORD_SWAP_MS, WordSwap, wordSwapCues, wordSwapEm, wordSwapErrors, wordSwapLayout, wordSwapWords, type WordSwapLayout, type WordSwapProps, type WordSwapWord } from "./kit/WordSwap";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
 export { MotionDelay, NOMINAL_SCENE_MS, OPENING_SETTLE_MS, entering, SceneClockContext, SceneWordsContext, useMotionDelay, useSceneMs, useSceneTime, useSceneWords, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { cueErrors, resolveCue, useCueMs, type Cue } from "./kit/cues";

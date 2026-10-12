@@ -30,6 +30,7 @@ import { StrokeTrace } from "./StrokeTrace";
 import { Annotate } from "./Annotate";
 import { BeforeAfter } from "./BeforeAfter";
 import { ScrambleText } from "./ScrambleText";
+import { WordSwap } from "./WordSwap";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -80,4 +81,5 @@ export const kit: Record<string, KitComponent> = {
   Annotate: asKitComponent(Annotate),
   BeforeAfter: asKitComponent(BeforeAfter),
   ScrambleText: asKitComponent(ScrambleText),
+  WordSwap: asKitComponent(WordSwap),
 };
