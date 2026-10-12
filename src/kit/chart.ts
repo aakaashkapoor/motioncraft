@@ -23,15 +23,37 @@ export function formatChartValue(value: number, format: ChartValueFormat): strin
   return `${format.prefix ?? ""}${body}${format.suffix ?? ""}`;
 }
 
-/** The smallest 1, 2, 2.5 or 5 x 10^n that is >= `max` (1 when `max` <= 0). */
+/**
+ * The axis steps per decade. Each is at most 1.25x the one before, so the
+ * largest value always reaches 80% of the track or more.
+ */
+const NICE_STEPS = [1, 1.2, 1.5, 1.6, 2, 2.5, 3, 3.5, 4, 5, 6, 6.5, 8, 10];
+
+/** The smallest `NICE_STEPS` x 10^n that is >= `max` (1 when `max` <= 0). */
 export function niceMax(max: number): number {
   if (!Number.isFinite(max) || max <= 0) return 1;
   const exponent = Math.floor(Math.log10(max));
-  for (const step of [1, 2, 2.5, 5, 10]) {
+  for (const step of NICE_STEPS) {
     const candidate = Number((step * 10 ** exponent).toPrecision(12));
     if (candidate >= max) return candidate;
   }
   return 10 ** (exponent + 1);
+}
+
+/** Significant digits of `n` (up to 12). */
+function significantDigits(n: number): number {
+  for (let digits = 1; digits < 12; digits++) if (Number(n.toPrecision(digits)) === Number(n.toPrecision(12))) return digits;
+  return 12;
+}
+
+/**
+ * Where the gridlines go, as shares of `max` (the zero line is the baseline):
+ * 4 or 5 even steps, whichever step is rounder (fewer significant digits; 4 on
+ * a tie). `1500` -> five steps of 300, `1200` -> four of 300.
+ */
+export function gridShares(max: number): number[] {
+  const count = significantDigits(max / 5) < significantDigits(max / 4) ? 5 : 4;
+  return Array.from({ length: count }, (_, i) => (i + 1) / count);
 }
 
 /** Problems with a chart's `data` prop; `[]` when it is fine. */

@@ -76,7 +76,7 @@ describe("LineChart", () => {
     const base = layout.plot.y + layout.plot.height;
     const steps = drawn.slice(1).map((p, i) => p.cx - drawn[i]!.cx);
     for (const step of steps) expect(step).toBeCloseTo(steps[0]!, 1);
-    expect(layout.max).toBe(500);
+    expect(layout.max).toBe(350);
     MONTHS.data.forEach((d, i) => {
       expect((base - drawn[i]!.cy) / layout.plot.height).toBeCloseTo(d.value / layout.max, 2);
     });
@@ -155,5 +155,11 @@ describe("LineChart", () => {
     expect(lineChartErrors({ data: [{ label: "A", value: 1 }, { label: "B", value: 5 }], max: 4 })).not.toEqual([]);
     expect(lineChartErrors({ data: [{ label: "A", value: 1 }, { label: "B", value: 5 }], areaFill: "yes" })).not.toEqual([]);
     expect(lineChartErrors({ data: [{ label: "A", value: 1 }, { label: "B", value: 5 }] })).toEqual([]);
+  });
+});
+
+describe("LineChart scale", () => {
+  it("scales to the finer nice max: 340 tops out at 350, not 500", () => {
+    expect(lineChartLayout(lightTheme, "16:9", MONTHS).max).toBe(350);
   });
 });

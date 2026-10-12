@@ -5,6 +5,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ASPECTS, BarChart, SceneClockContext, barChartErrors, barChartLayout, lightTheme, type Aspect, type BarChartProps } from "../src/index";
+import { gridShares } from "../src/kit/chart";
 
 const FPS = 30;
 const FRAMES = 150;
@@ -88,7 +89,7 @@ describe("BarChart", () => {
     for (const props of [REVENUE, { ...REVENUE, orientation: "vertical" as const }, { ...REVENUE, orientation: "horizontal" as const }, PROGRESS]) {
       const html = draw(props, HOLD, aspect);
       const plot = plotLength(html);
-      const max = props.variant === "progress" ? 100 : 2000;
+      const max = props.variant === "progress" ? 100 : 1500;
       for (const bar of bars(html)) {
         expect(bar.visible).toBeCloseTo(bar.length, 1);
         expect(Math.abs(bar.length / plot - props.data[bar.index]!.value / max)).toBeLessThan(0.005);
@@ -134,9 +135,9 @@ describe("BarChart", () => {
   });
 
   it("defaults max to the nice max of the largest value, 100 for progress, and honors `max`", () => {
-    expect(barChartLayout(lightTheme, "16:9", REVENUE).max).toBe(2000);
+    expect(barChartLayout(lightTheme, "16:9", REVENUE).max).toBe(1500);
     expect(barChartLayout(lightTheme, "16:9", PROGRESS).max).toBe(100);
-    expect(barChartLayout(lightTheme, "16:9", { ...REVENUE, max: 1500 }).max).toBe(1500);
+    expect(barChartLayout(lightTheme, "16:9", { ...REVENUE, max: 2000 }).max).toBe(2000);
     const html = draw({ ...PROGRESS, max: 200 }, HOLD);
     const [first] = bars(html);
     expect(first!.length / plotLength(html)).toBeCloseTo(37.5 / 200, 2);
@@ -163,5 +164,22 @@ describe("BarChart", () => {
     expect(barChartErrors({ data: [{ label: "A", value: 1 }], orientation: "diagonal" })).not.toEqual([]);
     expect(barChartErrors({ data: [{ label: "A", value: 1 }], max: 0 })).not.toEqual([]);
     expect(barChartErrors({ data: [{ label: "A", value: 1 }] })).toEqual([]);
+  });
+});
+
+describe("BarChart fills its track", () => {
+  it("scales to the finer nice max, so the tallest bar reaches 80% of the track or more", () => {
+    for (const aspect of ASPECTS) {
+      const layout = barChartLayout(lightTheme, aspect, REVENUE);
+      expect(layout.max).toBe(1500);
+      const tallest = Math.max(...layout.bars.map((b) => b.length));
+      expect(tallest / layout.length, aspect).toBeGreaterThanOrEqual(0.8);
+    }
+  });
+
+  it("draws 4 or 5 gridlines at round values of the max", () => {
+    expect(gridShares(1500)).toHaveLength(5);
+    expect((draw(REVENUE, HOLD, "16:9").match(/data-bar-grid=""/g) ?? []).length).toBe(5);
+    expect((draw({ ...REVENUE, max: 2000 }, HOLD, "16:9").match(/data-bar-grid=""/g) ?? []).length).toBe(4);
   });
 });
