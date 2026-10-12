@@ -1,0 +1,47 @@
+{
+  "title": "LineChart kit component: a line that draws through its points",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "signups",
+      "component": "LineChart",
+      "props": {
+        "title": "Monthly signups, 2026",
+        "data": [
+          { "label": "Jan", "value": 1200 },
+          { "label": "Feb", "value": 1850 },
+          { "label": "Mar", "value": 1540 },
+          { "label": "Apr", "value": 3120, "emphasis": true },
+          { "label": "May", "value": 2680 },
+          { "label": "Jun", "value": 3460 }
+        ]
+      },
+      "durationMs": 6000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "revenue-line-only",
+      "component": "LineChart",
+      "props": {
+        "title": "Monthly revenue",
+        "data": [
+          { "label": "Jan", "value": 42.5 },
+          { "label": "Feb", "value": 38.2 },
+          { "label": "Mar", "value": 51.8 },
+          { "label": "Apr", "value": 47.1 },
+          { "label": "May", "value": 63.4, "emphasis": true },
+          { "label": "Jun", "value": 58.9 }
+        ],
+        "areaFill": false,
+        "prefix": "$",
+        "suffix": "K",
+        "decimals": 1
+      },
+      "durationMs": 6000
+    }
+  ]
+}

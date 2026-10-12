@@ -33,6 +33,7 @@ import { ScrambleText } from "./ScrambleText";
 import { WordSwap } from "./WordSwap";
 import { DonutChart } from "./DonutChart";
 import { BarChart } from "./BarChart";
+import { LineChart } from "./LineChart";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -86,4 +87,5 @@ export const kit: Record<string, KitComponent> = {
   WordSwap: asKitComponent(WordSwap),
   DonutChart: asKitComponent(DonutChart),
   BarChart: asKitComponent(BarChart),
+  LineChart: asKitComponent(LineChart),
 };
