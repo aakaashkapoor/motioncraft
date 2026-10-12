@@ -192,8 +192,8 @@ describe("caption styles", () => {
     expect(spec.size).toBeLessThanOrEqual(96);
   });
 
-  it("pages 3-6 words in standard and 1-3 in punch", () => {
-    expect(CAPTION_PAGE_WORDS).toEqual({ standard: { min: 3, max: 6 }, punch: { min: 1, max: 3 } });
+  it("pages 3-6 words in standard and 1-3 in punch and pill", () => {
+    expect(CAPTION_PAGE_WORDS).toEqual({ standard: { min: 3, max: 6 }, punch: { min: 1, max: 3 }, pill: { min: 1, max: 3 } });
     expect(captionLimits(lightTheme, "9:16", "standard")).toMatchObject({ minWords: 3, maxWords: 6, maxLines: 2 });
     expect(captionLimits(lightTheme, "9:16", "punch")).toMatchObject({ minWords: 1, maxWords: 3 });
   });
@@ -440,10 +440,10 @@ describe("captionStyle and caption tokens in the storyboard", () => {
     ...extra,
   });
 
-  it("accepts standard, punch and off, and leaves it unset by default", () => {
+  it("accepts standard, punch, pill and off, and leaves it unset by default", () => {
     const plain = validateStoryboard(input({}));
     expect(plain.ok && plain.storyboard.captionStyle).toBeUndefined();
-    for (const captionStyle of ["standard", "punch", "off"]) {
+    for (const captionStyle of ["standard", "punch", "pill", "off"]) {
       const result = validateStoryboard(input({ captionStyle }));
       expect(result.ok && result.storyboard.captionStyle).toBe(captionStyle);
     }
@@ -451,7 +451,7 @@ describe("captionStyle and caption tokens in the storyboard", () => {
 
   it("rejects any other caption style", () => {
     const result = validateStoryboard(input({ captionStyle: "karaoke" }));
-    expect(!result.ok && result.errors).toEqual(['captionStyle must be "standard", "punch" or "off" (got "karaoke")']);
+    expect(!result.ok && result.errors).toEqual(['captionStyle must be "standard", "punch", "pill" or "off" (got "karaoke")']);
   });
 
   it("lets themeOverrides pick the plate highlight and the outline width", () => {

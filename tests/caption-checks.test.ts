@@ -14,7 +14,7 @@ import { estimateDurations } from "../src/render/durations";
 import { showFrame, withRenderPage } from "../src/render/session";
 import { resolveTheme } from "../src/render/themes";
 
-const FIXTURES = ["captions.json", "captions-wide.json", "captions-punch.json", "captions-punch-wide.json"];
+const FIXTURES = ["captions.json", "captions-wide.json", "captions-punch.json", "captions-punch-wide.json", "captions-pill.json", "captions-pill-wide.json"];
 
 async function load(file: string, safe?: SafeProfile): Promise<Storyboard> {
   const json = JSON.parse(await readFile(join(import.meta.dirname, "fixtures", file), "utf8"));
@@ -49,7 +49,7 @@ describe("caption pages stay in the safe area while they enter", { timeout: 120_
     const theme = resolveTheme(storyboard);
     const durations = estimateDurations(storyboard);
     const timeline = buildTimeline(storyboard, durations, theme);
-    const style = storyboard.captionStyle === "punch" ? "punch" : "standard";
+    const style = storyboard.captionStyle === undefined || storyboard.captionStyle === "off" ? "standard" : storyboard.captionStyle;
     // The first frame of every page: the page is still low and small.
     const frames = timeline.scenes.flatMap((scene, i) => {
       const endMs = ((scene.frames - 1) * 1000) / timeline.fps;
