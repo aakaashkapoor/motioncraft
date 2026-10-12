@@ -347,6 +347,8 @@ export function cardEntrance({ move, opacity }: { move: number; opacity: number 
 export interface CardProps extends KitProps, CardData {
   /** Pops the card in the accent once it has landed, and shines it once. */
   highlighted?: boolean;
+  /** An element id for the card (`data-share-id`): what scene effects and camera shots target. */
+  shareId?: string;
 }
 
 /** In 16:9 a lone card is at most this share of the content area's width. */
@@ -369,7 +371,7 @@ export function maxCardWidth(theme: Theme, aspect: Aspect, area: Rect): number {
  * centered in its slot. Highlighted, it pops in the accent once it has landed
  * and the shine crosses it once.
  */
-export function Card({ progress, theme, aspect, area: slot, highlighted = false, ...card }: CardProps) {
+export function Card({ progress, theme, aspect, area: slot, highlighted = false, shareId, ...card }: CardProps) {
   const area = slot ?? contentArea(theme, aspect);
   const max = maxCardWidth(theme, aspect, area);
   const widthFor = (m: CardMetrics) => (isLabelCard(card) ? max : Math.min(max, cardContentWidth(theme, card, m)));
@@ -392,6 +394,7 @@ export function Card({ progress, theme, aspect, area: slot, highlighted = false,
       <div
         data-card="0"
         data-block="Card"
+        {...(shareId === undefined ? {} : { "data-share-id": shareId })}
         style={{
           position: "absolute",
           left: box.x - area.x,

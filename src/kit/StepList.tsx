@@ -34,6 +34,8 @@ export interface StepListProps extends KitProps {
   highlight?: HighlightSpec;
   /** "number" (default) for numbered chips, "dot" for accent dots. */
   marker?: "number" | "dot";
+  /** An element id per step, in order (`data-share-id` on its row): what scene effects target. */
+  shareIds?: string[];
 }
 
 /** Item steps to try, largest first. */
@@ -148,7 +150,7 @@ function stepInk(theme: Theme, lit: number): string {
   return lit >= 1 ? accentInk(theme) : mixColors(theme.colors.text, accentInk(theme), lit);
 }
 
-export function StepList({ progress, theme, aspect, area: slot, items, title, highlight, marker = "number" }: StepListProps) {
+export function StepList({ progress, theme, aspect, area: slot, items, title, highlight, marker = "number", shareIds }: StepListProps) {
   const area = slot ?? contentArea(theme, aspect);
   const width = listRowsWidth(theme, aspect, area);
   const layout = stepListLayout(theme, aspect, title, items, area);
@@ -212,6 +214,7 @@ export function StepList({ progress, theme, aspect, area: slot, items, title, hi
                 shineMs={highlightShineMs(stops, i, ms)}
                 size={{ width, height: heights[i]! }}
                 align="flex-start"
+                {...(shareIds?.[i] === undefined ? {} : { attributes: { "data-share-id": shareIds[i] } })}
               >
                 <Marker index={i} kind={marker} layout={layout} theme={theme} on={on} />
                 <span

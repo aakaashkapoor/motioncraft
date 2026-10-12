@@ -1,0 +1,82 @@
+{
+  "title": "Scene effects, 9:16: a ring on a step at a word, a number pulse, a card shake (must pass layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "steps",
+      "component": "StepList",
+      "props": {
+        "title": "Split a bill in three steps",
+        "items": [
+          "Scan the receipt",
+          "Split it by item",
+          "Settle up in one tap"
+        ],
+        "shareIds": [
+          "scan",
+          "split",
+          "settle"
+        ]
+      },
+      "narration": "Scan the receipt, then split it by item, and settle up in one tap.",
+      "durationMs": 7500,
+      "effects": [
+        {
+          "target": "split",
+          "kind": "ring",
+          "at": {
+            "word": "split"
+          }
+        }
+      ],
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "people",
+      "component": "BigNumber",
+      "props": {
+        "value": 3,
+        "label": "friends, one dinner bill",
+        "shareId": "count"
+      },
+      "narration": "Three friends share one dinner bill.",
+      "effects": [
+        {
+          "target": "count",
+          "kind": "pulse",
+          "at": {
+            "word": "bill"
+          }
+        }
+      ],
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "owed",
+      "component": "Card",
+      "props": {
+        "icon": "clock",
+        "title": "You owe $42",
+        "subtitle": "Overdue by five days",
+        "shareId": "owed"
+      },
+      "narration": "And nobody likes a reminder that you are overdue.",
+      "effects": [
+        {
+          "target": "owed",
+          "kind": "shake",
+          "at": {
+            "word": "overdue"
+          },
+          "color": "negative"
+        }
+      ]
+    }
+  ]
+}
