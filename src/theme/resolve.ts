@@ -5,7 +5,7 @@
 
 import type { Storyboard } from "../storyboard/types";
 import { mixColors } from "./color";
-import { contrastRatio } from "./contrast";
+import { contrastRatio, roleColorIssues } from "./contrast";
 import { darkTheme } from "./dark";
 import { lightTheme } from "./light";
 import { neutralTheme } from "./neutral";
@@ -47,10 +47,23 @@ function namedTheme(name: string): Theme {
  * Text color for an accent fill: the theme's `accentText` if it still reads
  * (AA) on the new accent, else whichever of the theme's neutrals reads best.
  */
-function readableOn(accent: string, colors: ThemeColors): string {
-  if (contrastRatio(colors.accentText, accent) >= AA) return colors.accentText;
-  const candidates = [colors.accentText, colors.text, colors.ground, colors.surface];
+function readableOn(accent: string, colors: ThemeColors, preferred: string = colors.accentText): string {
+  if (contrastRatio(preferred, accent) >= AA) return preferred;
+  const candidates = [preferred, colors.text, colors.ground, colors.surface];
   return candidates.reduce((best, c) => (contrastRatio(c, accent) > contrastRatio(best, accent) ? c : best));
+}
+
+const ROLE_KEYS = ["positive", "positiveText", "negative", "negativeText"] as const;
+
+/**
+ * `positiveText` / `negativeText` for an overridden `positive` / `negative`
+ * fill that did not bring its own text color: whichever neutral reads best on it.
+ */
+function fillTexts(overrides: Partial<ThemeColors> | undefined, colors: ThemeColors): Partial<ThemeColors> {
+  const picked: Partial<ThemeColors> = {};
+  if (overrides?.positive !== undefined && overrides.positiveText === undefined) picked.positiveText = readableOn(colors.positive, colors, colors.positiveText);
+  if (overrides?.negative !== undefined && overrides.negativeText === undefined) picked.negativeText = readableOn(colors.negative, colors, colors.negativeText);
+  return picked;
 }
 
 /**
@@ -88,6 +101,10 @@ function fullAccent(colors: ThemeColors): ThemeColors {
     textSubtle: fadeWithin(accentText, accent, 0.4, [accent], 3),
     accent: accentText,
     accentText: accent,
+    positive: colors.positive,
+    positiveText: colors.positiveText,
+    negative: colors.negative,
+    negativeText: colors.negativeText,
     border: mixColors(accent, accentText, 0.3),
     shadow: colors.shadow,
   };
@@ -104,6 +121,11 @@ export function resolveTheme(source: string | Pick<Storyboard, "theme" | "themeO
   if (accent !== undefined) {
     const accentText = overrides.colors?.accentText ?? readableOn(accent, theme.colors);
     theme = { ...theme, colors: { ...theme.colors, accent, accentText } };
+  }
+  theme = { ...theme, colors: { ...theme.colors, ...fillTexts(overrides.colors, theme.colors) } };
+  if (ROLE_KEYS.some((key) => overrides.colors?.[key] !== undefined)) {
+    const issues = roleColorIssues(theme.colors);
+    if (issues.length > 0) throw new Error(`themeOverrides.colors: ${issues.join("; ")}`);
   }
   if (source.accentIntensity !== undefined) theme = { ...theme, accentIntensity: source.accentIntensity };
   if (theme.accentIntensity === "full") theme = { ...theme, colors: fullAccent(theme.colors) };

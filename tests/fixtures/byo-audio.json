@@ -1,0 +1,49 @@
+{
+  "title": "Bring your own narration audio, 9:16 (a Kokoro scene, a WAV with word times, a WAV without)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "TitleCard",
+      "props": {
+        "kicker": "Group dinner",
+        "title": "Dinner for six"
+      },
+      "narration": "Six friends, one dinner, and a long receipt.",
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "split",
+      "component": "BigNumber",
+      "props": {
+        "value": 42,
+        "prefix": "$",
+        "label": "each, split evenly"
+      },
+      "narration": "Split any bill in seconds, right from your phone.",
+      "audio": {
+        "file": "byo-audio-split.wav",
+        "words": "byo-audio.words.json"
+      },
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "close",
+      "component": "TitleCard",
+      "props": {
+        "kicker": "Recorded voice",
+        "title": "Settle up tonight"
+      },
+      "narration": "Settle up before the check even arrives.",
+      "audio": {
+        "file": "byo-audio-close.wav"
+      }
+    }
+  ]
+}

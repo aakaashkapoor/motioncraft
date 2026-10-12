@@ -1,6 +1,7 @@
 // Renders a storyboard to an MP4 in the installed Chrome or Edge. The narration
 // is spoken locally first (cached beside the storyboard) and mixed in as the
-// audio track; --no-narration renders without a voice, with estimated timings.
+// audio track; a scene's own `audio` file is used instead of the voice;
+// --no-narration renders without a voice, with estimated timings.
 // The video bitrate is chosen so the MP4 fits --max-mb (default 9.5, GitHub's
 // 10 MB limit with margin); over budget, it exits 1 and keeps the file.
 //   npx tsx scripts/render.ts <storyboard.json> --out <file.mp4> [--no-narration] [--max-mb <n>]
@@ -8,6 +9,8 @@
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { validateStoryboard } from "../src/storyboard/validate";
+import { formatIssue } from "../src/checks";
+import { checkSceneAudio } from "../src/checks/sceneAudio";
 import { parseRenderArgs } from "../src/render/args";
 import { kokoroSynthesizer } from "../src/narration/kokoro";
 import { narrateStoryboard, narrationDir } from "../src/narration/narrate";
@@ -61,6 +64,13 @@ async function main(argv: string[]): Promise<void> {
 
   const theme = resolveTheme(storyboard);
   const mediaDir = dirname(args.storyboard);
+  // A scene's own audio file that is missing or unusable stops the render before anything is spoken.
+  const audioIssues = args.narration ? await checkSceneAudio(storyboard, mediaDir) : [];
+  const audioErrors = audioIssues.filter((issue) => issue.severity === "error").map(formatIssue);
+  if (audioErrors.length > 0) {
+    throw new Error(`${args.storyboard} has errors; nothing was rendered:\n${audioErrors.map((e) => `  - ${e}`).join("\n")}`);
+  }
+  for (const issue of audioIssues) console.log(formatIssue(issue));
   const plan = await planRender({
     storyboard,
     theme,
@@ -70,6 +80,7 @@ async function main(argv: string[]): Promise<void> {
           narrateStoryboard(board, {
             synthesizer: kokoroSynthesizer(),
             outDir: narrationDir(args.storyboard),
+            mediaDir,
             onProgress: narrationProgress(),
           })
       : null,

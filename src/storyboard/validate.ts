@@ -11,6 +11,7 @@ import {
   type CaptionStyle,
   type Opening,
   type SafeProfile,
+  type SceneAudio,
   type SceneShot,
   type StoryboardOverlay,
   type SceneTransition,
@@ -35,7 +36,8 @@ export function isVoiceSpeed(value: unknown): value is number {
 }
 
 const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "scenes"]);
-const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition", "shots"]);
+const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "audio", "durationMs", "transition", "shots"]);
+const AUDIO_FIELDS = new Set(["file", "words"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -83,16 +85,37 @@ function transitionErrors(raw: unknown): string[] {
   return errors;
 }
 
+/** A path relative to the storyboard: not absolute on any platform. */
+function isRelativePath(path: string): boolean {
+  return !/^([\\/]|[A-Za-z]:)/.test(path);
+}
+
+/** Problems with a scene's `audio`, unprefixed. Whether the files exist and parse is `checkSceneAudio`'s job. */
+function audioErrors(raw: unknown, narration: unknown): string[] {
+  if (!isObject(raw)) return [`audio must be an object { file, words? } (got ${describe(raw)})`];
+  const errors = unknownFields(raw, AUDIO_FIELDS).map((e) => `audio: ${e}`);
+  const path = (key: "file" | "words", ext: string, what: string): void => {
+    const value = raw[key];
+    if (!isNonEmptyString(value) || !value.toLowerCase().endsWith(ext)) errors.push(`audio.${key} must be a ${ext} file${what} (got ${describe(value)})`);
+    else if (!isRelativePath(value)) errors.push(`audio.${key} must be a path relative to the storyboard (got ${describe(value)})`);
+  };
+  path("file", ".wav", "; MP3 and AAC are not supported");
+  if (raw.words !== undefined) path("words", ".json", " of [{ text, startMs, endMs }]");
+  if (narration === undefined) errors.push("narration is required with audio: captions and checks use its text");
+  return errors;
+}
+
 /** Validates a scene, pushing errors prefixed with `label`. Returns the scene if valid. */
 function validateScene(raw: Record<string, unknown>, label: string, errors: string[]): StoryboardScene | undefined {
   const sceneErrors: string[] = unknownFields(raw, SCENE_FIELDS);
-  const { component, props, narration, durationMs, transition, shots } = raw;
+  const { component, props, narration, audio, durationMs, transition, shots } = raw;
 
   if (!isNonEmptyString(component)) sceneErrors.push("component is required and must be a non-empty string");
   if (!isObject(props)) sceneErrors.push("props is required and must be an object");
   if (narration !== undefined && !isNonEmptyString(narration)) {
     sceneErrors.push("narration must be a non-empty string when present");
   }
+  if (audio !== undefined) sceneErrors.push(...audioErrors(audio, narration));
   if (durationMs === undefined) {
     if (narration === undefined) sceneErrors.push("durationMs is required when there is no narration");
   } else if (durationMs === "clip") {
@@ -110,6 +133,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
 
   const scene: StoryboardScene = { id: raw.id as string, component: component as string, props: props as Record<string, unknown> };
   if (narration !== undefined) scene.narration = narration as string;
+  if (audio !== undefined) scene.audio = audio as SceneAudio;
   if (durationMs !== undefined) scene.durationMs = durationMs as number | "clip";
   if (transition !== undefined) scene.transition = transition as SceneTransition;
   if (shots !== undefined) scene.shots = shots as SceneShot[];

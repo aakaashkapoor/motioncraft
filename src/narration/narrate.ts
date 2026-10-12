@@ -1,5 +1,6 @@
 // Narrates a storyboard: each scene's `narration` becomes a WAV file and its
-// word times, cached by content so unchanged scenes are never spoken twice.
+// word times, cached by content so unchanged scenes are never spoken twice. A
+// scene with its own `audio` file is never spoken; its file is used instead.
 
 import { createHash } from "node:crypto";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
@@ -9,6 +10,7 @@ import type { Storyboard } from "../storyboard/types";
 import { KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION } from "./assets";
 import type { Speech, Synthesizer } from "./kokoro";
 import type { CachedNarration, SceneNarration } from "./types";
+import { loadAudioNarration } from "./sceneAudio";
 import { splitForSpeech } from "./pieces";
 import { pronunciationsIn, spokenPlan } from "./pronounce";
 import { splitSentences } from "./sentences";
@@ -146,6 +148,11 @@ export function narrationDir(storyboardFile: string): string {
   return join(dirname(storyboardFile), ".motioncraft", "narration");
 }
 
+/** The storyboard's folder for a `narrationDir`: where scenes' own audio files resolve from unless told otherwise. */
+function storyboardDirOf(outDir: string): string {
+  return dirname(dirname(outDir));
+}
+
 interface SceneFiles {
   sceneId: string;
   text: string;
@@ -153,7 +160,7 @@ interface SceneFiles {
   jsonPath: string;
 }
 
-/** The narrated scenes of a storyboard and where each one's cached files live. */
+/** The scenes of a storyboard the voice speaks (not those with their own audio) and where each one's cached files live. */
 function sceneFiles(
   storyboard: Storyboard,
   outDir: string,
@@ -165,7 +172,7 @@ function sceneFiles(
   const files: SceneFiles[] = [];
   const pronounce = pronounceMap(storyboard);
   for (const scene of storyboard.scenes) {
-    if (scene.narration === undefined || splitSentences(scene.narration).length === 0) continue;
+    if (scene.narration === undefined || scene.audio !== undefined || splitSentences(scene.narration).length === 0) continue;
     const parts = [NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, chosen, scene.narration];
     // Only the pronunciations this scene uses, so a scene without any keeps its key.
     const said = pronunciationsIn(scene.narration, pronounce);
@@ -183,21 +190,28 @@ async function readCached(file: SceneFiles): Promise<SceneNarration | undefined>
   return sidecar === undefined ? undefined : { sceneId: file.sceneId, wavPath: file.wavPath, audioMs: sidecar.audioMs, words: sidecar.words };
 }
 
+/** The scenes in storyboard order. */
+function inSceneOrder(storyboard: Storyboard, scenes: Record<string, SceneNarration>): Record<string, SceneNarration> {
+  return Object.fromEntries(storyboard.scenes.filter((scene) => Object.hasOwn(scenes, scene.id)).map((scene) => [scene.id, scenes[scene.id]!]));
+}
+
 /**
- * The scenes whose narration is already on disk (a wav and a valid sidecar),
- * and the narrated scenes that are not. Never speaks and never needs the model.
+ * The scenes whose narration is already on disk (a wav and a valid sidecar, or
+ * the scene's own audio file under `mediaDir`, the storyboard's folder, by default
+ * the one `outDir` is the `narrationDir` of), and the
+ * spoken scenes that are not. Never speaks and never needs the model.
  */
 export async function loadCachedNarration(
   storyboard: Storyboard,
-  options: { outDir: string; voice?: string; speed?: number },
+  options: { outDir: string; voice?: string; speed?: number; mediaDir?: string },
 ): Promise<CachedNarration> {
-  const result: CachedNarration = { scenes: {}, missing: [] };
+  const result: CachedNarration = { scenes: await loadAudioNarration(storyboard, options.mediaDir ?? storyboardDirOf(options.outDir)), missing: [] };
   for (const file of sceneFiles(storyboard, options.outDir, options.voice, options.speed).files) {
     const cached = await readCached(file);
     if (cached === undefined) result.missing.push(file.sceneId);
     else result.scenes[file.sceneId] = cached;
   }
-  return result;
+  return { ...result, scenes: inSceneOrder(storyboard, result.scenes) };
 }
 
 /** A line telling that some narrated scenes have no audio yet, or undefined when all (or none) are cached. */
@@ -209,10 +223,18 @@ export function missingNarrationNotice(cached: CachedNarration): string | undefi
 
 export async function narrateStoryboard(
   storyboard: Storyboard,
-  options: { synthesizer: Synthesizer; outDir: string; voice?: string; speed?: number; onProgress?: (done: number, total: number) => void },
+  options: {
+    synthesizer: Synthesizer;
+    outDir: string;
+    voice?: string;
+    speed?: number;
+    /** Where scenes' own `audio` files resolve from: the storyboard's folder. Default the folder `outDir` is the `narrationDir` of. */
+    mediaDir?: string;
+    onProgress?: (done: number, total: number) => void;
+  },
 ): Promise<Record<string, SceneNarration>> {
   const { voice, speed, files } = sceneFiles(storyboard, options.outDir, options.voice, options.speed);
-  const result: Record<string, SceneNarration> = {};
+  const result = await loadAudioNarration(storyboard, options.mediaDir ?? storyboardDirOf(options.outDir));
   await mkdir(options.outDir, { recursive: true });
 
   for (const [i, file] of files.entries()) {
@@ -227,5 +249,5 @@ export async function narrateStoryboard(
     await writeFile(file.jsonPath, JSON.stringify({ audioMs: spoken.audioMs, words: spoken.words }, null, 2));
     result[file.sceneId] = { sceneId: file.sceneId, wavPath: file.wavPath, audioMs: spoken.audioMs, words: spoken.words };
   }
-  return result;
+  return inSceneOrder(storyboard, result);
 }

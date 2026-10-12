@@ -1,0 +1,47 @@
+[
+  {
+    "text": "Split",
+    "startMs": 200,
+    "endMs": 452
+  },
+  {
+    "text": "any",
+    "startMs": 452,
+    "endMs": 620
+  },
+  {
+    "text": "bill",
+    "startMs": 620,
+    "endMs": 830
+  },
+  {
+    "text": "in",
+    "startMs": 830,
+    "endMs": 956
+  },
+  {
+    "text": "seconds,",
+    "startMs": 956,
+    "endMs": 1334
+  },
+  {
+    "text": "right",
+    "startMs": 1334,
+    "endMs": 1586
+  },
+  {
+    "text": "from",
+    "startMs": 1586,
+    "endMs": 1796
+  },
+  {
+    "text": "your",
+    "startMs": 1796,
+    "endMs": 2006
+  },
+  {
+    "text": "phone.",
+    "startMs": 2006,
+    "endMs": 2300
+  }
+]

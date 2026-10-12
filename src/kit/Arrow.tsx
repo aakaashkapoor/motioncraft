@@ -12,7 +12,7 @@ import { createContext, useContext } from "react";
 import { drawPath } from "../engine/choreography";
 import { frameSize, type Rect } from "../layout/frame";
 import { typeCss } from "../layout/type";
-import type { ColorRole, Theme } from "../theme/types";
+import type { ThemeColorKey, Theme } from "../theme/types";
 import { arrowGeometry, pointAlong, resolveArrowEnds, type AnchorBoxes, type ArrowEnd, type Point } from "./arrowGeometry";
 import { FlowDotMark, flowDot } from "./flow";
 import { useSceneTime } from "./frameContext";
@@ -33,14 +33,14 @@ export interface ArrowProps extends KitProps {
    */
   window?: readonly [number, number];
   /** Stroke color, by theme role. Default "accent". */
-  color?: ColorRole;
+  color?: ThemeColorKey;
   /** A short label at the midpoint. */
   label?: string;
   /** Anchor boxes by `shareId`, over any the scene provides (see `AnchorProvider`). */
   anchors?: AnchorBoxes;
 }
 
-const COLOR_ROLES: readonly ColorRole[] = ["ground", "surface", "surfaceAlt", "text", "textMuted", "textSubtle", "accent", "accentText", "border", "shadow"];
+const COLOR_ROLES: readonly ThemeColorKey[] = ["ground", "surface", "surfaceAlt", "text", "textMuted", "textSubtle", "accent", "accentText", "positive", "positiveText", "negative", "negativeText", "border", "shadow"];
 
 const SceneAnchors = createContext<AnchorBoxes>({});
 

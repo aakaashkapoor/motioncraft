@@ -27,13 +27,21 @@ export interface ThemeColors {
   accent: string;
   /** Text and icons drawn on an accent fill. */
   accentText: string;
+  /** "Good" marks: gains, passes, ticks. Meets 3:1 on ground and surface. */
+  positive: string;
+  /** Text and icons drawn on a positive fill. */
+  positiveText: string;
+  /** "Bad" marks: losses, fails, crosses. Meets 3:1 on ground and surface. */
+  negative: string;
+  /** Text and icons drawn on a negative fill. */
+  negativeText: string;
   /** Hairline borders and dividers. */
   border: string;
   /** Color of the card shadow (see `ThemeShadow`). */
   shadow: string;
 }
 
-export type ColorRole = keyof ThemeColors;
+export type ThemeColorKey = keyof ThemeColors;
 
 export const GROUND_STYLES = ["solid", "vignette", "grid", "noise", "mesh"] as const;
 /**
