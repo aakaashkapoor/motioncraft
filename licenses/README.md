@@ -63,6 +63,14 @@ The font files are unmodified (the Geist files are only renamed, to keep
 brackets out of file names). motioncraft does not use the Reserved Font
 Names for any derivative.
 
+## Ported motion designs
+
+| Source | Commit | License | Author | Ported items |
+| ------ | ------ | ------- | ------ | ------------ |
+| HyperFrames | `2905162d925fc87fb8242e24ed0bbf025d307ea1` | Apache-2.0 | HeyGen and contributors — https://github.com/heygen-com/hyperframes | `chart-story`, `kinetic-type-swap`, `scramble-reveal`, `before-after-wipe`, `vox-annotate`, `svg-stroke-trace`, `whiteboard-ink`, `native-notification-pop`, `caption-pill-karaoke`, `iris-reveal`, `whip-pan-cut` |
+
+The designs and timings were adapted into motioncraft's own React code; no HyperFrames code, GSAP or other runtime is bundled.
+
 ## Local narration (voice)
 
 | Item | Version | License | Author / source |
