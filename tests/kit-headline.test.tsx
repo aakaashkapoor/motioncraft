@@ -15,22 +15,29 @@ import {
   Section,
   TitleCard,
   accentInk,
+  contentArea,
   contrastRatio,
   curveEasing,
   darkTheme,
+  evenWordTimes,
   headlineBox,
   headlineTiming,
   kit,
   lightTheme,
   mixColors,
   neutralTheme,
+  resolveCue,
   safeZones,
+  SceneWordsContext,
   sectionLayout,
   sectionTiming,
+  validateStoryboard,
   type Aspect,
   type Rect,
   type Theme,
 } from "../src/index";
+import { headlineLineWarnings } from "../src/checks/headlineLines";
+import { headlineLinesErrors, lineStarts } from "../src/kit/headlineLines";
 
 const theme = lightTheme;
 const textIn = theme.motion["text.in"];
@@ -403,5 +410,201 @@ describe("Section and TitleCard set their headline with it", () => {
     expect(marked(card(titleStart + 10), "data-headline-line")[0]!.opacity).toBeGreaterThan(0);
     expect(opacityOf(card(subtitleStart), "Without the fear")).toBe(0);
     expect(opacityOf(card(subtitleStart + 10), "Without the fear")).toBeGreaterThan(0);
+  });
+});
+
+describe("lines: each line enters on its own cue", () => {
+  const NARRATION = "Dinner was one eighty four. Four friends. Who owes what?";
+  const SPOKEN = evenWordTimes(NARRATION, 300, 4200);
+  const LINES = [
+    { text: "Dinner was $184.", at: { word: "Dinner" } },
+    { text: "Four friends.", at: { word: "Four friends" } },
+    { text: "Who owes what?", at: { word: "Who" } },
+  ];
+  const cues = LINES.map((line) => resolveCue(line.at, SPOKEN));
+  /** Drawn in a scene that speaks NARRATION. */
+  const heard = (ms: number, element: ReactElement) => at(ms, <SceneWordsContext.Provider value={SPOKEN}>{element}</SceneWordsContext.Provider>);
+  const lined = (props: Record<string, unknown> = {}, aspect: Aspect = "9:16") => <Headline progress={0} theme={theme} aspect={aspect} lines={LINES} {...props} />;
+  const card = (props: Record<string, unknown> = {}, aspect: Aspect = "9:16") => <TitleCard progress={0} theme={theme} aspect={aspect} lines={LINES} {...props} />;
+  const lineOpacities = (html: string) => marked(html, "data-headline-line").map((l) => l.opacity);
+  const rows = (html: string) => html.split("data-headline-row=").slice(1);
+  /** The markup without what moves: what is left is the layout. */
+  const still = (html: string) => html.replace(/(opacity|transform|filter):[^;"]*;?/g, "");
+
+  it("the cues are in order and apart", () => {
+    expect(cues[0]).toBeLessThan(cues[1]!);
+    expect(cues[1]).toBeLessThan(cues[2]!);
+  });
+
+  it.each(["whole", "words", "chars"] as const)("Headline (%s): each line is invisible before its cue and visible after", (motion) => {
+    const shown = (row: string) => {
+      const poses = motion === "whole" ? marked(row, "data-headline-line") : motion === "words" ? words(row) : chars(row);
+      return Math.max(...poses.map((p) => p.opacity));
+    };
+    for (let i = 0; i < LINES.length; i++) {
+      const before = rows(heard(cues[i]!, lined({ motion })));
+      const after = rows(heard(cues[i]! + 150, lined({ motion })));
+      // Every line is there from the start, so the block never reflows.
+      expect(before).toHaveLength(LINES.length);
+      expect(shown(before[i]!), `line ${i} at its cue`).toBe(0);
+      expect(shown(after[i]!), `line ${i} after its cue`).toBeGreaterThan(0);
+      for (let later = i + 1; later < LINES.length; later++) expect(shown(after[later]!), `line ${later} while ${i} enters`).toBe(0);
+      // Lines already shown stay put.
+      for (let earlier = 0; earlier < i; earlier++) expect(shown(before[earlier]!), `line ${earlier} when ${i} enters`).toBe(1);
+    }
+  });
+
+  it.each(ASPECTS)("Headline: the block's layout is identical on every frame (%s)", (aspect) => {
+    const frames = [0, cues[0]!, cues[1]! - 1, cues[1]! + 100, cues[2]! + 100, 3000].map((ms) => still(heard(ms, lined({ motion: "words" }, aspect))));
+    for (const frame of frames) expect(frame).toBe(frames[0]);
+  });
+
+  it.each(ASPECTS)("Headline: centers the stacked lines, one block per line (%s)", (aspect) => {
+    const html = heard(4000, lined({}, aspect));
+    const root = boxOf(parseStyle(/^<div[^>]*?style="([^"]*)"/.exec(html)![1]!));
+    const mid = aspect === "9:16" ? 540 : 960;
+    expect(Math.abs(root.x + root.width / 2 - mid)).toBeLessThanOrEqual(1);
+    // Placed as a single headline is: on the optical center, kept inside the content area.
+    const { box, step } = headlineBox(theme, aspect, LINES.map((l) => l.text));
+    expect(root).toEqual(box);
+    const area = contentArea(theme, aspect);
+    expect(root.y).toBeGreaterThanOrEqual(area.y);
+    expect(root.y + root.height).toBeLessThanOrEqual(area.y + area.height);
+    expect(html).toContain('data-block="Headline"');
+    expect(html).toMatch(/<h1 [^>]*text-align:center/);
+    expect([...html.matchAll(/data-headline-row="\d"[^>]*style="display:block/g)]).toHaveLength(3);
+    expect(lineOpacities(html)).toEqual([1, 1, 1]);
+    // The box is tall enough for each line on its own.
+    const spec = theme.type[step][aspect];
+    expect(box.height).toBeGreaterThanOrEqual(3 * spec.size * spec.lineHeight);
+  });
+
+  it("a line without `at` follows the line before by the theme's line stagger", () => {
+    const { lineStaggerMs } = textIn;
+    const texts = LINES.map((l) => l.text);
+    expect(lineStarts(theme, texts, [undefined, 1200, undefined], leadMs, "whole")).toEqual([leadMs, 1200, 1200 + lineStaggerMs]);
+    // In words motion it follows the last word of the line before.
+    const lastWord = headlineTiming(theme, ["Four", "friends."], 1200, "words").words.at(-1)!;
+    expect(lineStarts(theme, texts, [undefined, 1200, undefined], leadMs, "words")[2]).toBe(lastWord + lineStaggerMs);
+    // Drawn alone (no scene words), word cues fall back to that and the lines still build.
+    const alone = at(leadMs + lineStaggerMs - 1, lined());
+    expect(lineOpacities(alone)[0]).toBeGreaterThan(0);
+    expect(lineOpacities(alone)[1]).toBe(0);
+  });
+
+  it("in a settled opening the first line is landed at frame 0 and the cued lines still build on their words", () => {
+    const settled = (ms: number, element: ReactElement) =>
+      renderToStaticMarkup(
+        <SceneClockContext.Provider value={{ fps: 1000, frame: ms, frames: 5000, settled: true }}>
+          <SceneWordsContext.Provider value={SPOKEN}>{element}</SceneWordsContext.Provider>
+        </SceneClockContext.Provider>,
+      );
+    expect(lineOpacities(settled(0, lined()))).toEqual([1, 0, 0]);
+    expect(lineOpacities(settled(cues[1]! + 150, lined()))[1]).toBeGreaterThan(0);
+    expect(lineOpacities(settled(cues[1]! + 150, lined()))[2]).toBe(0);
+    // The subtitle waits for the last line, too.
+    const subtitled = (ms: number) => settled(ms, card({ subtitle: "Split it fairly" }));
+    const subtitleOpacity = (html: string) => parseFloat(parseStyle(/<p [^>]*?style="([^"]*)"[^>]*>Split it fairly/.exec(html)![1]!).get("opacity") ?? "1");
+    expect(lineOpacities(subtitled(0))).toEqual([1, 0, 0]);
+    expect(subtitleOpacity(subtitled(0))).toBe(0);
+    expect(subtitleOpacity(subtitled(4000))).toBe(1);
+    // Lines with no cue after the first are entrances like any other: all landed.
+    expect(lineOpacities(settled(0, lined({ lines: LINES.map(({ text }) => ({ text })) })))).toEqual([1, 1, 1]);
+  });
+
+  it("rejects cues that resolve out of order when drawn", () => {
+    const swapped = [LINES[1]!, LINES[0]!, LINES[2]!];
+    expect(() => heard(1000, <Headline progress={0} theme={theme} aspect="9:16" lines={swapped} />)).toThrow(/order/);
+  });
+
+  it("emphasis sets one line in the accent; mark sweeps under a word of its line", () => {
+    const html = heard(4000, lined({ emphasis: 2, mark: "friends" }));
+    const colors = [...html.matchAll(/data-headline-row="(\d)"[^>]*?style="([^"]*)"/g)].map((m) => parseStyle(m[2]!).get("color"));
+    expect(colors).toEqual([undefined, undefined, accentInk(theme)]);
+    expect(rows(html)[1]).toContain("data-headline-mark");
+    expect(html.split("data-headline-mark")).toHaveLength(2);
+    expect(() => heard(4000, lined({ mark: "pizza" }))).toThrow(/"pizza" is not a word of/);
+  });
+
+  it("TitleCard: each line is invisible before its cue and visible after, the subtitle after the last", () => {
+    for (let i = 0; i < LINES.length; i++) {
+      expect(lineOpacities(heard(cues[i]!, card()))[i]).toBe(0);
+      expect(lineOpacities(heard(cues[i]! + 150, card()))[i]).toBeGreaterThan(0);
+    }
+    const opacityOf = (html: string) => parseFloat(parseStyle(/<p [^>]*?style="([^"]*)"[^>]*>Split it fairly/.exec(html)![1]!).get("opacity") ?? "1");
+    const subtitleStart = cues[2]! + textIn.lineStaggerMs;
+    expect(opacityOf(heard(subtitleStart, card({ subtitle: "Split it fairly" })))).toBe(0);
+    expect(opacityOf(heard(subtitleStart + 10, card({ subtitle: "Split it fairly" })))).toBeGreaterThan(0);
+  });
+
+  it.each(ASPECTS)("TitleCard: the layout is identical on every frame (%s)", (aspect) => {
+    const frames = [0, cues[0]!, cues[1]! + 100, cues[2]! + 100, 3000].map((ms) => still(heard(ms, card({ kicker: "Group dinner", titleMotion: "words" }, aspect))));
+    for (const frame of frames) expect(frame).toBe(frames[0]);
+  });
+
+  describe("validation", () => {
+    const board = (component: string, props: Record<string, unknown>, narration: string | undefined) => ({
+      title: "Lines",
+      aspect: "9:16",
+      scenes: [{ id: "hook", component, props, ...(narration === undefined ? { durationMs: 4000 } : { narration }) }],
+    });
+    const errorsOf = (component: string, props: Record<string, unknown>) => {
+      const result = validateStoryboard(board(component, props, NARRATION));
+      return result.ok ? "" : result.errors.join("\n");
+    };
+
+    it("accepts good lines on Headline and TitleCard, nested too", () => {
+      expect(errorsOf("Headline", { lines: LINES, emphasis: 0, motion: "words" })).toBe("");
+      expect(errorsOf("TitleCard", { lines: LINES, subtitle: "Split it fairly" })).toBe("");
+      expect(errorsOf("Headline", { lines: [{ text: "One" }, { text: "Two", at: 900 }] })).toBe("");
+      expect(errorsOf("Section", { headline: "Hook", content: { component: "Headline", props: { lines: LINES } } })).toBe("");
+    });
+
+    it.each([
+      ["Headline", { lines: LINES, text: "Dinner" }, /lines and text: give one/],
+      ["TitleCard", { lines: LINES, title: "Dinner" }, /lines and title: give one/],
+      ["Headline", { lines: [LINES[2], LINES[0], LINES[1]] }, /lines\[1\]\.at .* is before lines\[0\]\.at/],
+      ["Headline", { lines: [{ text: "One", at: 1500 }, { text: "Two", at: 900 }] }, /lines\[1\]\.at .* is before lines\[0\]\.at/],
+      ["Headline", { lines: [{ text: "One", at: { word: "Who" } }, { text: "Two", at: { word: "Who", offsetMs: -50 } }] }, /order/],
+      ["Headline", { lines: [LINES[0]] }, /2 to 4 lines/],
+      ["Headline", { lines: [...LINES, ...LINES] }, /2 to 4 lines/],
+      ["Headline", { lines: "Dinner" }, /2 to 4 lines/],
+      ["Headline", { lines: [{ text: " " }, { text: "Two" }] }, /lines\[0\]\.text must be/],
+      ["Headline", { lines: [{ text: "One", size: 3 }, { text: "Two" }] }, /lines\[0\]: unknown field "size"/],
+      ["Headline", { lines: [{ text: "One", at: { word: "sushi" } }, { text: "Two" }] }, /lines\[0\]\.at: word "sushi" is not in this scene's narration/],
+      ["Headline", { lines: LINES, emphasis: 3 }, /emphasis .* line index from 0 to 2/],
+      ["Headline", { lines: LINES, emphasis: "Dinner" }, /emphasis .* line index/],
+      ["Headline", { text: "Dinner", emphasis: 1 }, /emphasis as a line index needs lines/],
+      ["TitleCard", { lines: [LINES[1], LINES[0]] }, /before/],
+      ["Section", { headline: "Hook", content: { component: "Headline", props: { lines: [LINES[1], LINES[0]] } } }, /Headline: lines\[1\]\.at .* is before/],
+    ] as const)("%s %j fails", (component, props, message) => {
+      expect(errorsOf(component, props as Record<string, unknown>)).toMatch(message);
+    });
+
+    it("needs narration for a word cue", () => {
+      expect(validateStoryboard(board("Headline", { lines: LINES }, undefined)).ok).toBe(false);
+    });
+
+    it("headlineLinesErrors is the components' own prop check", () => {
+      expect(headlineLinesErrors({ lines: LINES }, "text", NARRATION)).toEqual([]);
+      expect(headlineLinesErrors({ text: "Plain" }, "text", undefined)).toEqual([]);
+      expect(headlineLinesErrors({ title: "Plain", lines: LINES }, "title", NARRATION)).toEqual(["lines and title: give one, not both"]);
+    });
+  });
+
+  describe("layer-1: a line cued too late to land", () => {
+    const storyboard = (lines: unknown, durationMs: number) => {
+      const result = validateStoryboard({ title: "Lines", aspect: "9:16", scenes: [{ id: "hook", component: "Headline", props: { lines }, narration: NARRATION, durationMs }] });
+      if (!result.ok) throw new Error(result.errors.join("\n"));
+      return result.storyboard;
+    };
+
+    it("warns when a line would not land before the scene starts to leave", () => {
+      const late = [{ text: "Dinner was $184." }, { text: "Four friends.", at: 3900 }];
+      expect(headlineLineWarnings(storyboard(late, 4000), theme, { hook: 4000 }, {})).toEqual([expect.stringMatching(/^warn \[headline-lines\] scene "hook": Headline lines\[1\] starts at 3900 ms/)]);
+      expect(headlineLineWarnings(storyboard(late, 6000), theme, { hook: 6000 }, {})).toEqual([]);
+      // Word cues land on the scene's words: the narration's even estimate here.
+      expect(headlineLineWarnings(storyboard(LINES, 4500), theme, { hook: 4500 }, {})).toEqual([]);
+    });
   });
 });

@@ -148,6 +148,11 @@ export interface HeadlineMarks {
 /** A word as `emphasis` and `mark` match it: lower case, without surrounding punctuation. */
 const bare = (word: string) => word.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
 
+/** Whether `word` is one of `words` as `emphasis` and `mark` match it. */
+export function hasHeadlineWord(words: readonly string[], word: string): boolean {
+  return words.some((w) => bare(w) === bare(word));
+}
+
 /**
  * The words `emphasis` (one or two words, as a phrase or a list) and `mark`
  * (one word, not also emphasized) pick out of `words`. Matching ignores case

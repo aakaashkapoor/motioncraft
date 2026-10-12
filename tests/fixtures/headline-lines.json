@@ -1,0 +1,39 @@
+{
+  "title": "Line-by-line headline: a hook that builds as it is spoken",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "Headline",
+      "props": {
+        "lines": [
+          { "text": "Dinner was $184.", "at": { "word": "Dinner" } },
+          { "text": "Four friends.", "at": { "word": "Four friends" } },
+          { "text": "Who owes what?", "at": { "word": "Who owes" } }
+        ],
+        "motion": "words",
+        "emphasis": 2
+      },
+      "narration": "Dinner was a hundred and eighty four dollars. Four friends. Who owes what?",
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "answer",
+      "component": "TitleCard",
+      "props": {
+        "kicker": "Split it",
+        "lines": [
+          { "text": "Snap the receipt." },
+          { "text": "Tap who had what.", "at": { "word": "Tap" } },
+          { "text": "Everyone pays $46.", "at": { "word": "Everyone" } }
+        ],
+        "mark": "$46.",
+        "subtitle": "No spreadsheet, no awkward maths"
+      },
+      "narration": "Snap the receipt. Tap who had what. Everyone pays forty six dollars.",
+      "durationMs": 6500
+    }
+  ]
+}
