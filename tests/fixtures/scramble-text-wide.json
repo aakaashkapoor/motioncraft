@@ -1,0 +1,40 @@
+{
+  "title": "ScrambleText kit component: a line that decodes itself",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "clean",
+      "component": "ScrambleText",
+      "props": {
+        "text": "MOTIONCRAFT"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "terminal",
+      "component": "ScrambleText",
+      "props": {
+        "text": "npm run render",
+        "style": "terminal",
+        "label": "Renders on your machine"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "claim",
+      "component": "ScrambleText",
+      "props": {
+        "text": "MOTIONCRAFT"
+      },
+      "durationMs": 4000
+    }
+  ]
+}

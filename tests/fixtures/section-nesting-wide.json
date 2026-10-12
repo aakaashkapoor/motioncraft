@@ -497,6 +497,20 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "scramble-text",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A line that decodes in the slot",
+        "content": {
+          "component": "ScrambleText",
+          "props": { "text": "npm run render", "style": "terminal", "label": "done in 4.2 s" }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

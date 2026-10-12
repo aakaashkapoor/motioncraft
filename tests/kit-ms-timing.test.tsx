@@ -100,6 +100,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
     before: { component: "StepList", props: { items: ["Write it by hand", "Wait for review"] } },
     after: { component: "StepList", props: { items: ["Describe it", "Render"] } },
   },
+  ScrambleText: { text: "npm run render", style: "terminal", label: "Renders in 4.2 s" },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 
@@ -108,13 +109,14 @@ const STILL = new Set(["VideoClip", "Image"]);
 
 /**
  * Life, not entrance: the idle caret blinks for as long as the terminal (or a
- * typed prompt) is on screen, a drawn connector's dot flows, lighting nodes, until the exit, and
+ * typed prompt, or a decoded terminal line) is on screen, a drawn connector's dot flows, lighting nodes, until the exit, and
  * the caption lights each word as the narration, spread over the scene, says it.
  */
 const normalize = (html: string) =>
   html
     .replace(/(data-terminal-caret="\d+" style="[^"]*?)opacity:[^;"]*;?/g, "$1")
     .replace(/(data-prompt-caret="" style="[^"]*?)opacity:[^;"]*;?/g, "$1")
+    .replace(/(data-scramble-caret="" style="[^"]*?)opacity:[^;"]*;?/g, "$1")
     .replace(/(<g data-flow-dot="")[^>]*>/g, "$1>")
     .replace(/(data-flow-glow="" style="[^"]*?)opacity:[^;"]*;?/g, "$1")
     .replace(/(data-caption-word="\d+" style=")[^"]*"/g, '$1"');
