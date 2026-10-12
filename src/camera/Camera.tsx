@@ -8,6 +8,7 @@ import { VisibleRectContext } from "../kit/frameContext";
 import { frameSize, type Rect, type Size } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
 import { CAMERA_ATTRIBUTE, DEPTH_ATTRIBUTE, SHOT_ATTRIBUTE } from "./attributes";
+import { EFFECTS_ATTRIBUTE } from "./effectsAttribute";
 import { CAMERA_DEPTHS, cameraTransform, layerPoint, layerTransform, overscanRect, type Camera, type CameraDepth } from "./rig";
 import type { CameraView } from "./shots";
 
@@ -40,13 +41,16 @@ const frameBox = (size: Size, transform: string | undefined) => ({
 /**
  * A scene's world, moved by `view`'s camera. When the camera moves at all in
  * the scene, full-bleed media fill the world's overscan instead of the frame.
+ * `effects`, the scene's id while its effects are drawn, scopes their style
+ * rules to this world (see `SceneEffects`).
  */
-export function CameraWorld({ view, aspect, children }: { view: CameraView; aspect: Aspect; children?: ReactNode }) {
+export function CameraWorld({ view, aspect, effects, children }: { view: CameraView; aspect: Aspect; effects?: string; children?: ReactNode }) {
   const size = frameSize(aspect);
   const shot = view.shot === undefined ? {} : { [SHOT_ATTRIBUTE]: formatShot(view.shot) };
+  const scope = effects === undefined ? {} : { [EFFECTS_ATTRIBUTE]: effects };
   const inner = <CameraContext.Provider value={{ camera: view.camera, size, depth: 1 }}>{children}</CameraContext.Provider>;
   return (
-    <div {...{ [CAMERA_ATTRIBUTE]: "" }} {...shot} style={frameBox(size, cameraTransform(view.camera, size))}>
+    <div {...{ [CAMERA_ATTRIBUTE]: "" }} {...shot} {...scope} style={frameBox(size, cameraTransform(view.camera, size))}>
       {view.live ? <VisibleRectContext.Provider value={overscanRect(size)}>{inner}</VisibleRectContext.Provider> : inner}
     </div>
   );

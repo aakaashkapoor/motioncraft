@@ -53,6 +53,8 @@ export interface BigNumberProps extends KitProps {
   color?: BigNumberColor;
   /** When the strike starts across the old value: ms from the scene start or a narration word. Default 600 ms. */
   at?: Cue;
+  /** An element id for the number's block (`data-share-id`): what scene effects and camera shots target. */
+  shareId?: string;
 }
 
 /** Separators and the decimal point are narrow: about half a digit. */
@@ -241,7 +243,7 @@ export function BigNumber(props: BigNumberProps) {
   const narration = words === undefined || words.length === 0 ? undefined : words.map((w) => w.text).join(" ");
   const errors = bigNumberErrors(checkedProps(props, words), narration);
   if (errors.length > 0) throw new Error(`BigNumber: ${errors.join("; ")}`);
-  const { progress, theme, aspect, area: slot, value, prefix = "", suffix = "", label, decimals = 0, from, fromStyle = "strike", color: role = "accent", at } = props;
+  const { progress, theme, aspect, area: slot, value, prefix = "", suffix = "", label, decimals = 0, from, fromStyle = "strike", color: role = "accent", at, shareId } = props;
   const strikeMs = useCueMs(at ?? DEFAULT_STRIKE_MS, DEFAULT_STRIKE_MS);
   const area = slot ?? contentArea(theme, aspect);
   const number = formatBigNumber(value, decimals);
@@ -318,6 +320,7 @@ export function BigNumber(props: BigNumberProps) {
     >
       <div
         data-block="BigNumber"
+        {...(shareId === undefined ? {} : { "data-share-id": shareId })}
         style={{
           ...(struckAbove && { position: "relative" as const }),
           transform: `translateY(${rise}px)`,

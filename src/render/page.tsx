@@ -6,6 +6,8 @@
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { CameraWorld } from "../camera/Camera";
+import { drawsOverTarget, effectDrawMs } from "../camera/effectMotion";
+import { SceneEffects } from "../camera/SceneEffects";
 import { readTarget } from "../camera/measure";
 import { cameraAt, type CameraMode, type CameraTargets, type SceneTargets, type ShotTargetBox } from "../camera/shots";
 import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
@@ -14,11 +16,12 @@ import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type SceneDur
 import { Caption, kit } from "../kit";
 import type { PageNarration } from "../narration/types";
 import { SceneClockContext, SceneWordsContext } from "../kit/frameContext";
+import { resolveCue } from "../kit/cues";
 import { sceneWords } from "../kit/sceneWords";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
 import { Overlays } from "../overlays/Overlays";
-import { WIDE_SHOT, opensSettled, type Storyboard } from "../storyboard/types";
+import { WIDE_SHOT, opensSettled, type Storyboard, type StoryboardScene } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { transitionOverlay, transitionStyle } from "../transitions";
 import { morphEndpoints, morphProgress, sharedIds, type BoundaryMeasurement, type SharedMeasurements } from "../transitions/shared";
@@ -62,6 +65,11 @@ export interface FrameProps {
    * without one is skipped.
    */
   targets?: CameraTargets;
+  /**
+   * Boxes of the scenes' ring and highlight targets by effect index, measured
+   * in the page like shot targets. An effect without one is not drawn.
+   */
+  effectTargets?: CameraTargets;
   /** `live` (default) draws the camera as it plays; `steady` holds its breathing still, for the checks. */
   camera?: Exclude<CameraMode, "wide">;
   /** Measured word times per scene id (see `PageInput`). */
@@ -76,8 +84,16 @@ interface SceneLayerProps {
   /** Hide this scene's shared originals: a morph draws them. */
   hideShared?: boolean;
   targets?: CameraTargets;
+  effectTargets?: CameraTargets;
   camera: CameraMode;
   narration?: PageInput["narration"];
+  /** Draw the scene's effects (default). Off on the measuring stage, so boxes are measured at rest. */
+  effects?: boolean;
+}
+
+/** A scene's narration words on its clock, for word cues: the voice's words, or an even estimate without cached audio. */
+function wordsOf(theme: Theme, scene: StoryboardScene, sceneFrames: number, fps: number, narration: PageInput["narration"]) {
+  return scene.narration === undefined ? [] : sceneWords(theme, scene.narration, ((sceneFrames - 1) * 1000) / fps, narration?.[scene.id]?.words);
 }
 
 /**
@@ -85,7 +101,7 @@ interface SceneLayerProps {
  * fixed. During a transition, wrapped in its presentation's style, with the
  * presentation's overlay (iris's ring) drawn above it.
  */
-function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false, targets, camera, narration }: SceneLayerProps) {
+function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false, targets, effectTargets, camera, narration, effects = true }: SceneLayerProps) {
   const scene = storyboard.scenes[active.sceneIndex]!;
   const Component = Object.hasOwn(kit, scene.component) ? kit[scene.component] : undefined;
   if (Component === undefined) {
@@ -104,12 +120,14 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
     mode: camera,
   });
   // Word cues resolve against these: the voice's words, or an even estimate without cached audio.
-  const words = scene.narration === undefined ? [] : sceneWords(theme, scene.narration, ((active.sceneFrames - 1) * 1000) / fps, narration?.[scene.id]?.words);
+  const words = wordsOf(theme, scene, active.sceneFrames, fps, narration);
+  const drawEffects = effects && camera !== "wide" && scene.effects !== undefined && scene.effects.length > 0;
   const content = (
     <SceneClockContext.Provider value={{ fps, frame: active.localFrame, frames: active.sceneFrames, settled: opensSettled(storyboard, active.sceneIndex) }}>
       <SceneWordsContext.Provider value={words}>
-        <CameraWorld view={view} aspect={aspect}>
+        <CameraWorld view={view} aspect={aspect} {...(drawEffects ? { effects: scene.id } : {})}>
           <Component {...scene.props} {...common} />
+          {drawEffects && <SceneEffects sceneId={scene.id} effects={scene.effects!} targets={effectTargets?.get(active.sceneIndex)} {...common} />}
         </CameraWorld>
       </SceneWordsContext.Provider>
       {scene.narration !== undefined && storyboard.captionStyle !== "off" && (
@@ -149,12 +167,12 @@ function morphAt(info: ReturnType<typeof frameAt>, shared: SharedMeasurements | 
  * incoming one on top, over one shared ground; elements the two scenes share
  * (see `shared`) are drawn once, morphing, above both.
  */
-export function Frame({ storyboard, theme, timeline, frame, shared, targets, camera = "live", narration }: FrameProps) {
+export function Frame({ storyboard, theme, timeline, frame, shared, targets, effectTargets, camera = "live", narration }: FrameProps) {
   const info = frameAt(timeline, frame);
   const size = frameSize(storyboard.aspect);
   const morph = morphAt(info, shared);
   const transition = morph === undefined ? undefined : timeline.transitions[morph.boundary]!;
-  const layer = { storyboard, theme, fps: timeline.fps, targets, camera, narration };
+  const layer = { storyboard, theme, fps: timeline.fps, targets, effectTargets, camera, narration };
 
   return (
     <div
@@ -196,7 +214,7 @@ function MeasureFrame(props: { storyboard: Storyboard; theme: Theme; fps: number
   const { width, height } = frameSize(props.storyboard.aspect);
   return (
     <div style={{ position: "relative", width, height, overflow: "hidden" }}>
-      <SceneLayer {...props} />
+      <SceneLayer {...props} effects={false} />
     </div>
   );
 }
@@ -271,28 +289,38 @@ export function mountPage(): void {
     return stage.firstElementChild!;
   };
 
-  // Shot targets are measured on the same stage, with the camera wide, on
-  // the frame each shot lands; once per scene. Boxes measured before the
-  // fonts load are measured again once they have.
+  // Shot targets, and the targets of rings and highlights, are measured on
+  // the same stage, with the camera wide and no effects drawn, on the frame
+  // each shot lands or each effect finishes drawing; once per scene. Boxes
+  // measured before the fonts load are measured again once they have.
   const targets = new Map<number, SceneTargets>();
+  const effectTargets = new Map<number, SceneTargets>();
   const provisionalTargets = new Set<number>();
   const measureTargets = (sceneIndex: number) => {
     if (targets.has(sceneIndex)) return;
     const scene = storyboard.scenes[sceneIndex]!;
     const { id, frames } = timeline.scenes[sceneIndex]!;
-    const boxes = (scene.shots ?? []).map((shot): ShotTargetBox | undefined => {
-      if (typeof shot.target !== "string" || shot.target === WIDE_SHOT) return undefined;
-      const landed = Math.min(frames - 1, Math.round(((shot.atMs + (shot.durationMs ?? theme.motion.shot.ms)) * timeline.fps) / 1000));
+    const measure = (target: string, ms: number, what: string): ShotTargetBox => {
+      const landed = Math.max(0, Math.min(frames - 1, Math.round((ms * timeline.fps) / 1000)));
       const at = { sceneIndex, sceneId: id, localFrame: landed, sceneFrames: frames, progress: frames === 1 ? 1 : landed / (frames - 1) };
-      const box = readTarget(stageScene(at, "wide"), shot.target);
+      const box = readTarget(stageScene(at, "wide"), target);
       if (box === undefined) {
         flushSync(() => stageRoot.render(null));
-        throw new Error(`scene "${scene.id}": shot target "${shot.target}" is not drawn in the scene`);
+        throw new Error(`scene "${scene.id}": ${what} target "${target}" is not drawn in the scene`);
       }
       return box;
+    };
+    const boxes = (scene.shots ?? []).map((shot): ShotTargetBox | undefined => {
+      if (typeof shot.target !== "string" || shot.target === WIDE_SHOT) return undefined;
+      return measure(shot.target, shot.atMs + (shot.durationMs ?? theme.motion.shot.ms), "shot");
     });
+    const words = wordsOf(theme, scene, frames, timeline.fps, narration);
+    const effectBoxes = (scene.effects ?? []).map((effect): ShotTargetBox | undefined =>
+      drawsOverTarget(effect.kind) ? measure(effect.target, resolveCue(effect.at, words) + effectDrawMs(effect.kind), "effect") : undefined,
+    );
     targets.set(sceneIndex, boxes);
-    if (boxes.every((box) => box === undefined)) return;
+    effectTargets.set(sceneIndex, effectBoxes);
+    if ([...boxes, ...effectBoxes].every((box) => box === undefined)) return;
     flushSync(() => stageRoot.render(null));
     if (!fontsLoaded) provisionalTargets.add(sceneIndex);
   };
@@ -316,7 +344,7 @@ export function mountPage(): void {
   // Commits synchronously, so the DOM shows the frame when this returns.
   const draw = (camera: Exclude<CameraMode, "wide">) => {
     flushSync(() => {
-      root.render(<Frame storyboard={storyboard} theme={theme} timeline={timeline} frame={current} shared={shared} targets={targets} camera={camera} narration={narration} />);
+      root.render(<Frame storyboard={storyboard} theme={theme} timeline={timeline} frame={current} shared={shared} targets={targets} effectTargets={effectTargets} camera={camera} narration={narration} />);
     });
     if (renderError !== undefined) throw renderError;
   };
@@ -325,7 +353,10 @@ export function mountPage(): void {
     current = frame;
     provisional = false;
     if (fontsLoaded) {
-      for (const index of provisionalTargets) targets.delete(index);
+      for (const index of provisionalTargets) {
+        targets.delete(index);
+        effectTargets.delete(index);
+      }
       provisionalTargets.clear();
     }
     for (const scene of scenesOnScreen(frameAt(timeline, frame))) measureTargets(scene.sceneIndex);

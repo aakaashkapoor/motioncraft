@@ -1,6 +1,8 @@
 // The storyboard: the JSON document an agent writes before any scene is built.
 // See docs/design.md, "The workflow", step 1.
 
+import type { Cue } from "../kit/cues";
+import type { ColorRole } from "../theme/roles";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
 export const ASPECTS = ["9:16", "16:9"] as const;
@@ -98,6 +100,26 @@ export interface SceneShot {
   durationMs?: number;
 }
 
+export const EFFECT_KINDS = ["ring", "highlight", "shake", "pulse"] as const;
+export type EffectKind = (typeof EFFECT_KINDS)[number];
+
+/**
+ * Attention on one element at a moment: a `ring` drawn around it or a
+ * `highlight` band swept over it (both hold to the scene's exit), or a short
+ * `shake` or `pulse` of the element itself.
+ */
+export interface SceneEffect {
+  /** A `shareId` in the scene, as shots target elements. */
+  target: string;
+  kind: EffectKind;
+  /** When it starts: ms from the scene start or a narration word. */
+  at: Cue;
+  /** Defaults to `accent`. */
+  color?: ColorRole;
+  /** `shake` and `pulse` only matter: how long they run, 100-2000 ms. Defaults to 360 (shake) and 320 (pulse). */
+  durationMs?: number;
+}
+
 /**
  * A scene's own narration audio, used instead of the voice. Paths are relative
  * to the storyboard file. The scene's `narration` text is still required: the
@@ -132,6 +154,8 @@ export interface StoryboardScene {
   transition?: SceneTransition;
   /** Camera moves within the scene, in time order. Without any the camera stays wide. */
   shots?: SceneShot[];
+  /** Rings, highlights, shakes and pulses on the scene's elements, each at its cue. */
+  effects?: SceneEffect[];
 }
 
 export const OVERLAY_CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;

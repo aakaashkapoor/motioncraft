@@ -12,6 +12,7 @@ import {
   type Opening,
   type SafeProfile,
   type SceneAudio,
+  type SceneEffect,
   type SceneShot,
   type StoryboardOverlay,
   type SceneTransition,
@@ -21,6 +22,7 @@ import {
 } from "./types";
 import { overlaysErrors } from "../overlays/errors";
 import { sceneComponents } from "./components";
+import { effectsErrors } from "./effects";
 import { shotsErrors } from "./shots";
 import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
 import { cueErrors } from "../kit/cues";
@@ -37,7 +39,7 @@ export function isVoiceSpeed(value: unknown): value is number {
 }
 
 const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "scenes"]);
-const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "audio", "durationMs", "transition", "shots"]);
+const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "audio", "durationMs", "transition", "shots", "effects"]);
 const AUDIO_FIELDS = new Set(["file", "words"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction", "origin"]);
 const ORIGIN_FIELDS = new Set(["x", "y"]);
@@ -133,7 +135,7 @@ function linesErrors(scene: { component: unknown; props: Record<string, unknown>
 /** Validates a scene, pushing errors prefixed with `label`. Returns the scene if valid. */
 function validateScene(raw: Record<string, unknown>, label: string, errors: string[]): StoryboardScene | undefined {
   const sceneErrors: string[] = unknownFields(raw, SCENE_FIELDS);
-  const { component, props, narration, audio, durationMs, transition, shots } = raw;
+  const { component, props, narration, audio, durationMs, transition, shots, effects } = raw;
 
   if (!isNonEmptyString(component)) sceneErrors.push("component is required and must be a non-empty string");
   if (!isObject(props)) sceneErrors.push("props is required and must be an object");
@@ -153,6 +155,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   }
   if (transition !== undefined) sceneErrors.push(...transitionErrors(transition));
   if (shots !== undefined && isObject(props)) sceneErrors.push(...shotsErrors(shots, { component, props, durationMs }));
+  if (effects !== undefined && isObject(props)) sceneErrors.push(...effectsErrors(effects, { component, props, narration, durationMs }));
 
   errors.push(...sceneErrors.map((e) => `${label}: ${e}`));
   if (sceneErrors.length > 0) return undefined;
@@ -163,6 +166,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   if (durationMs !== undefined) scene.durationMs = durationMs as number | "clip";
   if (transition !== undefined) scene.transition = transition as SceneTransition;
   if (shots !== undefined) scene.shots = shots as SceneShot[];
+  if (effects !== undefined) scene.effects = effects as SceneEffect[];
   return scene;
 }
 

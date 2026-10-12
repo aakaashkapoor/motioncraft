@@ -140,3 +140,25 @@ export { sceneWords } from "./kit/sceneWords";
 export { caretBlink, typedCount, typedText, typingPauseMs, typingSpan, typingTimes, type TypingSpan } from "./kit/typing";
 export { arrive, cascadeStep, curveEasing, exitMs, exitOpacity, fade, fitSequence, pulse, tween, type Timed } from "./kit/motion";
 export * from "./camera";
+export { EFFECT_COLORS, EFFECT_DURATION, effectsErrors, effectTargetIds } from "./storyboard/effects";
+export {
+  DEFAULT_PULSE_MS,
+  DEFAULT_SHAKE_MS,
+  EFFECT_PADDING_PX,
+  HIGHLIGHT_ALPHA,
+  HIGHLIGHT_SWEEP_MS,
+  PULSE_SCALE,
+  RING_DRAW_MS,
+  RING_STROKE_PX,
+  SHAKE_CYCLES,
+  SHAKE_PX,
+  drawsOverTarget,
+  effectBox,
+  effectDrawMs,
+  highlightSweep,
+  pulseScale,
+  ringDraw,
+  shakeOffset,
+} from "./camera/effectMotion";
+export { SceneEffects, type SceneEffectsProps } from "./camera/SceneEffects";
+export { EFFECTS_ATTRIBUTE } from "./camera/effectsAttribute";
