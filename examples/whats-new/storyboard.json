@@ -231,7 +231,7 @@
       "props": {
         "text": "Every frame is drawn in code",
         "mark": "drawn in code",
-        "markStyle": "circle",
+        "markStyle": "highlight",
         "note": "no stock footage, no AI video"
       },
       "narration": "No stock footage, and no AI video. Every frame is drawn in code.",
@@ -315,33 +315,26 @@
     },
     {
       "id": "formats",
-      "component": "Section",
+      "component": "CardRow",
       "props": {
-        "eyebrow": "Every format",
-        "headline": "Shorts, widescreen and feed",
-        "content": {
-          "component": "CardRow",
-          "props": {
-            "cards": [
-              {
-                "icon": "play",
-                "title": "9:16",
-                "subtitle": "Shorts and TikTok"
-              },
-              {
-                "icon": "laptop",
-                "title": "16:9",
-                "subtitle": "Widescreen"
-              },
-              {
-                "icon": "file",
-                "title": "4:5",
-                "subtitle": "Feed posts"
-              }
-            ],
-            "highlight": 2
+        "cards": [
+          {
+            "icon": "play",
+            "title": "Shorts",
+            "subtitle": "9:16"
+          },
+          {
+            "icon": "laptop",
+            "title": "Widescreen",
+            "subtitle": "16:9"
+          },
+          {
+            "icon": "file",
+            "title": "Feed posts",
+            "subtitle": "4:5"
           }
-        }
+        ],
+        "highlight": 2
       },
       "narration": "Shorts, widescreen, and now four by five, for your feed.",
       "transition": {
