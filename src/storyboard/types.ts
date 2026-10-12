@@ -125,6 +125,8 @@ export interface Storyboard {
   opening?: Opening;
   /** The narration voice (a Kokoro voice name). Defaults to "af_heart". */
   voice?: string;
+  /** How fast the voice speaks, 0.8-1.4. Defaults to 1. */
+  voiceSpeed?: number;
   /**
    * How written words are spoken: `{ "JSON": "Jaysawn" }` says "Jaysawn" where
    * the narration has `JSON`, while captions keep `JSON`. Keys have no

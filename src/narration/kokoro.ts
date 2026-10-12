@@ -32,7 +32,8 @@ export interface Speech {
 }
 
 export interface Synthesizer {
-  speak(text: string, voice: string): Promise<Speech>;
+  /** `speed` is 1 when omitted. */
+  speak(text: string, voice: string, speed?: number): Promise<Speech>;
 }
 
 const SAMPLE_RATE = 24000;
@@ -98,6 +99,20 @@ export function speechWords(
   return wordSamples(durations, idOfChar, spans, waveformLength);
 }
 
+/** The model's three inputs; `speed` is the storyboard's `voiceSpeed` (1 is the voice's own pace). */
+export function modelInputs(
+  Tensor: typeof import("onnxruntime-node").Tensor,
+  ids: ArrayLike<number>,
+  style: Float32Array,
+  speed: number,
+): Record<"input_ids" | "style" | "speed", InstanceType<typeof import("onnxruntime-node").Tensor>> {
+  return {
+    input_ids: new Tensor("int64", BigInt64Array.from(ids, BigInt), [1, ids.length]),
+    style: new Tensor("float32", style, [1, STYLE_SIZE]),
+    speed: new Tensor("float32", Float32Array.of(speed), [1]),
+  };
+}
+
 interface Loaded {
   session: InferenceSession;
   vocab: Record<string, number>;
@@ -136,7 +151,7 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
   }
 
   return {
-    async speak(text, voice) {
+    async speak(text, voice, speed = 1) {
       if (!Object.hasOwn(VOICE_FILES, voice)) {
         throw new Error(`unknown voice "${voice}"; supported voices: ${Object.keys(VOICE_FILES).join(", ")}`);
       }
@@ -153,11 +168,9 @@ export function kokoroSynthesizer(options: { cacheDir?: string; offline?: boolea
       const styles = await voiceStyles(loaded, voice);
 
       const ort = await import("onnxruntime-node");
-      const output = await loaded.session.run({
-        input_ids: new ort.Tensor("int64", BigInt64Array.from(ids, BigInt), [1, ids.length]),
-        style: new ort.Tensor("float32", styles.slice(row * STYLE_SIZE, (row + 1) * STYLE_SIZE), [1, STYLE_SIZE]),
-        speed: new ort.Tensor("float32", Float32Array.of(1), [1]),
-      });
+      const output = await loaded.session.run(
+        modelInputs(ort.Tensor, ids, styles.slice(row * STYLE_SIZE, (row + 1) * STYLE_SIZE), speed),
+      );
       const samples = Float32Array.from(output["waveform"]!.data as Float32Array);
       return { samples, sampleRate: SAMPLE_RATE, words: speechWords(output["durations"]?.data as ArrayLike<number> | undefined, ids.length, idOfChar, spans, samples.length) };
     },
