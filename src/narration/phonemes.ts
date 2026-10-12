@@ -159,6 +159,8 @@ export interface WordPhonemes {
   phonemes: string;
   /** Per input word: its phonemes' [start, end) in `phonemes`, punctuation excluded; start === end when it has none. */
   spans: { start: number; end: number }[];
+  /** Per input word (as `spans`): whether the voice guessed it by letter-to-sound rules, found in no dictionary or rule. */
+  guessed: boolean[];
 }
 
 export function createWordPhonemizer(gold: Lexicon, silver: Lexicon): (words: readonly string[]) => WordPhonemes {
@@ -239,22 +241,26 @@ export function createWordPhonemizer(gold: Lexicon, silver: Lexicon): (words: re
     return undefined;
   };
 
-  const pronounce = (word: string, context: Context): string => {
-    if (DOTTED.test(word)) return spellOut(word.replaceAll(".", "").toUpperCase());
+  /** A word's phonemes, and whether they were guessed (sounded out, not found or spelled out). */
+  const pronounce = (word: string, context: Context): { phonemes: string; guessed: boolean } => {
+    const sure = (phonemes: string) => ({ phonemes, guessed: false });
+    if (DOTTED.test(word)) return sure(spellOut(word.replaceAll(".", "").toUpperCase()));
     const fixed = special(word, context);
-    if (fixed !== undefined) return fixed;
+    if (fixed !== undefined) return sure(fixed);
     const found = find(word, context) ?? withSuffix(word) ?? stemEd(word) ?? stemIng(word) ?? compound(word);
-    if (found === undefined) return /^[A-Z]{2,}$/.test(word) ? spellOut(word) : soundOut(word);
-    if (word === word.toLowerCase()) return found;
-    return applyStress(found, word === word.toUpperCase() ? 2 : 0.5);
+    if (found === undefined) {
+      return /^[A-Z]{2,}$/.test(word) ? sure(spellOut(word)) : { phonemes: soundOut(word), guessed: true };
+    }
+    if (word === word.toLowerCase()) return sure(found);
+    return sure(applyStress(found, word === word.toUpperCase() ? 2 : 0.5));
   };
 
-  /** The right-to-left walk over normalized tokens; returns one span per owner, `owners` in all. */
+  /** The right-to-left walk over normalized tokens; returns one span (and guess) per owner, `owners` in all. */
   const phonemizeTokens = (tokens: readonly Token[], owners: number): WordPhonemes => {
-    const slots = tokens.map((token) => ({ ...token, phonemes: "" }));
+    const slots = tokens.map((token) => ({ ...token, phonemes: "", guessed: false }));
     // A dotted acronym ends a sentence only when it ends the text.
     const last = slots.at(-1);
-    if (last !== undefined && DOTTED.test(last.text)) slots.push({ text: ".", owner: last.owner, phonemes: "" });
+    if (last !== undefined && DOTTED.test(last.text)) slots.push({ text: ".", owner: last.owner, phonemes: "", guessed: false });
 
     // Right to left, as misaki does, so each word knows what follows it.
     let nextVowel: boolean | null = null;
@@ -265,14 +271,17 @@ export function createWordPhonemizer(gold: Lexicon, silver: Lexicon): (words: re
         continue;
       }
       const previous = slots[i - 1]?.text.toLowerCase() ?? "";
-      const raw = pronounce(slot.text, { nextVowel, previous });
+      const { phonemes: raw, guessed } = pronounce(slot.text, { nextVowel, previous });
+      slot.guessed = guessed;
       slot.phonemes = raw.replaceAll("ɾ", "T").replaceAll("ʔ", "t");
       nextVowel = contextAfter(raw, nextVowel);
     }
 
     let out = "";
     const spans = Array.from({ length: owners }, () => ({ start: -1, end: -1 }));
+    const guessed = Array.from({ length: owners }, () => false);
     for (const slot of slots) {
+      if (slot.guessed) guessed[slot.owner] = true;
       const mark = BREAKS.get(slot.text);
       if (mark !== undefined) {
         out += mark;
@@ -294,7 +303,7 @@ export function createWordPhonemizer(gold: Lexicon, silver: Lexicon): (words: re
         at = span.end;
       }
     }
-    return { phonemes: out, spans };
+    return { phonemes: out, spans, guessed };
   };
 
   return (words) => {
@@ -311,9 +320,9 @@ export function createWordPhonemizer(gold: Lexicon, silver: Lexicon): (words: re
       for (let w = first; w <= last; w++) groupOf.push(groups);
       first = last + 1;
     }
-    const { phonemes, spans } = phonemizeTokens(tokens, groups);
-    // Every display word of a group gets the span of the whole group.
-    return { phonemes, spans: groupOf.map((group) => ({ ...spans[group]! })) };
+    const { phonemes, spans, guessed } = phonemizeTokens(tokens, groups);
+    // Every display word of a group gets the span (and guess) of the whole group.
+    return { phonemes, spans: groupOf.map((group) => ({ ...spans[group]! })), guessed: groupOf.map((group) => guessed[group]!) };
   };
 }
 

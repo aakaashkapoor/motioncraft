@@ -281,6 +281,14 @@ Matching is exact case, word by word, with punctuation around the word kept
 { "pronounce": { "JSON": "Jayson", "nsh": "N S H" } }
 ```
 
+A word in neither the voice's dictionary nor the built-in table (a product or
+project name like `Kokoro`) is guessed from its letters, and often said wrong.
+`scripts/check.ts` warns about each one as `narration-guess`, with the sounds it
+will use. Listen to the scene, and if it is wrong, add the word to `pronounce`.
+Words in all caps (`API`) are spelled out letter by letter and not reported. The
+warning needs the voice's dictionaries, so it appears once narration has been
+downloaded.
+
 ## 3. Theme and overrides
 
 Themes are defaults, not rules. Anything the user asks for must be possible;
@@ -469,6 +477,8 @@ checks.
   - `narration-fit` (error): a scene's `durationMs` is shorter than its lead
     + narration audio + tail (needs the narration spoken first). Lengthen the
     scene or remove `durationMs`.
+  - `narration-guess` (warn): a narration word the voice will guess from its
+    letters. Listen to it; if it is wrong, add it to `pronounce`.
 - **Frame checks** on the start, middle and end of every scene: `overflow`
   (text clipped or off frame), `safe-area` (inside the `safe` profile's UI-free
   zone, with text also off the 9:16 button rail), `contrast` (WCAG) and
