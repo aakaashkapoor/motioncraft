@@ -480,6 +480,23 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "before-after",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A comparison in the slot",
+        "content": {
+          "component": "BeforeAfter",
+          "props": {
+            "before": { "component": "StepList", "props": { "items": ["Write it by hand", "Wait for review"] } },
+            "after": { "component": "StepList", "props": { "items": ["Describe it", "Render"] } }
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

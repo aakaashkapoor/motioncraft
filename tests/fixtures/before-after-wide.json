@@ -1,0 +1,64 @@
+{
+  "title": "BeforeAfter kit component: code and step lists (16:9)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "workflow",
+      "component": "BeforeAfter",
+      "props": {
+        "before": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Storyboard in slides",
+              "Animate by hand",
+              "Export again"
+            ]
+          }
+        },
+        "after": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Write one prompt",
+              "Check the plan",
+              "Render"
+            ],
+            "highlight": 2
+          }
+        },
+        "beforeLabel": "By hand",
+        "afterLabel": "With motioncraft"
+      },
+      "durationMs": 8500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "refactor",
+      "component": "BeforeAfter",
+      "props": {
+        "before": {
+          "component": "CodeWindow",
+          "props": {
+            "title": "cart.js",
+            "code": "let sum = 0;\nfor (const x of cart)\n  sum += x.price;"
+          }
+        },
+        "after": {
+          "component": "CodeWindow",
+          "props": {
+            "title": "cart.js",
+            "code": "const sum = cart.reduce(\n  (a, x) => a + x.price, 0);"
+          }
+        },
+        "beforeLabel": "Loop",
+        "afterLabel": "Reduce"
+      },
+      "durationMs": 14000
+    }
+  ]
+}

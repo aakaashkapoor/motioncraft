@@ -28,6 +28,7 @@ import { Receipt } from "./Receipt";
 import { Notification } from "./Notification";
 import { StrokeTrace } from "./StrokeTrace";
 import { Annotate } from "./Annotate";
+import { BeforeAfter } from "./BeforeAfter";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -76,4 +77,5 @@ export const kit: Record<string, KitComponent> = {
   Notification: asKitComponent(Notification),
   StrokeTrace: asKitComponent(StrokeTrace),
   Annotate: asKitComponent(Annotate),
+  BeforeAfter: asKitComponent(BeforeAfter),
 };
