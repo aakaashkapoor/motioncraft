@@ -2,6 +2,7 @@
 // https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
 
 import { mixColors, parseHex } from "./color";
+import type { ThemeColors } from "./types";
 
 function channel(value: number): number {
   const c = value / 255;
@@ -42,4 +43,27 @@ export function readableColor(color: string, toward: string, backgrounds: readon
     if (backgrounds.every((bg) => contrastRatio(candidate, bg) >= min)) return candidate;
   }
   return toward;
+}
+
+/** Non-text contrast (WCAG 1.4.11) for marks and large graphics. */
+export const GRAPHIC_CONTRAST = 3;
+
+/**
+ * Problems with the positive and negative roles of `colors`: each fill must reach
+ * 3:1 on the ground and the surface, and its text colour 4.5:1 on the fill.
+ * Empty when they all pass.
+ */
+export function roleColorIssues(colors: Pick<ThemeColors, "ground" | "surface" | "positive" | "positiveText" | "negative" | "negativeText">): string[] {
+  const issues: string[] = [];
+  for (const role of ["positive", "negative"] as const) {
+    const fill = colors[role];
+    for (const bg of ["ground", "surface"] as const) {
+      const ratio = contrastRatio(fill, colors[bg]);
+      if (ratio < GRAPHIC_CONTRAST) issues.push(`${role} ${fill} on ${bg} ${colors[bg]} is ${ratio.toFixed(2)}:1; needs ${GRAPHIC_CONTRAST}:1`);
+    }
+    const text = colors[`${role}Text` as const];
+    const ratio = contrastRatio(text, fill);
+    if (ratio < AA_CONTRAST) issues.push(`${role}Text ${text} on ${role} ${fill} is ${ratio.toFixed(2)}:1; needs ${AA_CONTRAST}:1`);
+  }
+  return issues;
 }

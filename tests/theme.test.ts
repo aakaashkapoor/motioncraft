@@ -10,6 +10,8 @@ import {
   mixColors,
   neutralTheme,
   relativeLuminance,
+  roleColor,
+  roleColorIssues,
   resolveTheme,
   themes,
   validateStoryboard,
@@ -63,7 +65,7 @@ describe.each(BUILT_IN)("%s theme", (name, theme) => {
   });
 
   it("fills every color role with a hex color; neutrals are tinted, never pure black, and only cards may be pure white", () => {
-    const roles = ["ground", "surface", "surfaceAlt", "text", "textMuted", "textSubtle", "accent", "accentText", "border", "shadow"];
+    const roles = ["ground", "surface", "surfaceAlt", "text", "textMuted", "textSubtle", "accent", "accentText", "positive", "positiveText", "negative", "negativeText", "border", "shadow"];
     expect(Object.keys(colors).sort()).toEqual(roles.sort());
     for (const [role, value] of Object.entries(colors)) {
       expect(value).toMatch(HEX);
@@ -403,5 +405,51 @@ describe("resolveTheme", () => {
       expect(theme.colors.ground).toBe("#e8590c");
       expect(contrastRatio(theme.colors.text, theme.colors.ground)).toBeGreaterThanOrEqual(3);
     });
+  });
+});
+
+describe("positive and negative roles", () => {
+  for (const [name, theme] of Object.entries(themes)) {
+    describe(name, () => {
+      const { colors } = theme;
+      it("has the four colours as hex", () => {
+        for (const key of ["positive", "positiveText", "negative", "negativeText"] as const) expect(colors[key]).toMatch(/^#[0-9a-f]{6}$/i);
+      });
+      it("meets 3:1 on ground and surface, and 4.5:1 for the text on the fill", () => {
+        for (const role of ["positive", "negative"] as const) {
+          for (const bg of [colors.ground, colors.surface]) expect(contrastRatio(colors[role], bg), `${role} on ${bg}`).toBeGreaterThanOrEqual(3);
+          expect(contrastRatio(colors[`${role}Text`], colors[role])).toBeGreaterThanOrEqual(4.5);
+        }
+        expect(roleColorIssues(colors)).toEqual([]);
+      });
+    });
+  }
+
+  it("reports a low-contrast override with a clear message", () => {
+    const issues = roleColorIssues({ ...lightTheme.colors, negative: "#e6e0e0" });
+    expect(issues.some((m) => m.includes("negative #e6e0e0 on ground") && m.includes("needs 3:1"))).toBe(true);
+  });
+
+  it("resolveTheme rejects a low-contrast negative or positive override, naming the colour", () => {
+    expect(() => resolveTheme(board({ themeOverrides: { colors: { negative: "#e6e0e0" } } }))).toThrow(/themeOverrides\.colors: negative #e6e0e0 on ground/);
+    expect(() => resolveTheme(board({ themeOverrides: { colors: { positive: "#ffffff" } } }))).toThrow(/positive #ffffff/);
+    expect(() => resolveTheme(board({ themeOverrides: { colors: { negative: "#b02a2a", negativeText: "#b02a2a" } } }))).toThrow(/negativeText/);
+    expect(resolveTheme(board({ themeOverrides: { colors: { negative: "#b02a2a" } } })).colors.negative).toBe("#b02a2a");
+  });
+
+  it("picks a readable text for an overridden fill, and keeps an explicit one", () => {
+    const dark = resolveTheme(board({ theme: "dark", themeOverrides: { colors: { positive: "#ffe14d" } } }));
+    expect(contrastRatio(dark.colors.positiveText, "#ffe14d")).toBeGreaterThanOrEqual(4.5);
+    const kept = resolveTheme(board({ theme: "dark", themeOverrides: { colors: { positive: "#ffe14d", positiveText: "#123456" } } }));
+    expect(kept.colors.positiveText).toBe("#123456");
+  });
+
+  it("roleColor maps each role", () => {
+    const { colors } = darkTheme;
+    expect(roleColor(darkTheme, "accent")).toBe(colors.accent);
+    expect(roleColor(darkTheme, "positive")).toBe(colors.positive);
+    expect(roleColor(darkTheme, "negative")).toBe(colors.negative);
+    expect(roleColor(darkTheme, "text")).toBe(colors.text);
+    expect(roleColor(darkTheme, "muted")).toBe(colors.textMuted);
   });
 });

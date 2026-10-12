@@ -6,7 +6,6 @@ export { validateCue, validateStoryboard } from "./storyboard/validate";
 
 export type {
   AccentIntensity,
-  ColorRole,
   GroundStyle,
   Theme,
   ThemeColors,
@@ -53,9 +52,9 @@ export { neutralTheme } from "./theme/neutral";
 export { lightTheme } from "./theme/light";
 export { darkTheme } from "./theme/dark";
 export { deepMerge, resolveTheme, themes } from "./theme/resolve";
-export { accentInk, cardColors, headlineColor, type CardColors } from "./theme/roles";
+export { accentInk, cardColors, headlineColor, roleColor, type CardColors, type ColorRole } from "./theme/roles";
 export { mixColors, withAlpha } from "./theme/color";
-export { contrastRatio, relativeLuminance } from "./theme/contrast";
+export { contrastRatio, relativeLuminance, roleColorIssues } from "./theme/contrast";
 export { groundTint, MESH_STOPS, meshFalloff, meshLayout, type MeshRest } from "./theme/mesh";
 
 export { frameSize } from "./layout/frame";

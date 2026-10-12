@@ -33,3 +33,23 @@ export function cardColors(theme: Theme): CardColors {
     ? { fill: colors.accent, text: colors.accentText, border: colors.accent }
     : { fill: colors.surface, text: colors.text, border: colors.accent };
 }
+
+/** The colour roles a component can take. Components pass a role, never a hex. */
+export type ColorRole = "accent" | "positive" | "negative" | "text" | "muted";
+
+/** The theme's colour for `role`: the colour to draw a mark or text in on the ground and cards. */
+export function roleColor(theme: Theme, role: ColorRole): string {
+  const { colors } = theme;
+  switch (role) {
+    case "accent":
+      return colors.accent;
+    case "positive":
+      return colors.positive;
+    case "negative":
+      return colors.negative;
+    case "text":
+      return colors.text;
+    case "muted":
+      return colors.textMuted;
+  }
+}
