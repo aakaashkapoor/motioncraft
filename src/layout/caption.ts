@@ -13,17 +13,17 @@ export const CAPTION_MAX_LINES = 2;
 /** A caption style that draws something. */
 export type ShownCaptionStyle = Exclude<CaptionStyle, "off">;
 
-/** Words per caption page: 3-6 for explainers, 1-3 very large words for punch. */
+/** Words per caption page: 3-6 for explainers, 1-3 very large words for punch and pill, which page alike. */
 export const CAPTION_PAGE_WORDS: Record<ShownCaptionStyle, { min: number; max: number }> = {
   standard: { min: 3, max: 6 },
   punch: { min: 1, max: 3 },
+  pill: { min: 1, max: 3 },
 };
 
-/** A caption style's type: `standard` is the ramp's `subtitle` at bold, `punch` its `headline` at heavy. */
+/** A caption style's type: `standard` is the ramp's `subtitle` at bold, `punch` its `headline` at heavy, `pill` its `headline` at bold. */
 export function captionType(theme: Theme, aspect: Aspect, style: ShownCaptionStyle): TypeSpec {
-  return style === "punch"
-    ? { ...theme.type.headline[aspect], weight: theme.weights.heavy }
-    : { ...theme.type.subtitle[aspect], weight: theme.weights.bold };
+  if (style === "standard") return { ...theme.type.subtitle[aspect], weight: theme.weights.bold };
+  return { ...theme.type.headline[aspect], weight: style === "punch" ? theme.weights.heavy : theme.weights.bold };
 }
 
 /**

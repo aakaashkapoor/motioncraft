@@ -3,7 +3,9 @@
 // (see `layout/caption`). The word being spoken lights up in the accent and
 // scales up a touch, and each page enters with a small scale and rise.
 // `standard` sets 3-6 words in the ramp's `subtitle` on a plate; `punch` sets
-// 1-3 uppercase words in its `headline` on a dark outline. Captions follow
+// 1-3 uppercase words in its `headline` on a dark outline; `pill` (ported from
+// HyperFrames `caption-pill-karaoke`) the same pages in sentence case, with an
+// accent pill sliding from word to word behind the spoken one. Captions follow
 // speech: they fade in quickly on the scene's lead and leave fast at its end.
 
 import { Fragment, type CSSProperties } from "react";
@@ -13,10 +15,11 @@ import { AVG_CHAR_EM, charsPerLine } from "../layout/textFit";
 import { TYPE_FIT_ATTRIBUTE, typeCss } from "../layout/type";
 import { DEFAULT_CAPTION_STYLE, type CaptionStyle } from "../storyboard/types";
 import { mixColors } from "../theme/color";
-import { readableColor, relativeLuminance } from "../theme/contrast";
+import { AA_CONTRAST, contrastRatio, readableColor, relativeLuminance } from "../theme/contrast";
 import { accentInk } from "../theme/roles";
 import type { Theme } from "../theme/types";
 import type { CaptionLimits } from "./captionPages";
+import { PILL_PAD_EM, estimateWordBoxes, pillAt, pillInsets, pillLayout, pillPagePadding } from "./captionPill";
 import { CAPTION_LEAD_MS, evenWordTimes, pageIndexAt, timedPages, wordLight, type TimedPage, type TimedWord } from "./captionWords";
 import { useSceneTime } from "./frameContext";
 import { exitMs, exitOpacity, fade, tween } from "./motion";
@@ -72,6 +75,8 @@ export interface CaptionColors {
   active: string;
   /** The punch style's outline. */
   stroke?: string;
+  /** The pill style's dark band behind the page, when the ground is too light for its letters. */
+  plate?: string;
 }
 
 /**
@@ -79,6 +84,8 @@ export interface CaptionColors {
  * plate; punch the lightest neutral on an outline of the darker of text and
  * ground. The spoken word turns the accent, deepened until it reads. On an
  * accent plate it is `accentText` instead (standard) or keeps its color (punch).
+ * Pill sets the lightest neutral, on a band of the darker of text and ground
+ * only where the ground fails it, and the word on the accent pill in `accentText`.
  */
 export function captionColors(theme: Theme, style: ShownCaptionStyle): CaptionColors {
   const { colors } = theme;
@@ -87,6 +94,7 @@ export function captionColors(theme: Theme, style: ShownCaptionStyle): CaptionCo
   const byLuminance = (list: string[]) => list.sort((a, b) => relativeLuminance(a) - relativeLuminance(b));
   const stroke = byLuminance([colors.text, colors.ground])[0]!;
   const text = byLuminance([colors.text, colors.ground, colors.surface]).at(-1)!;
+  if (style === "pill") return { text, active: colors.accentText, ...(contrastRatio(text, colors.ground) < AA_CONTRAST ? { plate: stroke } : {}) };
   return { text, active: plate ? text : readableColor(colors.accent, text, [stroke]), stroke };
 }
 
@@ -110,6 +118,7 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
 
   // A word longer than a line shrinks the page, and the outline with it, until it fits.
   const punch = captionStyle === "punch";
+  const pill = captionStyle === "pill";
   const spec = captionType(theme, aspect, captionStyle);
   const longest = Math.max(...shown.map((word) => word.text.length));
   const fit = Math.min(1, captionLimits(theme, aspect, captionStyle).maxCharsPerLine / longest);
@@ -118,11 +127,39 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
   const { highlight, platePadX, platePadY } = theme.caption;
   // A lit word grows into the spaces beside it (estimated for the page's longest word); so do the outline and the plate.
   const growPx = ((motion.wordScale - 1) / 2) * longest * AVG_CHAR_EM * size;
-  const wordSpacing = growPx + (punch ? strokePx : 0) + (highlight === "plate" ? platePadX : 0);
+  const wordSpacing = pill ? PILL_PAD_EM.x * size : growPx + (punch ? strokePx : 0) + (highlight === "plate" ? platePadX : 0);
   const colors = captionColors(theme, captionStyle);
   const ramp = { ms: motion.wordMs, curve: theme.motion["fx.fast"].curve };
 
-  const wordStyle = (word: TimedWord): CSSProperties => {
+  // The pill: placed on its word as drawn, sliding there from where the word before was estimated to be.
+  const pillState = pill ? pillAt(words, page, spokenMs) : undefined;
+  const pillPad = { x: PILL_PAD_EM.x * size, y: PILL_PAD_EM.y * size };
+  const pillBoxes = pillState === undefined ? [] : estimateWordBoxes(shown.map((word) => word.text), pillLayout(theme, aspect, size));
+  /** How far onto the pill word `k` of the page is, 0..1: its letters turn `accentText` as the pill arrives. */
+  const onPill = (k: number): number => {
+    if (pillState === undefined) return 0;
+    const arrived = pillState.from === pillState.word ? pillState.opacity : pillState.move;
+    return k === pillState.word ? arrived : k === pillState.from ? 1 - arrived : 0;
+  };
+  const pillRadius = (spec.lineHeight * size) / 2 + pillPad.y;
+  // The pill's band is padded around it and rounded to match, so the two nest.
+  const pagePad = pill ? pillPagePadding(theme, size) : { x: theme.spacing.md, y: theme.spacing.xs };
+  const pillStyle = (): CSSProperties => ({
+    position: "absolute",
+    ...pillInsets(pillBoxes, pillState!, pillPad),
+    zIndex: -1,
+    borderRadius: pillRadius,
+    backgroundColor: theme.colors.accent,
+    opacity: pillState!.opacity,
+  });
+
+  const wordStyle = (word: TimedWord, k: number): CSSProperties => {
+    if (pill) {
+      const on = onPill(k);
+      // Each word is a stacking context, so the pill paints under its own word's letters; the word it is leaving sits above it.
+      const zIndex = pillState !== undefined && k === pillState.from && k !== pillState.word ? 1 : 0;
+      return { display: "inline-block", position: "relative", zIndex, color: on <= 0 ? colors.text : on >= 1 ? colors.active : mixColors(colors.text, colors.active, on) };
+    }
     const light = wordLight(word, spokenMs, ramp);
     const lit: CSSProperties = { display: "inline-block", transform: `scale(${1 + (motion.wordScale - 1) * light})` };
     if (highlight === "plate") {
@@ -166,9 +203,9 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
           margin: 0,
           maxWidth: "100%",
           boxSizing: "border-box",
-          padding: `${theme.spacing.xs}px ${theme.spacing.md}px`,
-          borderRadius: theme.radius.md,
-          ...(punch ? {} : { backgroundColor: theme.colors.ground }),
+          padding: `${pagePad.y}px ${pagePad.x}px`,
+          borderRadius: pill ? pillRadius + theme.spacing.xxs : theme.radius.md,
+          ...(punch ? {} : pill ? (colors.plate === undefined ? {} : { backgroundColor: colors.plate }) : { backgroundColor: theme.colors.ground }),
           color: colors.text,
           fontFamily: theme.fonts.body,
           ...typeCss({ ...spec, size }),
@@ -184,7 +221,8 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
         {shown.map((word, k) => (
           <Fragment key={page.start + k}>
             {k > 0 && " "}
-            <span data-caption-word={page.start + k} style={wordStyle(word)}>
+            <span data-caption-word={page.start + k} style={wordStyle(word, k)}>
+              {pillState?.word === k && <span data-caption-pill="" style={pillStyle()} />}
               {word.text}
             </span>
           </Fragment>
