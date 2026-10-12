@@ -88,6 +88,22 @@ export interface SceneShot {
   durationMs?: number;
 }
 
+/**
+ * A scene's own narration audio, used instead of the voice. Paths are relative
+ * to the storyboard file. The scene's `narration` text is still required: the
+ * captions and checks use it.
+ */
+export interface SceneAudio {
+  /** A WAV file: 16-bit or 24-bit PCM or 32-bit float, mono or stereo, any sample rate. */
+  file: string;
+  /**
+   * A JSON file of `[{ text, startMs, endMs }]`, in ms from the start of the
+   * audio, one per narration word. Without it the words are timed evenly over
+   * the audio, so captions are approximate.
+   */
+  words?: string;
+}
+
 export interface StoryboardScene {
   /** Unique within the storyboard. */
   id: string;
@@ -95,6 +111,8 @@ export interface StoryboardScene {
   component: string;
   props: Record<string, unknown>;
   narration?: string;
+  /** Narration from an audio file instead of the voice; its length sizes the scene as spoken narration does. */
+  audio?: SceneAudio;
   /**
    * Positive integer, or "clip" to take the length from the scene's VideoClip
    * (resolved by `prepareMedia`). Required when there is no narration.

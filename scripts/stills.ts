@@ -24,7 +24,8 @@ async function main(argv: string[]): Promise<void> {
   const theme = resolveTheme(storyboard);
   const mediaDir = dirname(args.storyboard);
   // Narration already spoken (scripts/narrate.ts) sets the scene lengths and caption timing; none is ever made here.
-  const cached = await loadCachedNarration(storyboard, { outDir: narrationDir(args.storyboard) });
+  // A scene's own audio file is loaded here too, so its scene is as long as in the video.
+  const cached = await loadCachedNarration(storyboard, { outDir: narrationDir(args.storyboard), mediaDir });
   const notice = missingNarrationNotice(cached);
   if (notice !== undefined) console.log(notice);
   const narration = cached.scenes;
