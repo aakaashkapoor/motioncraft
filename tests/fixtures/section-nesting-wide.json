@@ -570,6 +570,29 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "line-chart",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A line that draws in the slot",
+        "content": {
+          "component": "LineChart",
+          "props": {
+            "data": [
+              { "label": "Jan", "value": 120 },
+              { "label": "Feb", "value": 180 },
+              { "label": "Mar", "value": 150 },
+              { "label": "Apr", "value": 310, "emphasis": true },
+              { "label": "May", "value": 260 },
+              { "label": "Jun", "value": 340 }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }
