@@ -10,13 +10,21 @@
 // slide cuts the curve: the outgoing scene accelerates away and is gone 28% in;
 // the incoming one enters there at 0.35 opacity, already moving, and is solid
 // by 60%. fade dips through the ground: out by 55%, in from 45%.
+//
+// iris and whipPan are ported from HyperFrames' iris-reveal and whip-pan-cut.
+// iris opens a circle from a point (quart in-out) with the incoming scene on
+// top; the page draws its accent ring from `transitionOverlay`. whipPan obeys
+// the Vector Law: one axis, one direction, a hard cut at 0.5 with both sides at
+// the same speed (mirrored quint curves over the same distance and time). As in
+// the source, the pan covers one frame and the cut lands where the seam crosses
+// the middle: each side travels half a frame, so neither is gone at the cut.
 
 import type { CSSProperties } from "react";
 import { easeInOutCubic, expoIn, expoOut } from "../engine/easing";
 import { interpolate } from "../engine/interpolate";
 import type { SceneTransitionState } from "../engine/timeline";
 import type { Size } from "../layout/frame";
-import type { SlideDirection } from "../storyboard/types";
+import { DEFAULT_IRIS_ORIGIN, type SlideDirection, type TransitionOrigin } from "../storyboard/types";
 
 /** How far a slide travels, as a fraction of the frame along its axis. */
 export const SLIDE_DISTANCE = 0.12;
@@ -27,6 +35,21 @@ export const ZOOM_IN_SCALE = 0.8;
 export const ZOOM_BLUR_PX = 10;
 /** wipe: width of the soft edge, in % of the frame. */
 export const WIPE_SOFTNESS = 20;
+
+/** iris: width of the accent ring riding the circle's edge, in px. */
+export const IRIS_RING_PX = 6;
+/** iris: the outgoing scene's brightness once the circle has opened. */
+export const IRIS_DIM = 0.85;
+/** iris: the ring fades out from this progress to the end. */
+const IRIS_RING_FADE = 0.85;
+/** whipPan: blur in px at the cut, where both sides move fastest. */
+export const WHIP_BLUR_PX = 24;
+/** whipPan: extra scale along the axis at the cut, so the blur reads as directional. */
+export const WHIP_STRETCH = 0.08;
+/** whipPan: how far each side travels, as a fraction of the frame along its axis. */
+export const WHIP_TRAVEL = 0.5;
+/** whipPan: the outgoing scene is gone, and the incoming one appears, at this progress. */
+const WHIP_CUT = 0.5;
 
 /** Where each side's motion runs, in transition progress. */
 const OUT_WINDOW: [number, number] = [0, 0.6];
@@ -44,6 +67,8 @@ const FADE_OUT_END = 0.55;
 const FADE_IN_START = 0.45;
 
 const easeInCubic = (t: number) => t ** 3;
+const easeInOutQuart = (t: number) => (t < 0.5 ? 8 * t ** 4 : 1 - (-2 * t + 2) ** 4 / 2);
+const easeInQuint = (t: number) => t ** 5;
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 
 const round = (value: number, places = 2) => {
@@ -116,6 +141,84 @@ function wipe({ direction, transitionProgress: p, slideDirection }: SceneTransit
   return { maskImage: mask, WebkitMaskImage: mask };
 }
 
+/** iris: the circle's center in frame px, and its radius at `progress`: 0 at 0, the farthest corner at 1. */
+function irisCircle(progress: number, origin: TransitionOrigin = DEFAULT_IRIS_ORIGIN, { width, height }: Size) {
+  const x = origin.x * width;
+  const y = origin.y * height;
+  const far = Math.hypot(Math.max(x, width - x), Math.max(y, height - y));
+  return { x, y, r: far * easeInOutQuart(Math.min(1, Math.max(0, progress))) };
+}
+
+/** iris: the circle's radius in px at `progress`, from `origin` (frame fractions, default the center). */
+export function irisRadius(progress: number, origin: TransitionOrigin | undefined, size: Size): number {
+  return irisCircle(progress, origin, size).r;
+}
+
+/**
+ * Incoming: clipped to the opening circle, on top. Outgoing: stays put and
+ * dims, masked out inside the circle. Scenes draw over a shared ground, so
+ * without the mask it would show through the incoming scene.
+ */
+function iris(state: SceneTransitionState, size: Size): CSSProperties {
+  const { x, y, r } = irisCircle(state.transitionProgress, state.origin, size);
+  if (state.direction === "out") {
+    const mask = `radial-gradient(circle at ${round(x)}px ${round(y)}px, transparent ${round(r)}px, #000 ${round(r)}px)`;
+    return {
+      filter: `brightness(${round(1 - (1 - IRIS_DIM) * easeInOutQuart(state.transitionProgress), 4)})`,
+      maskImage: mask,
+      WebkitMaskImage: mask,
+    };
+  }
+  return { clipPath: `circle(${round(r)}px at ${round(x)}px ${round(y)}px)` };
+}
+
+/**
+ * Outgoing: accelerates along the travel (quint in) by half a frame, hidden at the cut.
+ * Incoming: arrives from half a frame back at the same speed and decelerates (quint out).
+ * Blur and an axis stretch follow the speed, peaking at the cut.
+ */
+function whipPan(state: SceneTransitionState, { width, height }: Size): CSSProperties {
+  const axis = AXIS[state.slideDirection];
+  const p = state.transitionProgress;
+  const out = state.direction === "out";
+  // How far this side is from rest, 0..1: 1 at the cut on both sides.
+  const away = out
+    ? easeInQuint(interpolate(p, [0, WHIP_CUT], [0, 1]))
+    : easeInQuint(1 - interpolate(p, [WHIP_CUT, 1], [0, 1]));
+  const along = (out ? away : -away) * WHIP_TRAVEL;
+  const stretch = round(1 + WHIP_STRETCH * away, 4);
+  const [sx, sy] = axis.x !== 0 ? [stretch, 1] : [1, stretch];
+  const visible = out ? p < WHIP_CUT : p >= WHIP_CUT;
+  return {
+    transform: `translate(${round(axis.x * along * width)}px, ${round(axis.y * along * height)}px) scale(${sx}, ${sy})`,
+    filter: `blur(${round(WHIP_BLUR_PX * away)}px)`,
+    opacity: visible ? 1 : 0,
+  };
+}
+
+/**
+ * What the page draws above a scene's wrapper during a transition, if
+ * anything: iris's accent ring, a circle whose stroke is centered on the
+ * incoming scene's clip edge, fading out over the last 15%.
+ */
+export function transitionOverlay(state: SceneTransitionState, size: Size, accent: string): CSSProperties | undefined {
+  if (state.type !== "iris" || state.direction !== "in") return undefined;
+  const { x, y, r } = irisCircle(state.transitionProgress, state.origin, size);
+  const outer = r + IRIS_RING_PX / 2;
+  return {
+    position: "absolute",
+    left: round(x - outer),
+    top: round(y - outer),
+    width: round(2 * outer),
+    height: round(2 * outer),
+    borderRadius: "50%",
+    border: `${IRIS_RING_PX}px solid ${accent}`,
+    boxSizing: "border-box",
+    pointerEvents: "none",
+    opacity: round(interpolate(state.transitionProgress, [IRIS_RING_FADE, 1], [1, 0]), 4),
+  };
+}
+
 /** The style for one scene's wrapper while it is in a transition. */
 export function transitionStyle(state: SceneTransitionState, size: Size): CSSProperties {
   switch (state.type) {
@@ -127,6 +230,10 @@ export function transitionStyle(state: SceneTransitionState, size: Size): CSSPro
       return fade(state);
     case "wipe":
       return wipe(state);
+    case "iris":
+      return iris(state, size);
+    case "whipPan":
+      return whipPan(state, size);
     case "cut":
       return {};
   }

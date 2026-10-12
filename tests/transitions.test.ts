@@ -19,6 +19,7 @@ import {
 import { sampleVisibleFrames } from "../src/checks/sample";
 import type { FrameMeasurement } from "../src/checks/types";
 import { Frame } from "../src/render/page";
+import { IRIS_RING_PX, WHIP_BLUR_PX, irisRadius, transitionOverlay } from "../src/transitions";
 
 function board(fps: number, scenes: Partial<StoryboardScene>[], theme = "light"): Storyboard {
   return {
@@ -170,7 +171,7 @@ describe("validateStoryboard: transition", () => {
   it("rejects bad transitions", () => {
     const errors = (t: unknown) => (validateStoryboard(input(t)) as { errors: string[] }).errors;
     expect(errors("slide")).toEqual(['scenes[0] ("a"): transition must be an object (got "slide")']);
-    expect(errors({ type: "spin" })[0]).toMatch(/transition\.type must be "cut", "fade", "slide", "zoomBlur" or "wipe"/);
+    expect(errors({ type: "spin" })[0]).toMatch(/transition\.type must be "cut", "fade", "slide", "zoomBlur", "wipe", "iris" or "whipPan"/);
     expect(errors({ type: "fade", durationMs: -1 })[0]).toMatch(/transition\.durationMs must be a positive integer/);
     expect(errors({ type: "fade", direction: "sideways" })[0]).toMatch(/transition\.direction must be "left", "right", "up" or "down"/);
     expect(errors({ type: "fade", speed: 2 })[0]).toMatch(/transition: unknown field "speed"/);
@@ -259,6 +260,129 @@ describe("transitionStyle", () => {
   });
 });
 
+describe("transitionStyle: iris", () => {
+  const size = { width: 1080, height: 1920 };
+  const iris = (direction: "in" | "out", p: number, origin?: { x: number; y: number }) => ({
+    type: "iris" as const,
+    direction,
+    transitionProgress: p,
+    slideDirection: "left" as const,
+    ...(origin && { origin }),
+  });
+  /** [r, x, y] from `circle(Rpx at Xpx Ypx)`. */
+  const circle = (p: number, origin?: { x: number; y: number }) =>
+    transitionStyle(iris("in", p, origin), size).clipPath!.match(/^circle\(([\d.]+)px at ([\d.]+)px ([\d.]+)px\)$/)!.slice(1).map(Number);
+
+  it("opens from nothing to the farthest corner, from a corner origin", () => {
+    const corner = { x: 1, y: 0 };
+    expect(circle(0, corner)).toEqual([0, 1080, 0]);
+    expect(circle(1, corner)[0]).toBeGreaterThanOrEqual(Math.hypot(1080, 1920) - 0.01);
+    expect(irisRadius(0, corner, size)).toBe(0);
+    expect(irisRadius(1, corner, size)).toBeCloseTo(Math.hypot(1080, 1920));
+  });
+
+  it("defaults to the center, and grows with a quart in-out", () => {
+    const [, x, y] = circle(0.5);
+    expect([x, y]).toEqual([540, 960]);
+    const full = Math.hypot(540, 960);
+    expect(irisRadius(0.5, undefined, size)).toBeCloseTo(full / 2);
+    expect(irisRadius(0.25, undefined, size)).toBeCloseTo(full * 8 * 0.25 ** 4);
+    const radii = [0.1, 0.3, 0.5, 0.7, 0.9].map((p) => circle(p)[0]!);
+    expect(radii.every((r, i) => i === 0 || r > radii[i - 1]!)).toBe(true);
+  });
+
+  it("dims the outgoing scene to 0.85 and leaves it in place", () => {
+    expect(transitionStyle(iris("out", 0), size)).toMatchObject({ filter: "brightness(1)" });
+    expect(transitionStyle(iris("out", 1), size)).toMatchObject({ filter: "brightness(0.85)" });
+    expect(transitionStyle(iris("out", 0.5), size)).not.toHaveProperty("transform");
+  });
+
+  it("hides the outgoing scene inside the circle, so the two never show through each other", () => {
+    const r = irisRadius(0.5, { x: 1, y: 0 }, size);
+    const out = transitionStyle(iris("out", 0.5, { x: 1, y: 0 }), size);
+    const mask = `radial-gradient(circle at 1080px 0px, transparent ${Math.round(r * 100) / 100}px, #000 ${Math.round(r * 100) / 100}px)`;
+    expect(out).toMatchObject({ maskImage: mask, WebkitMaskImage: mask });
+  });
+
+  it("rides a 6 px accent ring on the edge that fades out over the last 15%", () => {
+    const ring = transitionOverlay(iris("in", 0.5, { x: 1, y: 0 }), size, "#f00")!;
+    const r = irisRadius(0.5, { x: 1, y: 0 }, size);
+    expect(ring).toMatchObject({ position: "absolute", borderRadius: "50%", border: `${IRIS_RING_PX}px solid #f00`, boxSizing: "border-box", opacity: 1 });
+    // The ring's stroke is centered on the circle's edge.
+    expect(Number(ring.left)).toBeCloseTo(1080 - r - IRIS_RING_PX / 2, 1);
+    expect(Number(ring.top)).toBeCloseTo(-r - IRIS_RING_PX / 2, 1);
+    expect(Number(ring.width)).toBeCloseTo(2 * r + IRIS_RING_PX, 1);
+    expect(transitionOverlay(iris("in", 0.85), size, "#f00")!.opacity).toBe(1);
+    expect(Number(transitionOverlay(iris("in", 0.925), size, "#f00")!.opacity)).toBeCloseTo(0.5, 2);
+    expect(transitionOverlay(iris("in", 1), size, "#f00")!.opacity).toBe(0);
+  });
+
+  it("draws no overlay for the outgoing side or other transitions", () => {
+    expect(transitionOverlay(iris("out", 0.5), size, "#f00")).toBeUndefined();
+    expect(transitionOverlay({ ...iris("in", 0.5), type: "slide" }, size, "#f00")).toBeUndefined();
+  });
+});
+
+describe("transitionStyle: whipPan", () => {
+  const size = { width: 1080, height: 1920 };
+  type Dir = "left" | "right" | "up" | "down";
+  const whip = (direction: "in" | "out", p: number, slide: Dir = "left") =>
+    transitionStyle({ type: "whipPan", direction, transitionProgress: p, slideDirection: slide }, size);
+  /** [x, y] translation in px. */
+  const offset = (direction: "in" | "out", p: number, slide: Dir = "left") =>
+    whip(direction, p, slide).transform!.match(/^translate\((-?[\d.]+)px, (-?[\d.]+)px\)/)!.slice(1).map(Number) as [number, number];
+  const blur = (direction: "in" | "out", p: number) => Number(whip(direction, p).filter!.match(/^blur\(([\d.]+)px\)$/)![1]);
+  const opacity = (direction: "in" | "out", p: number) => Number(whip(direction, p).opacity);
+
+  it("shows exactly one side on every progress, cutting at 0.5", () => {
+    for (let k = 0; k <= 1000; k++) {
+      const p = k / 1000;
+      const visible = [opacity("out", p), opacity("in", p)].filter((o) => o > 0);
+      expect(visible).toEqual([1]);
+    }
+    expect(opacity("out", 0.499)).toBe(1);
+    expect(opacity("in", 0.5)).toBe(1);
+  });
+
+  it("travels a frame across the cut: outgoing 0 to -width/2, incoming +width/2 to 0, for left", () => {
+    expect(offset("out", 0)).toEqual([0, 0]);
+    expect(offset("out", 0.5)).toEqual([-540, 0]);
+    expect(offset("in", 0.5)).toEqual([540, 0]);
+    expect(offset("in", 1)).toEqual([0, 0]);
+  });
+
+  it("matches speeds across the cut (within 5%)", () => {
+    for (const slide of ["left", "up"] as const) {
+      const axis = slide === "left" ? 0 : 1;
+      const e = 0.002;
+      const outSpeed = (offset("out", 0.5 - e, slide)[axis] - offset("out", 0.5 - 2 * e, slide)[axis]) / e;
+      const inSpeed = (offset("in", 0.5 + 2 * e, slide)[axis] - offset("in", 0.5 + e, slide)[axis]) / e;
+      expect(Math.sign(outSpeed)).toBe(Math.sign(inSpeed));
+      expect(Math.abs(inSpeed / outSpeed - 1)).toBeLessThan(0.05);
+    }
+  });
+
+  it("direction flips the axis and sign", () => {
+    expect(offset("out", 0.4, "right")[0]).toBeCloseTo(-offset("out", 0.4, "left")[0]);
+    expect(offset("in", 0.6, "right")[0]).toBeCloseTo(-offset("in", 0.6, "left")[0]);
+    const [ux, uy] = offset("out", 0.4, "up");
+    expect(ux).toBe(0);
+    expect(uy).toBeLessThan(0);
+    expect(offset("out", 0.4, "down")[1]).toBeCloseTo(-uy);
+    expect(offset("in", 0.5, "down")).toEqual([0, -960]);
+  });
+
+  it("blurs up to 24 px at the cut and back to sharp, stretched along the axis", () => {
+    expect(blur("out", 0)).toBe(0);
+    expect(blur("out", 0.5)).toBe(WHIP_BLUR_PX);
+    expect(blur("in", 0.5)).toBe(WHIP_BLUR_PX);
+    expect(blur("in", 1)).toBe(0);
+    expect(whip("out", 0.45).transform).toMatch(/scale\(1\.0\d+, 1\)$/);
+    expect(whip("out", 0.45, "up").transform).toMatch(/scale\(1, 1\.0\d+\)$/);
+    expect(whip("in", 1).transform).toBe("translate(0px, 0px) scale(1, 1)");
+  });
+});
+
 describe("Frame during a transition", () => {
   const scenes = [
     { id: "one", props: { title: "First" }, durationMs: 2000, transition: { type: "slide" as const } },
@@ -318,6 +442,40 @@ describe("Frame during a transition", () => {
   });
 });
 
+describe("Frame during iris and whipPan", () => {
+  const scenes = [
+    { id: "one", props: { title: "First" }, durationMs: 2000, transition: { type: "iris" as const, origin: { x: 1, y: 0 } } },
+    { id: "two", props: { title: "Second" }, durationMs: 2000, transition: { type: "whipPan" as const, direction: "right" as const } },
+    { id: "three", props: { title: "Third" }, durationMs: 2000 },
+  ];
+  const sb = board(30, scenes);
+  const tl = buildTimeline(sb, {}, lightTheme);
+  const render = (frame: number) => renderToStaticMarkup(createElement(Frame, { storyboard: sb, theme: lightTheme, timeline: tl, frame }));
+  const mid = (i: number) => tl.transitions[i]!.startFrame + Math.floor(tl.transitions[i]!.frames / 2);
+
+  it("carries the iris origin through the timeline", () => {
+    expect(tl.transitions[0]).toMatchObject({ type: "iris", origin: { x: 1, y: 0 } });
+    expect(tl.transitions[1]).not.toHaveProperty("origin");
+    expect(frameAt(tl, mid(0)).pair![1].transition).toMatchObject({ type: "iris", direction: "in", origin: { x: 1, y: 0 } });
+  });
+
+  it("mid-iris: the incoming scene is clipped to a circle at the corner, ringed in the accent", () => {
+    const html = render(mid(0));
+    expect(html).toContain("First");
+    expect(html).toContain("Second");
+    expect(html).toMatch(/clip-path:circle\([\d.]+px at 1080px 0px\)/);
+    expect(html).toContain(`border:${IRIS_RING_PX}px solid ${lightTheme.colors.accent}`);
+    expect(html).toContain("filter:brightness(0.");
+  });
+
+  it("mid-whipPan: one scene is visible, blurred and moving right", () => {
+    const html = render(mid(1));
+    expect(html).toMatch(/filter:blur\([1-9][\d.]*px\)/);
+    expect(html).toMatch(/transform:translate\([\d.]+px, 0px\)/);
+    expect(html).toContain("opacity:0");
+  });
+});
+
 describe("sampleVisibleFrames skips transitions", () => {
   it("measures only frames where one scene is on screen", async () => {
     const sb = board(30, [{ durationMs: 2000 }, { durationMs: 2000 }, { durationMs: 2000 }]);
@@ -334,6 +492,16 @@ describe("sampleVisibleFrames skips transitions", () => {
 });
 
 describe("transition fixtures", () => {
+  it.each(["transitions-port.json", "transitions-port-wide.json"])("%s is valid and joins three scenes with iris (corner origin) and whipPan", (file) => {
+    const json = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures", file), "utf8"));
+    const result = validateStoryboard(json);
+    expect(result.ok).toBe(true);
+    const scenes = result.ok ? result.storyboard.scenes : [];
+    expect(scenes).toHaveLength(3);
+    expect(scenes[0]!.transition).toMatchObject({ type: "iris", origin: { x: 0, y: 1 } });
+    expect(scenes[1]!.transition).toMatchObject({ type: "whipPan" });
+  });
+
   it.each(["transitions.json", "transitions-wide.json"])("%s is valid and uses every transition type", (file) => {
     const json = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures", file), "utf8"));
     const result = validateStoryboard(json);

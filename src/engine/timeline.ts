@@ -3,7 +3,7 @@
 // the next scene starts while the previous one finishes, so the total is the
 // sum of the scenes minus the sum of the transitions. Pure and deterministic.
 
-import { DEFAULT_SLIDE_DIRECTION, type SlideDirection, type Storyboard, type TransitionType } from "../storyboard/types";
+import { DEFAULT_SLIDE_DIRECTION, type SlideDirection, type Storyboard, type TransitionOrigin, type TransitionType } from "../storyboard/types";
 import type { ThemeMotion } from "../theme/types";
 
 /** Resolved scene durations in ms, keyed by scene id. */
@@ -24,6 +24,8 @@ export interface TimelineTransition {
   /** Frames both scenes share. 0 for a cut. */
   frames: number;
   direction: SlideDirection;
+  /** `iris` only, when the storyboard sets one. */
+  origin?: TransitionOrigin;
 }
 
 export interface Timeline {
@@ -42,6 +44,8 @@ export interface SceneTransitionState {
   /** Strictly between 0 and 1, rising through the transition; the same for both scenes. */
   transitionProgress: number;
   slideDirection: SlideDirection;
+  /** `iris` only, when the storyboard sets one; the style defaults it to the center. */
+  origin?: TransitionOrigin;
 }
 
 /** One scene on screen at a frame. */
@@ -151,7 +155,8 @@ export function buildTimeline(storyboard: Storyboard, durations: SceneDurations,
     const wanted = Math.round((transitionMs * fps) / 1000);
     const overlap = Math.max(0, Math.min(wanted, frames[i]! - previousOverlap - 1, frames[i + 1]! - 1));
     startFrame += frames[i]! - overlap;
-    transitions.push({ type, startFrame, frames: overlap, direction: spec?.direction ?? DEFAULT_SLIDE_DIRECTION });
+    const origin = type === "iris" ? spec?.origin : undefined;
+    transitions.push({ type, startFrame, frames: overlap, direction: spec?.direction ?? DEFAULT_SLIDE_DIRECTION, ...(origin && { origin }) });
     previousOverlap = overlap;
   });
 
@@ -206,6 +211,7 @@ export function frameAt(timeline: Timeline, n: number): FrameInfo {
     type: transition.type,
     transitionProgress: (n - transition.startFrame + 0.5) / transition.frames,
     slideDirection: transition.direction,
+    ...(transition.origin && { origin: transition.origin }),
   };
   const outgoing: ActiveScene = { ...activeScene(timeline, lo - 1, n), transition: { ...shared, direction: "out" } };
   const incoming: ActiveScene = { ...current, transition: { ...shared, direction: "in" } };
