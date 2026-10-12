@@ -77,6 +77,16 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
     mark: "video",
   },
   PromptCard: { text: "A launch video", shareId: "prompt" },
+  Receipt: {
+    title: "Corner Cafe",
+    items: [
+      { label: "Flat white", amount: 4.5 },
+      { label: "Croissant", amount: 3.75, note: "warmed" },
+    ],
+    summary: [{ label: "Tax", amount: 0.66 }],
+    total: { amount: 8.91 },
+    highlight: 1,
+  },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 

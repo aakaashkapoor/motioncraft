@@ -24,6 +24,7 @@ import { Headline } from "./Headline";
 import { SceneFrame } from "./SceneFrame";
 import { PromptCard } from "./PromptCard";
 import { EndCard } from "./EndCard";
+import { Receipt } from "./Receipt";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -68,4 +69,5 @@ export const kit: Record<string, KitComponent> = {
   SceneFrame: asKitComponent(SceneFrame),
   PromptCard: asKitComponent(PromptCard),
   EndCard: asKitComponent(EndCard),
+  Receipt: asKitComponent(Receipt),
 };
