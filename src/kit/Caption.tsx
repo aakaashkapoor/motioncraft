@@ -5,8 +5,10 @@
 // `standard` sets 3-6 words in the ramp's `subtitle` on a plate; `punch` sets
 // 1-3 uppercase words in its `headline` on a dark outline; `pill` (ported from
 // HyperFrames `caption-pill-karaoke`) the same pages in sentence case, with an
-// accent pill sliding from word to word behind the spoken one (its letters
-// switch to `accentText` as the pill reaches them). The pill's fade
+// accent pill sliding from word to word behind the spoken one. Its ink is two
+// layers: every letter in the page color, and the same letters in `accentText`
+// clipped to the pill's box, so a letter the pill is half over reads on both
+// sides of its edge. The pill's fade
 // deliberately starts at the opacity where `accentText` already reaches
 // contrast on it (`captionPillInk.ts`), so it pops in rather than blending
 // up from nothing; do not "fix" it back to a full blend. Captions follow
@@ -24,11 +26,14 @@ import { accentInk } from "../theme/roles";
 import type { Theme } from "../theme/types";
 import type { CaptionLimits } from "./captionPages";
 import { PILL_PAD_EM, estimateWordBoxes, pillAt, pillInsets, pillLayout, pillPagePadding } from "./captionPill";
-import { pillCovers, pillFadeOpacity, pillReadableOpacity } from "./captionPillInk";
+import { pillClip, pillClipPath, pillCovers, pillFadeOpacity, pillReadableOpacity } from "./captionPillInk";
 import { CAPTION_LEAD_MS, evenWordTimes, pageIndexAt, timedPages, wordLight, type TimedPage, type TimedWord } from "./captionWords";
 import { useSceneTime } from "./frameContext";
 import { exitMs, exitOpacity, fade, tween } from "./motion";
 import type { KitProps } from "./types";
+
+/** Thickness of the on-pill ink's outline, in em: thick enough for the contrast check to read it as what the letters sit on. */
+const INK_OUTLINE_EM = 0.12;
 
 export interface CaptionProps extends KitProps {
   text: string;
@@ -151,10 +156,36 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
     position: "absolute",
     ...pillInsets(pillBoxes, pillState!, pillPad),
     zIndex: -1,
+    // Decoration: the check judges each letter by the ink layers, not by the pill under them.
+    pointerEvents: "none",
     borderRadius: pillRadius,
     backgroundColor: theme.colors.accent,
     opacity: pillFadeOpacity(pillState!.opacity, fadeFrom),
   });
+
+  // The pill as drawn: solid accent, or the accent mixed into what is behind it while it fades in.
+  const pillOpacity = pillState === undefined ? 0 : pillFadeOpacity(pillState.opacity, fadeFrom);
+  const pillColor = pillOpacity >= 1 ? theme.colors.accent : mixColors(colors.plate ?? theme.colors.ground, theme.colors.accent, pillOpacity);
+  /**
+   * Word `k`'s on-pill ink: the same letters in `accentText`, stacked exactly on
+   * the page's own and clipped to the pill's box, so a letter is light where the
+   * pill is not and dark where it is, even half and half mid-slide. The accent
+   * outline (under the fill, the same color as the pill) is how the contrast
+   * check knows what the letters sit on; it is invisible on the pill.
+   */
+  const inkStyle = (k: number): CSSProperties | undefined => {
+    const clip = pillState === undefined ? undefined : pillClip(pillBoxes, pillState, pillPad, k);
+    if (clip === undefined) return undefined;
+    return {
+      position: "absolute",
+      inset: 0,
+      color: colors.active,
+      backgroundColor: pillOpacity >= 1 ? pillColor : "transparent",
+      WebkitTextStroke: `${INK_OUTLINE_EM * size}px ${pillColor}`,
+      paintOrder: "stroke fill",
+      clipPath: pillClipPath(clip, pillRadius),
+    };
+  };
 
   const wordStyle = (word: TimedWord, k: number): CSSProperties => {
     if (pill) {
@@ -226,7 +257,12 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
             {k > 0 && " "}
             <span data-caption-word={page.start + k} style={wordStyle(word, k)}>
               {pillState?.word === k && <span data-caption-pill="" style={pillStyle()} />}
-              {word.text}
+              {pill ? <span style={{ position: "relative", zIndex: -2, color: colors.text }}>{word.text}</span> : word.text}
+              {pill && inkStyle(k) !== undefined && (
+                <span aria-hidden="true" data-caption-ink="" style={inkStyle(k)}>
+                  {word.text}
+                </span>
+              )}
             </span>
           </Fragment>
         ))}
