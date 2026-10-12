@@ -5,7 +5,9 @@
 // word by word for a hook; see `HeadlineText`), then the subtitle, each with a
 // short `text.in` rise; holds, then leaves upward, fast, at the end. With a
 // `logo` (the brand's own image) a mark box sits above the text: it pops in on
-// the lead, and the text follows a beat later.
+// the lead, and the text follows a beat later. With `lines` instead of a
+// title, each line enters on its own cue (see `HeadlineLines`), and the
+// subtitle follows the last.
 
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
@@ -16,7 +18,8 @@ import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { accentInk, headlineColor } from "../theme/roles";
 import { entering, useSceneTime } from "./frameContext";
-import { HeadlineText } from "./Headline";
+import { HeadlineLines, HeadlineText } from "./Headline";
+import { headlineLinesErrors, settlingLines, useHeadlineLinesCheck, useLineStarts, type HeadlineLine } from "./headlineLines";
 import { headlineTiming, headlineWords, linePose, wordLeaving, type HeadlineMotion, type MarkStyle } from "./headlineMotion";
 import { BrandMark } from "./BrandMark";
 import { logoErrors } from "./mediaSource";
@@ -24,14 +27,17 @@ import { arrive, exitOpacity, fade } from "./motion";
 import type { KitProps } from "./types";
 
 export interface TitleCardProps extends KitProps {
-  title: string;
+  /** The title; or give `lines`. */
+  title?: string;
+  /** 2-4 lines instead of a title, each entering on its own cue (`at`) or the line stagger after the one before. */
+  lines?: HeadlineLine[];
   subtitle?: string;
   /** Small label above the title. */
   kicker?: string;
   /** How the title lands: as a whole (the default), word by word, or character by character. */
   titleMotion?: HeadlineMotion;
-  /** One or two words of the title set in the accent. */
-  emphasis?: string | string[];
+  /** One or two words of the title set in the accent; with `lines`, the index of one line. */
+  emphasis?: string | string[] | number;
   /** One word of the title marked by a sweep of the accent once it has landed. */
   mark?: string;
   markStyle?: MarkStyle;
@@ -39,9 +45,12 @@ export interface TitleCardProps extends KitProps {
   logo?: string;
 }
 
-/** Problems with a TitleCard's props (its own prop check); empty if fine. */
-export function titleCardErrors(props: Record<string, unknown>): string[] {
-  return logoErrors(props.logo, props.icon);
+/**
+ * Problems with a TitleCard's props (its own prop check); empty if fine. Word
+ * cues in `lines` are checked against `narration`, the scene's text.
+ */
+export function titleCardErrors(props: Record<string, unknown>, narration?: string): string[] {
+  return [...logoErrors(props.logo, props.icon), ...headlineLinesErrors(props, "title", narration)];
 }
 
 /** Title steps to try, largest first. */
@@ -51,7 +60,10 @@ const KICKER_CHAR_EM = 0.82;
 /** The logo's mark box is this share of the title's size across, as on the end card. */
 const MARK_EM = 0.95;
 
-type TitleText = Pick<TitleCardProps, "title" | "subtitle" | "kicker" | "logo">;
+type TitleText = Pick<TitleCardProps, "title" | "subtitle" | "kicker" | "logo"> & {
+  /** The texts of the title's lines, each a block of its own, in place of `title`. */
+  lines?: readonly string[];
+};
 
 /** The side in px of the logo's mark box with the title at `step`. */
 export function titleCardMarkSize(theme: Theme, aspect: Aspect, step: TypeRole): number {
@@ -61,7 +73,7 @@ export function titleCardMarkSize(theme: Theme, aspect: Aspect, step: TypeRole):
 /** Estimated height in px of the card's text with the title at `step`. */
 function estimateCardHeight(theme: Theme, aspect: Aspect, width: number, text: TitleText, step: TypeRole): number {
   const { spacing, type } = theme;
-  let height = estimateTextHeight(text.title, width, type[step][aspect]);
+  let height = (text.lines ?? [text.title ?? ""]).reduce((sum, line) => sum + estimateTextHeight(line, width, type[step][aspect]), 0);
   if (text.logo !== undefined) height += titleCardMarkSize(theme, aspect, step) + spacing.md;
   if (text.kicker !== undefined) {
     height += spacing.md + estimateTextHeight(text.kicker, width, { ...type.eyebrow[aspect], charEm: KICKER_CHAR_EM });
@@ -97,10 +109,11 @@ export function titleCardBox(theme: Theme, aspect: Aspect, text: TitleText, slot
 }
 
 export function TitleCard(props: TitleCardProps) {
-  const errors = titleCardErrors(props as unknown as Record<string, unknown>);
+  const errors = logoErrors(props.logo, (props as unknown as Record<string, unknown>).icon);
   if (errors.length > 0) throw new Error(`TitleCard: ${errors.join("; ")}`);
-  const { progress, theme, aspect, area: slot, title, subtitle, kicker, titleMotion, emphasis, mark, markStyle, logo } = props;
-  const { box, step } = titleCardBox(theme, aspect, { title, subtitle, kicker, logo }, slot);
+  useHeadlineLinesCheck("TitleCard", props as unknown as Record<string, unknown>, "title");
+  const { progress, theme, aspect, area: slot, title = "", lines, subtitle, kicker, titleMotion, emphasis, mark, markStyle, logo } = props;
+  const { box, step } = titleCardBox(theme, aspect, { title, lines: lines?.map((line) => line.text), subtitle, kicker, logo }, slot);
   const scene = useSceneTime(progress);
   const time = entering(scene);
   const { leadMs, fx } = theme.motion;
@@ -111,12 +124,17 @@ export function TitleCard(props: TitleCardProps) {
   // the kicker first, the title a line later, the subtitle a line after the title's last word.
   const textStart = leadMs + (logo === undefined ? 0 : textIn.lineStaggerMs * 2);
   const titleStart = textStart + (kicker === undefined ? 0 : textIn.lineStaggerMs);
-  const titleWords = headlineTiming(theme, headlineWords(title), titleStart, titleMotion).words;
-  const subtitleStart = (titleWords.at(-1) ?? titleStart) + textIn.lineStaggerMs;
+  const lineStarts = useLineStarts(theme, lines ?? [], titleStart, titleMotion);
+  const lastText = lines === undefined ? title : lines.at(-1)!.text;
+  const lastStart = lineStarts.at(-1) ?? titleStart;
+  const titleWords = headlineTiming(theme, headlineWords(lastText), lastStart, titleMotion).words;
+  const subtitleStart = (titleWords.at(-1) ?? lastStart) + textIn.lineStaggerMs;
+  // After a line on its cue the subtitle builds on the scene clock too, even in a settled opening.
+  const subtitleTime = lines === undefined || settlingLines(lines) === lines.length ? time : scene;
   const leaving = wordLeaving(theme, 0, 1, time.leftMs);
   const markIn = arrive(theme, time.ms, leadMs, theme.motion.pop);
-  const lands = (spec: TypeSpec, start: number) => {
-    const pose = linePose(theme, spec.size * spec.lineHeight, time.ms - start, leaving);
+  const lands = (spec: TypeSpec, start: number, at = time) => {
+    const pose = linePose(theme, spec.size * spec.lineHeight, at.ms - start, leaving);
     return { opacity: pose.opacity, transform: `translateY(${pose.y}px)` };
   };
 
@@ -175,17 +193,31 @@ export function TitleCard(props: TitleCardProps) {
             textWrap: "balance",
           }}
         >
-          <HeadlineText
-            text={title}
-            theme={theme}
-            spec={type[step][aspect]}
-            time={scene}
-            start={titleStart}
-            motion={titleMotion}
-            emphasis={emphasis}
-            mark={mark}
-            markStyle={markStyle}
-          />
+          {lines === undefined ? (
+            <HeadlineText
+              text={title}
+              theme={theme}
+              spec={type[step][aspect]}
+              time={scene}
+              start={titleStart}
+              motion={titleMotion}
+              emphasis={emphasis as string | string[] | undefined}
+              mark={mark}
+              markStyle={markStyle}
+            />
+          ) : (
+            <HeadlineLines
+              lines={lines}
+              theme={theme}
+              spec={type[step][aspect]}
+              time={scene}
+              start={titleStart}
+              motion={titleMotion}
+              emphasis={emphasis as number | undefined}
+              mark={mark}
+              markStyle={markStyle}
+            />
+          )}
         </h1>
         {subtitle !== undefined && (
           <p
@@ -197,7 +229,7 @@ export function TitleCard(props: TitleCardProps) {
               color: colors.textMuted,
               overflowWrap: "break-word",
               textWrap: "balance",
-              ...lands(type.subtitle[aspect], subtitleStart),
+              ...lands(type.subtitle[aspect], subtitleStart, subtitleTime),
             }}
           >
             {subtitle}

@@ -6,7 +6,10 @@
 // words may be set in the accent, and one word marked by an accent bar (or an
 // underline) that sweeps in from the left once the text has landed.
 // `Headline` is the same text as a kit component of its own: a hook, an end
-// line, or a statement in another component's slot.
+// line, or a statement in another component's slot. With `lines` instead of
+// `text` (`HeadlineLines`) each line is its own block entering on its own cue,
+// so a hook builds as it is spoken; the block is laid out for every line from
+// the first frame, so nothing moves when a line arrives.
 
 import { Fragment, type ReactNode } from "react";
 import { blockCenterY, placeBlock } from "../layout/block";
@@ -18,6 +21,7 @@ import { withAlpha } from "../theme/color";
 import { accentInk, headlineColor } from "../theme/roles";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { entering, useSceneTime, type SceneTime } from "./frameContext";
+import { markedLine, settlingLines, useHeadlineLinesCheck, useLineStarts, type HeadlineLine } from "./headlineLines";
 import {
   charPose,
   HEADLINE_MOTIONS,
@@ -202,6 +206,34 @@ export function HeadlineText({ text, theme, spec, time: sceneTime, start, motion
   });
 }
 
+export interface HeadlineLinesProps extends Omit<HeadlineTextProps, "text" | "emphasis" | "wordAttributes"> {
+  lines: readonly HeadlineLine[];
+  /** When a line without a cue starts if it is the first. */
+  start: number;
+  /** The index of one line set in the accent. */
+  emphasis?: number;
+}
+
+/**
+ * Lines stacked and centered, one block each, every one drawn from the first
+ * frame (invisible until it enters) so the block never reflows: each lands as
+ * a headline of its own (`HeadlineText`) from its cue. `mark` sweeps under its
+ * word in the first line that has it. A settled opening lands only the lines
+ * before the first cue (see `settlingLines`); the rest build on the scene clock.
+ */
+export function HeadlineLines({ lines, theme, spec, time, start, motion, emphasis, mark, markStyle }: HeadlineLinesProps) {
+  const starts = useLineStarts(theme, lines, start, motion);
+  const markAt = mark === undefined ? -1 : markedLine(lines, mark);
+  if (mark !== undefined && markAt < 0) throw new Error(`mark ${JSON.stringify(mark)} is not a word of any line`);
+  const settling = settlingLines(lines);
+  const { settleMs: _, ...onCue } = time;
+  return lines.map((line, i) => (
+    <span key={i} data-headline-row={i} style={{ display: "block", color: emphasis === i ? accentInk(theme) : undefined }}>
+      <HeadlineText text={line.text} theme={theme} spec={spec} time={i < settling ? time : onCue} start={starts[i]!} motion={motion} mark={i === markAt ? mark : undefined} markStyle={markStyle} />
+    </span>
+  ));
+}
+
 /** Steps a `Headline` may be set in, largest first. */
 export const HEADLINE_ROLES = ["hero", "display", "headline", "title"] as const;
 export type HeadlineRole = (typeof HEADLINE_ROLES)[number];
@@ -209,35 +241,46 @@ export type HeadlineRole = (typeof HEADLINE_ROLES)[number];
 const LAST_STEP: TypeRole = "subtitle";
 
 export interface HeadlineProps extends KitProps {
-  text: string;
+  /** The headline; or give `lines`. */
+  text?: string;
+  /** 2-4 lines instead of `text`, each entering on its own cue (`at`) or the line stagger after the one before. */
+  lines?: HeadlineLine[];
   /** The largest step to set it in; it steps down the ramp until it fits. Default `hero`. */
   role?: HeadlineRole;
   /** How it lands: as a whole (the default), word by word, or character by character. */
   motion?: HeadlineMotion;
-  /** One or two words set in the accent. */
-  emphasis?: string | string[];
+  /** One or two words set in the accent; with `lines`, the index of one line. */
+  emphasis?: string | string[] | number;
   /** One word marked by a sweep of the accent once the text has landed. */
   mark?: string;
   markStyle?: MarkStyle;
 }
 
 /**
- * The headline's box: the text column's width, as tall as its text, on the
- * frame's optical center or centered in its slot; and the step it is set in,
- * the largest from `role` down at which it fits.
+ * The headline's box: the text column's width, as tall as its text (or its
+ * lines, each a block of its own), on the frame's optical center or centered
+ * in its slot; and the step it is set in, the largest from `role` down at
+ * which it fits.
  */
-export function headlineBox(theme: Theme, aspect: Aspect, text: string, role: HeadlineRole = "hero", slot?: Rect): { box: Rect; step: TypeRole } {
+export function headlineBox(theme: Theme, aspect: Aspect, text: string | readonly string[], role: HeadlineRole = "hero", slot?: Rect): { box: Rect; step: TypeRole } {
   if (!HEADLINE_ROLES.includes(role)) throw new Error(`Headline: role must be one of ${oneOf(HEADLINE_ROLES)} (got ${JSON.stringify(role)})`);
   const area = slot ?? contentArea(theme, aspect);
   const width = Math.min(area.width, textColumn(theme, aspect).width);
   const steps: TypeRole[] = [...HEADLINE_ROLES.slice(HEADLINE_ROLES.indexOf(role)), LAST_STEP];
-  const heightAt = (step: TypeRole) => textBoxHeight(text, width, theme.type[step][aspect]);
+  const texts = typeof text === "string" ? [text] : text;
+  // The lines share one heading, so its glyph padding is counted once.
+  const heightAt = (step: TypeRole) => {
+    const spec = theme.type[step][aspect];
+    return texts.reduce((height, t) => height + textBoxHeight(t, width, spec), 0) - (texts.length - 1) * 2 * glyphPad(spec);
+  };
   const step = steps.find((s) => heightAt(s) <= area.height) ?? LAST_STEP;
   return { box: placeBlock(area, { width, height: heightAt(step) }, blockCenterY(theme, aspect, slot)), step };
 }
 
-export function Headline({ progress, theme, aspect, area, text, role, motion, emphasis, mark, markStyle }: HeadlineProps) {
-  const { box, step } = headlineBox(theme, aspect, text, role, area);
+export function Headline(props: HeadlineProps) {
+  useHeadlineLinesCheck("Headline", props as unknown as Record<string, unknown>, "text");
+  const { progress, theme, aspect, area, text = "", lines, role, motion, emphasis, mark, markStyle } = props;
+  const { box, step } = headlineBox(theme, aspect, lines === undefined ? text : lines.map((line) => line.text), role, area);
   const time = useSceneTime(progress);
   const spec = theme.type[step][aspect];
   return (
@@ -257,7 +300,11 @@ export function Headline({ progress, theme, aspect, area, text, role, motion, em
           overflowWrap: "break-word",
         }}
       >
-        <HeadlineText text={text} theme={theme} spec={spec} time={time} start={theme.motion.leadMs} motion={motion} emphasis={emphasis} mark={mark} markStyle={markStyle} />
+        {lines === undefined ? (
+          <HeadlineText text={text} theme={theme} spec={spec} time={time} start={theme.motion.leadMs} motion={motion} emphasis={emphasis as string | string[] | undefined} mark={mark} markStyle={markStyle} />
+        ) : (
+          <HeadlineLines lines={lines} theme={theme} spec={spec} time={time} start={theme.motion.leadMs} motion={motion} emphasis={emphasis as number | undefined} mark={mark} markStyle={markStyle} />
+        )}
       </h1>
     </div>
   );

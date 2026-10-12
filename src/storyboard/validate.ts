@@ -24,6 +24,7 @@ import { sceneComponents } from "./components";
 import { shotsErrors } from "./shots";
 import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
 import { cueErrors } from "../kit/cues";
+import { headlineLinesErrors } from "../kit/headlineLines";
 import { STOCK_VOICES } from "../narration/voices";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
@@ -118,6 +119,17 @@ function audioErrors(raw: unknown, narration: unknown): string[] {
   return errors;
 }
 
+/** Components that take `lines`, and the prop holding the single text the lines replace. */
+const LINES_TEXT_KEY: Record<string, "text" | "title"> = { Headline: "text", TitleCard: "title" };
+
+/** Problems with `lines` on every Headline and TitleCard in the scene, nested ones too, checked against its narration. */
+function linesErrors(scene: { component: unknown; props: Record<string, unknown> }, narration: string | undefined): string[] {
+  return sceneComponents(scene).flatMap(({ component, props }) => {
+    const textKey = LINES_TEXT_KEY[component];
+    return textKey === undefined ? [] : headlineLinesErrors(props, textKey, narration).map((e) => `${component}: ${e}`);
+  });
+}
+
 /** Validates a scene, pushing errors prefixed with `label`. Returns the scene if valid. */
 function validateScene(raw: Record<string, unknown>, label: string, errors: string[]): StoryboardScene | undefined {
   const sceneErrors: string[] = unknownFields(raw, SCENE_FIELDS);
@@ -125,6 +137,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
 
   if (!isNonEmptyString(component)) sceneErrors.push("component is required and must be a non-empty string");
   if (!isObject(props)) sceneErrors.push("props is required and must be an object");
+  else sceneErrors.push(...linesErrors({ component, props }, isNonEmptyString(narration) ? narration : undefined));
   if (narration !== undefined && !isNonEmptyString(narration)) {
     sceneErrors.push("narration must be a non-empty string when present");
   }
