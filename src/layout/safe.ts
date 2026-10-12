@@ -36,12 +36,16 @@ interface ZoneSpec {
  *   crosspost (TikTok + Reels + Shorts): top 290, nothing below 1240, centered
  *     text within x 200-880, the rail at x > 880 everywhere, the caption's last
  *     baseline in y 1040-1230.
+ *   tiktok (TikTok only): top 250, bottom 400 and right 120 px clear, so the
+ *     content area is x 120-960 (the right keep-out mirrored on the left) and
+ *     y 250-1520, the caption's bottom at 1500.
  * The primary visual is 760-840 px wide in shorts; at 760 the text inside a
  * window or card stays off the rail. Crosspost has only its 680 px column.
  */
 const TALL: Record<SafeProfile, ZoneSpec> = {
   shorts: { area: rect(120, 240, 960, 1440), keepOut: [rect(900, 960, 1080, 1600)], captionBottom: 1400, primaryWidth: 760 },
   crosspost: { area: rect(200, 290, 880, 1240), keepOut: [rect(880, 0, 1080, 1920)], captionBottom: 1230, primaryWidth: 680 },
+  tiktok: { area: rect(120, 250, 960, 1520), keepOut: [rect(960, 0, 1080, 1920)], captionBottom: 1500, primaryWidth: 840 },
 };
 
 /**

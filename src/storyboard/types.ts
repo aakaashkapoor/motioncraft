@@ -9,10 +9,11 @@ export type Aspect = (typeof ASPECTS)[number];
 /**
  * Which platform UI a 9:16 frame keeps its text clear of (design v3, section
  * C): `shorts` (YouTube Shorts, the default) or `crosspost` (the union of
- * TikTok, Reels and Shorts: smaller, but safe on all three). 16:9 has no
+ * TikTok, Reels and Shorts: smaller, but safe on all three) or `tiktok` (clear of
+ * TikTok's UI only, so content fills more of the frame). 16:9 has no
  * overlaid UI, so both profiles are the same there.
  */
-export const SAFE_PROFILES = ["shorts", "crosspost"] as const;
+export const SAFE_PROFILES = ["shorts", "crosspost", "tiktok"] as const;
 export type SafeProfile = (typeof SAFE_PROFILES)[number];
 export const DEFAULT_SAFE_PROFILE: SafeProfile = "shorts";
 

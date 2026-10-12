@@ -1,0 +1,36 @@
+{
+  "title": "TikTok safe profile",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "safe": "tiktok",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "Headline",
+      "props": { "text": "Split every bill in seconds", "motion": "words", "emphasis": "seconds" },
+      "durationMs": 3000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "cards",
+      "component": "CardRow",
+      "props": {
+        "cards": [
+          { "icon": "chat", "title": "Add friends", "subtitle": "Invite by link" },
+          { "icon": "code", "title": "Scan receipt", "subtitle": "Items split for you" },
+          { "icon": "check", "title": "Settle up", "subtitle": "Everyone pays their share" }
+        ],
+        "highlight": 1
+      },
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "end",
+      "component": "EndCard",
+      "props": { "name": "SplitEasy", "line": "Split your next bill", "accent": "Try it free" },
+      "durationMs": 4500
+    }
+  ]
+}

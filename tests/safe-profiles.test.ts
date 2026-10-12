@@ -9,7 +9,9 @@ import {
   SAFE_PROFILES,
   blockCenterY,
   captionBand,
+  cardRowLayout,
   contentArea,
+  headlineBox,
   lightTheme,
   neutralTheme,
   placeBlock,
@@ -26,8 +28,8 @@ const withSafe = (safe: SafeProfile): Theme => ({ ...lightTheme, safe });
 const center = (r: { x: number; width: number }) => r.x + r.width / 2;
 
 describe("safe profiles", () => {
-  it("are shorts (the default) and crosspost", () => {
-    expect(SAFE_PROFILES).toEqual(["shorts", "crosspost"]);
+  it("are shorts (the default), crosspost and tiktok", () => {
+    expect(SAFE_PROFILES).toEqual(["shorts", "crosspost", "tiktok"]);
     expect(DEFAULT_SAFE_PROFILE).toBe("shorts");
     expect(safeArea("9:16")).toEqual(safeArea("9:16", "shorts"));
   });
@@ -46,6 +48,31 @@ describe("safe profiles", () => {
     expect(zones.area).toEqual({ x: 200, y: 290, width: 680, height: 950 });
     expect(zones.keepOut).toEqual([{ x: 880, y: 0, width: 200, height: 1920 }]);
     expect(zones.opticalCenter).toBe(765);
+  });
+
+  it("tiktok: x 120-960 between y 250 and 1520, the right 120 px kept out, caption bottom 1500", () => {
+    const zones = safeZones("9:16", "tiktok");
+    expect(zones.area).toEqual({ x: 120, y: 250, width: 840, height: 1270 });
+    expect(zones.keepOut).toEqual([{ x: 960, y: 0, width: 120, height: 1920 }]);
+    expect(zones.captionBottom).toBe(1500);
+    expect(zones.primaryWidth).toBe(840);
+    expect(center(zones.area)).toBe(540);
+    for (const k of zones.keepOut) expect(zones.area.x + zones.area.width).toBeLessThanOrEqual(k.x);
+  });
+
+  it("tiktok: headlines and card rows are at least as large as in shorts", () => {
+    const text = "Split every bill in seconds";
+    const cards = [{ icon: "code", title: "Write" }, { icon: "code", title: "Build" }, { icon: "code", title: "Ship" }] as never;
+    const sizeOf = (profile: SafeProfile) => {
+      const theme = withSafe(profile);
+      const { box, step } = headlineBox(theme, "9:16", text);
+      return { size: theme.type[step]["9:16"].size, boxWidth: box.width, cardWidth: cardRowLayout(theme, "9:16", cards).cells[0]!.width };
+    };
+    const shorts = sizeOf("shorts");
+    const tiktok = sizeOf("tiktok");
+    expect(tiktok.size).toBeGreaterThanOrEqual(shorts.size);
+    expect(tiktok.boxWidth).toBeGreaterThanOrEqual(shorts.boxWidth);
+    expect(tiktok.cardWidth).toBeGreaterThanOrEqual(shorts.cardWidth);
   });
 
   it.each(SAFE_PROFILES)("%s: the text column is centered on x = 540", (profile) => {
@@ -78,9 +105,9 @@ describe("the storyboard's safe field", () => {
   });
 
   it("rejects an unknown profile", () => {
-    const result = validateStoryboard(board({ safe: "tiktok" }));
+    const result = validateStoryboard(board({ safe: "instagram" }));
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.errors).toEqual(['safe must be "shorts" or "crosspost" (got "tiktok")']);
+    expect(!result.ok && result.errors).toEqual(['safe must be "shorts", "crosspost" or "tiktok" (got "instagram")']);
   });
 
   it("selects the theme's profile; built-in themes use shorts", () => {
