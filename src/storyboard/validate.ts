@@ -38,7 +38,8 @@ export function isVoiceSpeed(value: unknown): value is number {
 const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "scenes"]);
 const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "audio", "durationMs", "transition", "shots"]);
 const AUDIO_FIELDS = new Set(["file", "words"]);
-const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
+const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction", "origin"]);
+const ORIGIN_FIELDS = new Set(["x", "y"]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -68,11 +69,18 @@ function oneOf(options: readonly string[]): string {
   return `${quoted.slice(0, -1).join(", ")} or ${quoted.at(-1)}`;
 }
 
+const isFraction = (value: unknown) => typeof value === "number" && value >= 0 && value <= 1;
+
+/** An iris origin: exactly `x` and `y`, each 0..1. */
+function isOrigin(value: unknown): boolean {
+  return isObject(value) && unknownFields(value, ORIGIN_FIELDS).length === 0 && isFraction(value.x) && isFraction(value.y);
+}
+
 /** Problems with a scene's `transition`, unprefixed. */
 function transitionErrors(raw: unknown): string[] {
   if (!isObject(raw)) return [`transition must be an object (got ${describe(raw)})`];
   const errors = unknownFields(raw, TRANSITION_FIELDS).map((e) => `transition: ${e}`);
-  const { type, durationMs, direction } = raw;
+  const { type, durationMs, direction, origin } = raw;
   if (!TRANSITION_TYPES.includes(type as never)) {
     errors.push(`transition.type must be ${oneOf(TRANSITION_TYPES)} (got ${describe(type)})`);
   }
@@ -81,6 +89,11 @@ function transitionErrors(raw: unknown): string[] {
   }
   if (direction !== undefined && !SLIDE_DIRECTIONS.includes(direction as never)) {
     errors.push(`transition.direction must be ${oneOf(SLIDE_DIRECTIONS)} (got ${describe(direction)})`);
+  }
+  if (origin !== undefined && type !== "iris") {
+    errors.push(`transition.origin only applies to "iris" (got type ${describe(type)})`);
+  } else if (origin !== undefined && !isOrigin(origin)) {
+    errors.push(`transition.origin must be { "x", "y" } with each a number from 0 to 1 (got ${describe(origin)})`);
   }
   return errors;
 }

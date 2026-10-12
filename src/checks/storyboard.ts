@@ -35,7 +35,7 @@ export function checkTransitions(storyboard: Storyboard, theme: Theme = resolveT
             check: "transition" as const,
             severity: "warn" as const,
             sceneId: scene.id,
-            message: `no transition into "${scenes[i + 1]!.id}", so the theme default "${theme.motion.transition}" is used; choose one (cut, fade, slide, zoomBlur or wipe)`,
+            message: `no transition into "${scenes[i + 1]!.id}", so the theme default "${theme.motion.transition}" is used; choose one (cut, fade, slide, zoomBlur, wipe, iris or whipPan)`,
           },
         ],
   );

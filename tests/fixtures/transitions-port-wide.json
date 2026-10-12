@@ -1,0 +1,52 @@
+{
+  "title": "Ported transitions fixture: 16:9",
+  "aspect": "16:9",
+  "fps": 30,
+  "scenes": [
+    {
+      "id": "title",
+      "component": "TitleCard",
+      "props": {
+        "kicker": "From HyperFrames",
+        "title": "Iris and whip pan",
+        "subtitle": "Two ways into the next scene"
+      },
+      "durationMs": 5000,
+      "transition": {
+        "type": "iris",
+        "durationMs": 900,
+        "origin": {
+          "x": 0,
+          "y": 1
+        }
+      }
+    },
+    {
+      "id": "steps",
+      "component": "StepList",
+      "props": {
+        "title": "Reveal, then move on",
+        "items": [
+          "Iris opens on a point",
+          "Whip pan cuts mid-motion",
+          "Same speed on both sides"
+        ],
+        "highlight": 0
+      },
+      "durationMs": 7500,
+      "transition": {
+        "type": "whipPan",
+        "direction": "left"
+      }
+    },
+    {
+      "id": "stat",
+      "component": "BigNumber",
+      "props": {
+        "value": 2,
+        "label": "New transitions"
+      },
+      "durationMs": 3000
+    }
+  ]
+}

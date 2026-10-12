@@ -365,3 +365,42 @@ describe("validateStoryboard: breathing", () => {
     ]);
   });
 });
+
+describe("validateStoryboard: iris origin", () => {
+  const input = (transition: unknown) => ({
+    title: "T",
+    aspect: "9:16",
+    scenes: [{ id: "a", component: "TitleCard", props: {}, durationMs: 1000, transition }],
+  });
+  const errors = (t: unknown) => {
+    const result = validateStoryboard(input(t));
+    return result.ok ? [] : result.errors;
+  };
+
+  it("accepts iris with or without an origin, and keeps it", () => {
+    expect(errors({ type: "iris" })).toEqual([]);
+    const result = validateStoryboard(input({ type: "iris", origin: { x: 1, y: 0 } }));
+    expect(result.ok && result.storyboard.scenes[0]!.transition).toEqual({ type: "iris", origin: { x: 1, y: 0 } });
+  });
+
+  it("accepts whipPan with a direction", () => {
+    expect(errors({ type: "whipPan", direction: "up" })).toEqual([]);
+  });
+
+  it("rejects an origin outside 0..1, missing a coordinate, or with extra fields", () => {
+    expect(errors({ type: "iris", origin: { x: 1.2, y: 0.5 } })).toEqual([
+      'scenes[0] ("a"): transition.origin must be { "x", "y" } with each a number from 0 to 1 (got {"x":1.2,"y":0.5})',
+    ]);
+    expect(errors({ type: "iris", origin: { x: 0.5 } })[0]).toMatch(/transition\.origin must be/);
+    expect(errors({ type: "iris", origin: { x: 0.5, y: 0.5, z: 0 } })[0]).toMatch(/transition\.origin must be/);
+    expect(errors({ type: "iris", origin: "center" })[0]).toMatch(/transition\.origin must be/);
+    expect(errors({ type: "iris", origin: { x: Number.NaN, y: 0 } })[0]).toMatch(/transition\.origin must be/);
+  });
+
+  it("rejects an origin on any transition but iris", () => {
+    expect(errors({ type: "fade", origin: { x: 0.5, y: 0.5 } })).toEqual([
+      'scenes[0] ("a"): transition.origin only applies to "iris" (got type "fade")',
+    ]);
+    expect(errors({ type: "whipPan", origin: { x: 0, y: 0 } })[0]).toMatch(/origin only applies to "iris"/);
+  });
+});

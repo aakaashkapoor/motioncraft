@@ -20,7 +20,7 @@ import { frameSize } from "../layout/frame";
 import { Overlays } from "../overlays/Overlays";
 import { WIDE_SHOT, opensSettled, type Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
-import { transitionStyle } from "../transitions";
+import { transitionOverlay, transitionStyle } from "../transitions";
 import { morphEndpoints, morphProgress, sharedIds, type BoundaryMeasurement, type SharedMeasurements } from "../transitions/shared";
 import { mixAndEncodeAudio, type EncodedAudio } from "./audioEncode";
 import type { AudioPlan } from "./audioPlan";
@@ -82,7 +82,8 @@ interface SceneLayerProps {
 
 /**
  * One scene's component, in its camera's world, and its caption, which stays
- * fixed. During a transition, wrapped in its presentation's style.
+ * fixed. During a transition, wrapped in its presentation's style, with the
+ * presentation's overlay (iris's ring) drawn above it.
  */
 function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false, targets, camera, narration }: SceneLayerProps) {
   const scene = storyboard.scenes[active.sceneIndex]!;
@@ -120,11 +121,15 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
   );
   if (active.transition === undefined) return content;
   const style = transitionStyle(active.transition, frameSize(aspect));
+  const overlay = transitionOverlay(active.transition, frameSize(aspect), theme.colors.accent);
   const marker = hideShared ? { [SHARED_SCENE_ATTRIBUTE]: "" } : {};
   return (
-    <div {...marker} style={{ position: "absolute", inset: 0, ...style }}>
-      {content}
-    </div>
+    <>
+      <div {...marker} style={{ position: "absolute", inset: 0, ...style }}>
+        {content}
+      </div>
+      {overlay !== undefined && <div style={overlay} />}
+    </>
   );
 }
 

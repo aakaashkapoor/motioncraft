@@ -44,13 +44,20 @@ export function opensSettled(storyboard: { opening?: Opening }, index: number): 
 export const DEFAULT_FPS = 30;
 export const DEFAULT_THEME = "light";
 
-export const TRANSITION_TYPES = ["cut", "fade", "slide", "zoomBlur", "wipe"] as const;
+export const TRANSITION_TYPES = ["cut", "fade", "slide", "zoomBlur", "wipe", "iris", "whipPan"] as const;
 export type TransitionType = (typeof TRANSITION_TYPES)[number];
 
 export const SLIDE_DIRECTIONS = ["left", "right", "up", "down"] as const;
-/** Which way a `slide` or `wipe` travels: "left" moves content leftward, so the next scene enters from the right. */
+/** Which way a `slide`, `wipe` or `whipPan` travels: "left" moves content leftward, so the next scene enters from the right. */
 export type SlideDirection = (typeof SLIDE_DIRECTIONS)[number];
 export const DEFAULT_SLIDE_DIRECTION: SlideDirection = "left";
+
+/** Where an `iris` opens from, in 0..1 fractions of the frame's width and height. */
+export interface TransitionOrigin {
+  x: number;
+  y: number;
+}
+export const DEFAULT_IRIS_ORIGIN: TransitionOrigin = { x: 0.5, y: 0.5 };
 
 /** The boundary from a scene into the next one (design v2, section 3). */
 export interface SceneTransition {
@@ -59,6 +66,8 @@ export interface SceneTransition {
   durationMs?: number;
   /** Defaults to "left", so a film slides one way throughout. */
   direction?: SlideDirection;
+  /** `iris` only: where the circle opens from. Defaults to the center. */
+  origin?: TransitionOrigin;
 }
 
 /** The target of a shot that pulls the camera back to the whole frame. */
