@@ -8,19 +8,30 @@
 // arrives as the scene's hero (`enter.hero`) on the frame's optical center,
 // holds, then exits fast. Model: number-flow (MIT), its per-digit columns.
 //
+// Given `from`, it shows a change instead ("$184 -> $46"): the old value sits
+// settled, a strike draws across it, it shrinks into a muted row above (or
+// fades out with `fromStyle: "replace"`), and the number counts from it to the
+// value in tabular digits, in a box as wide as the wider of the two, then pops
+// and shines as above (see `bigNumberChange.ts`).
+//
 // Rolling digits are drawn by CSS (`content`), not set as text, so the page
 // holds no half-rolled numbers: the number is its `aria-label` while it rolls
 // and plain text once it has landed.
 
+import { useContext, type ReactNode } from "react";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
 import { AVG_CHAR_EM, estimateTextHeight } from "../layout/textFit";
 import { fontSize, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole } from "../theme/types";
-import { headlineColor } from "../theme/roles";
-import { entering, useSceneTime } from "./frameContext";
-import { arrive, exitOpacity, fade, pulse, tween } from "./motion";
+import { mixColors } from "../theme/color";
+import { headlineColor, roleColor } from "../theme/roles";
+import { DEFAULT_STRIKE_MS, FROM_SCALE, bigNumberErrors, bigNumberInk, countedValue, valueChangeTiming, type BigNumberColor, type FromStyle } from "./bigNumberChange";
+import type { TimedWord } from "./captionWords";
+import { useCueMs, type Cue } from "./cues";
+import { SceneWordsContext, entering, useSceneTime } from "./frameContext";
+import { arrive, exitMs, exitOpacity, fade, pulse, tween } from "./motion";
 import { shineText } from "./shine";
 import type { KitProps } from "./types";
 
@@ -34,6 +45,14 @@ export interface BigNumberProps extends KitProps {
   label?: string;
   /** Digits after the decimal point. Default 0. */
   decimals?: number;
+  /** The old value: shown first, struck through, then the number counts from it to `value`. */
+  from?: number;
+  /** How the struck old value leaves: shrinks above the number (`strike`, the default) or fades out (`replace`). */
+  fromStyle?: FromStyle;
+  /** The colour role of the landed value: `accent` (the default, the headline colour), `positive` or `negative`. */
+  color?: BigNumberColor;
+  /** When the strike starts across the old value: ms from the scene start or a narration word. Default 600 ms. */
+  at?: Cue;
 }
 
 /** Separators and the decimal point are narrow: about half a digit. */
@@ -183,11 +202,54 @@ function Rolling({ theme, ms, text, pitch }: { theme: Theme; ms: number; text: s
   );
 }
 
-export function BigNumber({ progress, theme, aspect, area: slot, value, prefix = "", suffix = "", label, decimals = 0 }: BigNumberProps) {
+/** A line drawn across `children` from the left, `share` (0-1) of the way, in the ink colour. */
+function Struck({ theme, share, thickness, children }: { theme: Theme; share: number; thickness: number; children: ReactNode }) {
+  return (
+    <span style={{ position: "relative", display: "inline-block" }}>
+      {children}
+      {share > 0 && (
+        <span
+          data-strike=""
+          style={{
+            position: "absolute",
+            left: 0,
+            top: "50%",
+            width: `${round(share * 100, 3)}%`,
+            height: thickness,
+            marginTop: -thickness / 2,
+            borderRadius: thickness / 2,
+            backgroundColor: theme.colors.text,
+          }}
+          aria-hidden="true"
+        />
+      )}
+    </span>
+  );
+}
+
+/**
+ * Drawn alone there are no scene words to find a word cue in: it is not
+ * checked here (the storyboard's scene is), and the strike keeps its default time.
+ */
+function checkedProps(props: BigNumberProps, words: readonly TimedWord[] | undefined): Record<string, unknown> {
+  const raw = props as unknown as Record<string, unknown>;
+  return words === undefined && typeof props.at === "object" ? { ...raw, at: DEFAULT_STRIKE_MS } : raw;
+}
+
+export function BigNumber(props: BigNumberProps) {
+  const words = useContext(SceneWordsContext);
+  const narration = words === undefined || words.length === 0 ? undefined : words.map((w) => w.text).join(" ");
+  const errors = bigNumberErrors(checkedProps(props, words), narration);
+  if (errors.length > 0) throw new Error(`BigNumber: ${errors.join("; ")}`);
+  const { progress, theme, aspect, area: slot, value, prefix = "", suffix = "", label, decimals = 0, from, fromStyle = "strike", color: role = "accent", at } = props;
+  const strikeMs = useCueMs(at ?? DEFAULT_STRIKE_MS, DEFAULT_STRIKE_MS);
   const area = slot ?? contentArea(theme, aspect);
   const number = formatBigNumber(value, decimals);
   const finalText = `${prefix}${number}${suffix}`;
-  const step = bigNumberStep(theme, aspect, finalText, area.width);
+  const fromText = from === undefined ? undefined : `${prefix}${formatBigNumber(from, decimals)}${suffix}`;
+  // A change counts between the two values, so it is set for the wider of them.
+  const widest = fromText !== undefined && textEm(fromText) > textEm(finalText) ? fromText : finalText;
+  const step = bigNumberStep(theme, aspect, widest, area.width);
   const spec = theme.type[step][aspect];
   const size = spec.size;
   /** One line of the number: a digit column's window, and how far a digit rolls to the next. */
@@ -198,23 +260,45 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
   const labelSpec = theme.type.subtitle[aspect];
   // The bar sits clear of the commas, which hang below the number's tight line.
   const barGap = spacing.md;
+  // A struck old value moves up into a row of its own above the number.
+  const struckAbove = from !== undefined && fromStyle === "strike";
+  const fromPitch = pitch * FROM_SCALE;
+  const fromRow = struckAbove ? round(fromPitch + spacing.sm) : 0;
   const height =
-    pitch + barGap + spacing.xxs + (label === undefined ? 0 : spacing.md + estimateTextHeight(label, labelWidth, labelSpec));
+    fromRow + pitch + barGap + spacing.xxs + (label === undefined ? 0 : spacing.md + estimateTextHeight(label, labelWidth, labelSpec));
   const box = placeBlock(area, { width: area.width, height }, blockCenterY(theme, aspect, slot));
   const time = useSceneTime(progress);
+  const { ms } = time;
   const hero = motion["enter.hero"];
   const { move, opacity: fadeIn } = arrive(theme, entering(time).ms, motion.leadMs, hero);
   const opacity = Math.min(fadeIn, exitOpacity(theme, time, hero.ms));
   const rise = Math.round((1 - move) * spacing.lg * 100) / 100;
 
+  const change = from === undefined ? undefined : valueChangeTiming(theme, strikeMs, fromStyle);
+  if (change !== undefined && change.landMs > time.endMs - exitMs(theme, hero.ms)) {
+    throw new Error(`BigNumber: the strike at ${Math.round(strikeMs)} ms lands at ${Math.round(change.landMs)} ms, after the scene starts to exit; start it earlier or lengthen the scene`);
+  }
   const timing = bigNumberTiming(theme, [...number].filter(isDigit).length);
-  const landed = time.ms >= timing.landMs;
-  // The bar fills over the whole roll, first digit to last, on the count's curve.
-  const bar = round(Math.min(area.width, textEm(finalText) * size));
-  const filled = round(bar * tween({ ms: timing.landMs - timing.startMs, curve: motion.count.curve }, time.ms - timing.startMs));
-  const scale = round(1 + (motion.pop.scale - 1) * pulse(motion.pop, time.ms - timing.landMs), 5);
-  const color = headlineColor(theme);
-  const shine = shineText(theme, { width: Math.min(area.width, textEm(prefix + number) * size), height: pitch }, time.ms - timing.landMs, color);
+  const startMs = change?.countMs ?? timing.startMs;
+  const landMs = change?.landMs ?? timing.landMs;
+  const landed = ms >= landMs;
+  // The bar fills over the whole roll (or count), first digit to last, on the count's curve.
+  const bar = round(Math.min(area.width, textEm(widest) * size));
+  const filled = round(bar * tween({ ms: landMs - startMs, curve: motion.count.curve }, ms - startMs));
+  const scale = round(1 + (motion.pop.scale - 1) * pulse(motion.pop, ms - landMs), 5);
+  const color = bigNumberInk(theme, role);
+  const shine = shineText(theme, { width: Math.min(area.width, textEm(prefix + number) * size), height: pitch }, ms - landMs, color);
+
+  /** Before the count the number is the old value, being struck; after it, the count. */
+  const counting = change === undefined || ms >= change.countMs;
+  const strikeShare = change === undefined ? 0 : round(tween(motion.fx, ms - change.strikeMs), 4);
+  const thickness = Math.max(2, round(size * 0.06));
+  /** The number's opacity: with `replace` it fades out struck, then back in counting. */
+  const numberOpacity =
+    change === undefined || fromStyle !== "replace"
+      ? undefined
+      : round(counting ? fade(motion["fx.fast"], ms - change.countMs) : 1 - fade(motion.fx, ms - change.struckMs), 3);
+  const lift = change === undefined ? 0 : Math.min(1, Math.max(0, tween(motion.enter, ms - change.countMs)));
 
   return (
     <div
@@ -235,6 +319,7 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
       <div
         data-block="BigNumber"
         style={{
+          ...(struckAbove && { position: "relative" as const }),
           transform: `translateY(${rise}px)`,
           maxWidth: "100%",
           display: "flex",
@@ -242,37 +327,81 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
           alignItems: "center",
         }}
       >
+        {struckAbove && <div style={{ height: fromRow, flex: "none" }} />}
+        {struckAbove && counting && (
+          // The struck old value, lifted off the number as it starts to count: it shrinks into the row above, muted.
+          <div
+            data-from=""
+            style={{
+              position: "absolute",
+              left: 0,
+              top: fromRow,
+              width: "100%",
+              height: pitch,
+              margin: 0,
+              fontFamily: fonts.display,
+              ...typeCss(spec),
+              fontVariantNumeric: "tabular-nums",
+              fontKerning: "none",
+              whiteSpace: "nowrap",
+              color: lift >= 1 ? colors.textMuted : mixColors(headlineColor(theme), colors.textMuted, lift),
+              transform: `translateY(${-round(lift * (fromRow + pitch / 2 - fromPitch / 2))}px) scale(${round(1 - (1 - FROM_SCALE) * lift, 4)})`,
+            }}
+          >
+            <Struck theme={theme} share={1} thickness={thickness}>
+              {fromText}
+            </Struck>
+          </div>
+        )}
         <h1
           aria-label={finalText}
           style={{
             margin: 0,
+            ...(change !== undefined && { width: bar }),
             fontFamily: fonts.display,
             ...typeCss(spec),
             fontVariantNumeric: "tabular-nums",
             // Rolling columns and the landed text set the same glyphs at the same advances.
             fontKerning: "none",
             whiteSpace: "nowrap",
-            color,
+            color: counting ? color : headlineColor(theme),
+            opacity: numberOpacity,
             transform: `scale(${scale})`,
           }}
         >
-          <span data-number="" style={shine}>
-            {prefix}
-            {landed ? number : <Rolling theme={theme} ms={time.ms} text={number} pitch={pitch} />}
-          </span>
-          {suffix !== "" && (
-            // The unit takes no room until it arrives, so the rolling digits sit centered; then its room
-            // opens (the number makes way, as in number-flow) while it fades in.
-            <span
-              data-unit=""
-              style={{
-                display: "inline-block",
-                width: `calc-size(max-content, size * ${round(tween(motion.enter, time.ms - timing.unitMs), 3)})`,
-                opacity: round(fade(motion["fx.fast"], time.ms - timing.unitMs), 3),
-              }}
-            >
-              {suffix}
-            </span>
+          {change !== undefined ? (
+            counting ? (
+              <span data-number="" style={shine}>
+                {prefix}
+                {formatBigNumber(countedValue(theme, change, ms, from!, value, decimals), decimals)}
+                {suffix}
+              </span>
+            ) : (
+              <Struck theme={theme} share={strikeShare} thickness={thickness}>
+                {fromText}
+              </Struck>
+            )
+          ) : (
+            <>
+              <span data-number="" style={shine}>
+                {prefix}
+                {landed ? number : <Rolling theme={theme} ms={ms} text={number} pitch={pitch} />}
+              </span>
+              {suffix !== "" && (
+                // The unit takes no room until it arrives, so the rolling digits sit centered; then its room
+                // opens (the number makes way, as in number-flow) while it fades in.
+                <span
+                  data-unit=""
+                  style={{
+                    display: "inline-block",
+                    width: `calc-size(max-content, size * ${round(tween(motion.enter, ms - timing.unitMs), 3)})`,
+                    opacity: round(fade(motion["fx.fast"], ms - timing.unitMs), 3),
+                  }}
+                >
+                  {suffix}
+                </span>
+              )}
+            </>
           )}
         </h1>
         <div
@@ -285,7 +414,10 @@ export function BigNumber({ progress, theme, aspect, area: slot, value, prefix =
             backgroundColor: colors.border,
           }}
         >
-          <div data-bar-fill="" style={{ width: filled, height: "100%", borderRadius: spacing.xxs / 2, backgroundColor: colors.accent }} />
+          <div
+            data-bar-fill=""
+            style={{ width: filled, height: "100%", borderRadius: spacing.xxs / 2, backgroundColor: role === "accent" ? colors.accent : roleColor(theme, role) }}
+          />
         </div>
         {label !== undefined && (
           <p

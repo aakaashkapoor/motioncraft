@@ -1,8 +1,18 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ASPECTS, NOMINAL_SCENE_MS, SceneClockContext, contentArea, curveEasing, fade, fontSize, lightTheme, neutralTheme, pulse, type Aspect } from "../src/index";
 import { kit } from "../src/kit";
+import { COUNT_MS, DEFAULT_STRIKE_MS, bigNumberErrors, bigNumberInk, countedValue, valueChangeTiming } from "../src/kit/bigNumberChange";
+import type { TimedWord } from "../src/kit/captionWords";
+import type { Cue } from "../src/kit/cues";
+import { SceneWordsContext } from "../src/kit/frameContext";
+import { contrastRatio, readableColor } from "../src/theme/contrast";
+import { headlineColor, roleColor } from "../src/theme/roles";
+import { darkTheme } from "../src/theme/dark";
+import { validateStoryboard } from "../src/storyboard/validate";
 import { BigNumber, bigNumberStep, bigNumberTiming, formatBigNumber, odometerColumns, odometerText } from "../src/kit/BigNumber";
 
 /** Reads the root element's inline style back out of server-rendered HTML. */
@@ -322,5 +332,215 @@ describe("BigNumber: landing", () => {
     const settled = stat(timing.landMs + shine.ms);
     expect(stat(timing.landMs + shine.ms + 1000)).toBe(settled);
     expect(stat(NOMINAL_SCENE_MS)).toBe(settled);
+  });
+});
+
+describe("BigNumber: a value change (from)", () => {
+  const { fx } = theme.motion;
+  type Change = { from?: number; value?: number; fromStyle?: "strike" | "replace"; color?: "accent" | "positive" | "negative"; at?: Cue };
+  const drop = (ms: number, extra: Change = {}, aspect: Aspect = "9:16") =>
+    at(ms, <BigNumber progress={0} theme={theme} aspect={aspect} value={46} from={184} prefix="$" label="Your share" {...extra} />);
+  const change = valueChangeTiming(theme, DEFAULT_STRIKE_MS, "strike");
+  const replaced = valueChangeTiming(theme, DEFAULT_STRIKE_MS, "replace");
+  /** The strike line's drawn share (0-1), or undefined when there is none. */
+  const strike = (html: string) => {
+    const m = /data-strike="" style="[^"]*width:([\d.]+)%/.exec(html);
+    return m === null ? undefined : parseFloat(m[1]!) / 100;
+  };
+  /** The struck old value's text, or undefined when it is not drawn. */
+  const old = (html: string) => /<div data-from=""[^>]*>(.*?)<\/div>/.exec(html)?.[1]?.replace(/<[^>]+>|<!-- -->/g, "");
+  const oldStyle = (html: string) => /<div data-from="" style="([^"]*)"/.exec(html)?.[1] ?? "";
+  const shownValue = (html: string) => Number(shownNumber(html).replace(/[$,]/g, ""));
+  const h1Style = (html: string) => /<h1 [^>]*style="([^"]*)"/.exec(html)?.[1] ?? "";
+
+  it("times the strike from ~600 ms over ~250 ms, then counts over ~900 ms", () => {
+    expect(DEFAULT_STRIKE_MS).toBe(600);
+    expect(change.strikeMs).toBe(600);
+    expect(change.struckMs).toBe(600 + fx.ms);
+    expect(change.countMs).toBe(change.struckMs);
+    expect(change.landMs).toBe(change.countMs + COUNT_MS);
+    expect(COUNT_MS).toBe(900);
+    // Replace fades the old value out first, then counts.
+    expect(replaced.countMs).toBe(replaced.struckMs + fx.ms);
+  });
+
+  it("counts from `from` to `value` on an ease-out, rounded to the decimals", () => {
+    expect(countedValue(theme, change, 0, 184, 46, 0)).toBe(184);
+    expect(countedValue(theme, change, change.countMs, 184, 46, 0)).toBe(184);
+    expect(countedValue(theme, change, change.landMs, 184, 46, 0)).toBe(46);
+    const quarter = countedValue(theme, change, change.countMs + COUNT_MS / 4, 184, 46, 0);
+    // Ease-out: past halfway a quarter of the way in.
+    expect(quarter).toBeLessThan(115);
+    expect(countedValue(theme, change, change.countMs + 300, 1.5, 2.25, 2)).toBeCloseTo(Math.round(100 * (1.5 + 0.75 * expo(300 / COUNT_MS))) / 100, 9);
+  });
+
+  it.each(ASPECTS)("shows the old value, settled, on the first frames (%s)", (aspect) => {
+    for (const ms of [0, leadMs, 400, change.strikeMs]) {
+      const html = drop(ms, {}, aspect);
+      expect(shownNumber(html)).toBe("$184");
+      expect(html).not.toContain("data-odometer-column");
+      expect(strike(html) ?? 0).toBe(0);
+    }
+  });
+
+  it("draws the strike left to right in the ink colour, done by ~850 ms", () => {
+    expect(strike(drop(change.strikeMs + fx.ms / 2))).toBeGreaterThan(0);
+    expect(strike(drop(change.strikeMs + fx.ms / 2))).toBeLessThan(1);
+    expect(strike(drop(850))).toBe(1);
+    expect(drop(change.strikeMs + 100)).toMatch(new RegExp(`data-strike="" style="[^"]*left:0[^"]*background-color:${theme.colors.text}`));
+  });
+
+  it("lies strictly between from and value mid-count, in both directions", () => {
+    const mid = shownValue(drop(change.countMs + COUNT_MS / 2));
+    expect(mid).toBeLessThan(184);
+    expect(mid).toBeGreaterThan(46);
+    const up = shownValue(drop(change.countMs + COUNT_MS / 2, { from: 46, value: 184 }));
+    expect(up).toBeGreaterThan(46);
+    expect(up).toBeLessThan(184);
+  });
+
+  it("holds exactly the formatted value with the struck old value above it (strike)", () => {
+    const html = drop(change.landMs + 3000);
+    expect(shownNumber(html)).toBe("$46");
+    expect(old(html)).toBe("$184");
+    expect(strike(html)).toBe(1);
+    expect(oldStyle(html)).toMatch(/scale\(0\.45\)/);
+    expect(oldStyle(html)).toMatch(/translateY\(-[\d.]+px\)/);
+    expect(oldStyle(html)).toContain(`color:${theme.colors.textMuted}`);
+    // Counting up holds the same way.
+    const up = drop(change.landMs + 3000, { from: 46, value: 184 });
+    expect(shownNumber(up)).toBe("$184");
+    expect(old(up)).toBe("$46");
+  });
+
+  it("fades the old value out instead with replace, and holds the value alone", () => {
+    const html = drop(replaced.landMs + 3000, { fromStyle: "replace" });
+    expect(shownNumber(html)).toBe("$46");
+    expect(old(html)).toBeUndefined();
+    expect(strike(html)).toBeUndefined();
+    // Mid fade the struck old value is still in the number's place, fading out.
+    const fading = drop(replaced.struckMs + fx.ms / 2, { fromStyle: "replace" });
+    expect(shownNumber(fading)).toBe("$184");
+    const opacity = parseFloat(/opacity:([\d.]+)/.exec(h1Style(fading))![1]!);
+    expect(opacity).toBeGreaterThan(0);
+    expect(opacity).toBeLessThan(1);
+  });
+
+  it("pops and shines as it lands", () => {
+    const scale = (ms: number) => parseFloat(/scale\(([\d.]+)\)/.exec(h1Style(drop(ms)))?.[1] ?? "1");
+    expect(scale(change.landMs - 1)).toBe(1);
+    expect(scale(change.landMs + pop.ms / 2)).toBeCloseTo(pop.scale, 6);
+    expect(drop(change.landMs + 200)).toMatch(/data-number="" style="[^"]*background-clip:text/);
+    expect(drop(change.landMs - 1)).not.toMatch(/data-number="" style="[^"]*background-clip:text/);
+  });
+
+  it.each(ASPECTS)("never changes the number's width between frames (%s)", (aspect) => {
+    for (const extra of [{}, { from: 9, value: 12500 }, { fromStyle: "replace" as const }]) {
+      const widths = new Set<string>();
+      for (let ms = 0; ms <= 4000; ms += 50) widths.add(/(?:^|;)width:([^;]+)/.exec(h1Style(drop(ms, extra, aspect)))?.[1] ?? "none");
+      expect([...widths]).toHaveLength(1);
+      expect([...widths][0]).not.toBe("none");
+    }
+  });
+
+  it.each(ASPECTS)("keeps the old value and number inside the content area at the hold (%s)", (aspect) => {
+    const box = rootBox(drop(change.landMs + 3000, {}, aspect));
+    const area = contentArea(theme, aspect);
+    expect(box.y).toBeGreaterThanOrEqual(area.y);
+    expect(box.y + box.height).toBeLessThanOrEqual(area.y + area.height);
+  });
+
+  it("colours the landed value in the positive or negative role, deepened until it reads as text", () => {
+    const ink = (role: "positive" | "negative") => readableColor(roleColor(theme, role), theme.colors.text, [theme.colors.ground, theme.colors.surface]);
+    expect(bigNumberInk(theme, "positive")).toBe(ink("positive"));
+    expect(contrastRatio(ink("positive"), theme.colors.ground)).toBeGreaterThanOrEqual(4.5);
+    // A role that already reads is used as it is.
+    expect(bigNumberInk(darkTheme, "positive")).toBe(roleColor(darkTheme, "positive"));
+    expect(h1Style(drop(change.landMs + 3000, { color: "positive" }))).toContain(`color:${ink("positive")}`);
+    expect(h1Style(drop(change.landMs + 3000, { color: "negative" }))).toContain(`color:${ink("negative")}`);
+    expect(h1Style(drop(change.landMs + 3000))).toContain(`color:${headlineColor(theme)}`);
+    expect(drop(change.landMs + 3000, { color: "positive" })).toMatch(new RegExp(`data-bar-fill="" style="[^"]*background-color:${roleColor(theme, "positive")}`));
+    // Without `from` too.
+    expect(h1Style(at(4000, <BigNumber progress={0} theme={theme} aspect="9:16" value={3} color="negative" />))).toContain(`color:${ink("negative")}`);
+  });
+
+  it("starts the strike on an `at` word cue", () => {
+    const words: TimedWord[] = "You paid way too much".split(" ").map((text, i) => ({ text, startMs: i * 400, endMs: i * 400 + 300 }));
+    const cued = (ms: number) =>
+      renderToStaticMarkup(
+        <SceneClockContext.Provider value={{ fps: 1000, frame: ms, frames: 20001 }}>
+          <SceneWordsContext.Provider value={words}>
+            <BigNumber progress={0} theme={theme} aspect="9:16" value={46} from={184} prefix="$" at={{ word: "too" }} />
+          </SceneWordsContext.Provider>
+        </SceneClockContext.Provider>,
+      );
+    // "too" starts at 1200 ms.
+    expect(strike(cued(1199)) ?? 0).toBe(0);
+    expect(strike(cued(850)) ?? 0).toBe(0);
+    expect(strike(cued(1200 + fx.ms / 2))).toBeGreaterThan(0);
+    expect(strike(cued(1200 + fx.ms))).toBe(1);
+    expect(shownNumber(cued(1200 + fx.ms + COUNT_MS + 100))).toBe("$46");
+    // A number cue is ms from the scene start.
+    expect(strike(drop(1000, { at: 1000 })) ?? 0).toBe(0);
+    expect(strike(drop(1000 + fx.ms, { at: 1000 }))).toBe(1);
+  });
+
+  it("leaves a BigNumber without `from` as it was", () => {
+    expect(stat(timing.landMs + 3000)).not.toContain("data-strike");
+    expect(stat(timing.landMs + 3000)).not.toContain("data-from");
+  });
+});
+
+describe("BigNumber: prop check", () => {
+  const ok = { value: 46, from: 184 };
+  const NARRATION = "Just split it";
+
+  it("accepts good props", () => {
+    expect(bigNumberErrors({ value: 3 }, undefined)).toEqual([]);
+    expect(bigNumberErrors({ ...ok, fromStyle: "replace", color: "positive", at: 800 }, undefined)).toEqual([]);
+    expect(bigNumberErrors({ ...ok, at: { word: "split", offsetMs: -100 } }, NARRATION)).toEqual([]);
+  });
+
+  it.each([
+    [{ ...ok, from: 46 }, /from must differ from value/],
+    [{ ...ok, from: Number.NaN }, /from must be a finite number/],
+    [{ ...ok, from: "184" }, /from must be a finite number/],
+    [{ ...ok, fromStyle: "slide" }, /fromStyle must be "strike" or "replace"/],
+    [{ ...ok, color: "green" }, /color must be "accent", "positive" or "negative"/],
+    [{ value: 3, color: "#00ff00" }, /color must be/],
+    [{ ...ok, at: -5 }, /at: a cue in ms/],
+    [{ ...ok, at: { word: "sushi" } }, /at: word "sushi" is not in this scene's narration/],
+    [{ value: 3, at: 800 }, /at needs from/],
+    [{ value: 3, fromStyle: "strike" }, /fromStyle needs from/],
+  ] as const)("rejects %j", (props, message) => {
+    expect(bigNumberErrors(props, NARRATION).join("\n")).toMatch(message);
+  });
+
+  it("needs narration for a word cue", () => {
+    expect(bigNumberErrors({ ...ok, at: { word: "split" } }, undefined).join("\n")).toMatch(/at: .*needs narration/);
+  });
+
+  it("throws on bad props when drawn", () => {
+    expect(() => renderToStaticMarkup(<BigNumber progress={0.5} theme={theme} aspect="9:16" value={46} from={46} />)).toThrow(/BigNumber: from must differ/);
+  });
+
+  it("throws when the strike cue is so late the number would land after the scene starts to exit", () => {
+    const late = () => at(100, <BigNumber progress={0} theme={theme} aspect="9:16" value={46} from={184} at={19_500} />);
+    expect(late).toThrow(/BigNumber: .*lands at .* after the scene starts to exit/);
+  });
+});
+
+describe("value-change fixtures", () => {
+  it.each(["value-change.json", "value-change-wide.json"])("%s is a valid storyboard of good BigNumber value changes", (file) => {
+    const raw = JSON.parse(readFileSync(join(__dirname, "fixtures", file), "utf8"));
+    const result = validateStoryboard(raw);
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    const scenes = result.storyboard.scenes.filter((s) => s.component === "BigNumber");
+    expect(scenes.length).toBeGreaterThanOrEqual(2);
+    for (const scene of scenes) expect(bigNumberErrors(scene.props, scene.narration)).toEqual([]);
+    const props = scenes.map((s) => s.props as { value: number; from?: number; color?: string });
+    // A price drop in the positive role, and a counted increase.
+    expect(props.some((p) => p.from !== undefined && p.from > p.value && p.color === "positive")).toBe(true);
+    expect(props.some((p) => p.from !== undefined && p.from < p.value)).toBe(true);
   });
 });

@@ -1,0 +1,55 @@
+{
+  "title": "BigNumber value change: a price drop and a counted increase",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "price-drop",
+      "component": "BigNumber",
+      "props": {
+        "value": 46,
+        "from": 184,
+        "prefix": "$",
+        "color": "positive",
+        "label": "Your share of the bill"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "growth",
+      "component": "BigNumber",
+      "props": {
+        "value": 12500,
+        "from": 3200,
+        "suffix": "+",
+        "label": "Groups splitting every week"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "fees",
+      "component": "BigNumber",
+      "props": {
+        "value": 4.5,
+        "from": 2.25,
+        "decimals": 2,
+        "prefix": "$",
+        "fromStyle": "replace",
+        "color": "negative",
+        "at": {
+          "word": "doubled"
+        },
+        "label": "Card fees per payment"
+      },
+      "narration": "Card fees doubled overnight, and nobody told you.",
+      "durationMs": 4500
+    }
+  ]
+}
