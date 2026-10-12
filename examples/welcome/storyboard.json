@@ -52,10 +52,10 @@
         "motion": "words",
         "emphasis": 2
       },
-      "narration": "Welcome to motioncraft. Videos from a prompt. Every frame, in code.",
+      "narration": "Welcome to motioncraft. Videos from a prompt, with every frame drawn in code.",
       "transition": {
         "type": "fade",
-        "durationMs": 700
+        "durationMs": 500
       }
     },
     {
@@ -65,11 +65,10 @@
         "text": "A launch video for my app",
         "shareId": "prompt"
       },
-      "narration": "You describe the video you want.",
-      "durationMs": 3600,
+      "narration": "You start by describing the video you want, in a single prompt.",
       "transition": {
         "type": "fade",
-        "durationMs": 900
+        "durationMs": 600
       }
     },
     {
@@ -102,11 +101,10 @@
         },
         "label": "render"
       },
-      "narration": "Your agent writes the storyboard, and one command renders it.",
-      "durationMs": 5600,
+      "narration": "Your coding agent takes it from there. It writes the storyboard, then runs one command to render it.",
       "transition": {
         "type": "fade",
-        "durationMs": 900
+        "durationMs": 600
       }
     },
     {
@@ -143,11 +141,10 @@
           }
         }
       },
-      "narration": "It all runs on your machine. No accounts, and no cloud.",
-      "durationMs": 5900,
+      "narration": "It checks every frame along the way, and when it's done, it hands you back a finished file, ready to post.",
       "transition": {
         "type": "fade",
-        "durationMs": 900
+        "durationMs": 600
       }
     },
     {
@@ -193,11 +190,10 @@
           }
         }
       },
-      "narration": "It comes with a kit of clean, animated pieces, ready to use.",
-      "durationMs": 6600,
+      "narration": "Under the hood is a kit of clean, animated pieces: charts that build themselves, smooth transitions, and layouts that are checked for you.",
       "transition": {
         "type": "iris",
-        "durationMs": 800
+        "durationMs": 500
       }
     },
     {
@@ -212,12 +208,11 @@
           "you"
         ]
       },
-      "narration": "Made for launches, tutorials, shorts, and you.",
-      "durationMs": 4200,
+      "narration": "It's made for launches, for tutorials, for shorts, and for you.",
       "transition": {
         "type": "slide",
         "direction": "left",
-        "durationMs": 650
+        "durationMs": 500
       }
     },
     {
@@ -249,12 +244,11 @@
           }
         ]
       },
-      "narration": "Charts build themselves, straight from your numbers.",
-      "durationMs": 5200,
+      "narration": "Hand it your numbers, and the charts draw themselves, bar by bar, with the one that matters highlighted.",
       "transition": {
         "type": "slide",
         "direction": "left",
-        "durationMs": 650
+        "durationMs": 500
       }
     },
     {
@@ -273,18 +267,13 @@
           },
           {
             "label": "Caesar salad",
-            "amount": 11.25,
-            "note": "no croutons"
-          },
-          {
-            "label": "Tiramisu",
-            "amount": 8
+            "amount": 11.25
           }
         ],
         "summary": [
           {
             "label": "Subtotal",
-            "amount": 55.75
+            "amount": 47.75
           },
           {
             "label": "Tip",
@@ -292,16 +281,15 @@
           }
         ],
         "total": {
-          "amount": 65.75
+          "amount": 57.75
         },
         "highlight": 1
       },
-      "narration": "It prints receipts, line by line, for when the story is about money.",
-      "durationMs": 7000,
+      "narration": "And when the story is about money, it prints the whole receipt for you, line by line, right down to the tip.",
       "transition": {
         "type": "wipe",
         "direction": "left",
-        "durationMs": 700
+        "durationMs": 500
       }
     },
     {
@@ -330,12 +318,11 @@
         "beforeLabel": "By hand",
         "afterLabel": "With motioncraft"
       },
-      "narration": "Before, every change meant animating by hand. Now it's one prompt, and a render.",
+      "narration": "No more keyframing by hand, and exporting again and again. Now it's one prompt, and one render.",
       "transition": {
         "type": "fade",
-        "durationMs": 700
-      },
-      "durationMs": 6000
+        "durationMs": 500
+      }
     },
     {
       "id": "code",
@@ -346,11 +333,11 @@
         "markStyle": "highlight",
         "note": "no stock footage, no AI video"
       },
-      "narration": "No stock footage, and no AI video. Every frame is drawn in code.",
+      "narration": "There's no stock footage, and no AI video. Every single frame is drawn in code.",
       "transition": {
         "type": "slide",
         "direction": "left",
-        "durationMs": 650
+        "durationMs": 500
       }
     },
     {
@@ -369,7 +356,7 @@
           "render"
         ]
       },
-      "narration": "You write a storyboard. It checks every frame, then renders the video.",
+      "narration": "Your agent writes the storyboard, checks every frame, and renders the video, all on its own.",
       "effects": [
         {
           "target": "check",
@@ -381,9 +368,8 @@
       ],
       "transition": {
         "type": "zoomBlur",
-        "durationMs": 700
-      },
-      "durationMs": 5600
+        "durationMs": 500
+      }
     },
     {
       "id": "formats",
@@ -408,12 +394,11 @@
         ],
         "highlight": 2
       },
-      "narration": "Shorts, widescreen, and now four by five, for your feed.",
+      "narration": "Make shorts, widescreen videos and feed posts, all from the same storyboard.",
       "transition": {
         "type": "fade",
-        "durationMs": 800
-      },
-      "durationMs": 5600
+        "durationMs": 500
+      }
     },
     {
       "id": "end",
@@ -435,7 +420,7 @@
           }
         }
       },
-      "narration": "Motioncraft. Prompt in, video out. Open source, and free forever.",
+      "narration": "Motioncraft. Prompt in, video out. It's open source, and free forever.",
       "durationMs": 7000
     }
   ]
