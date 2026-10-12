@@ -1,0 +1,44 @@
+{
+  "title": "DonutChart kit component: a ring that sweeps to its shares",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "share",
+      "component": "DonutChart",
+      "props": {
+        "title": "Market share, 2026",
+        "data": [
+          { "label": "Acme", "value": 42, "emphasis": true },
+          { "label": "Globex", "value": 27 },
+          { "label": "Initech", "value": 19 },
+          { "label": "Other", "value": 12 }
+        ],
+        "suffix": "%"
+      },
+      "durationMs": 6000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "custom-center",
+      "component": "DonutChart",
+      "props": {
+        "title": "Where the budget goes",
+        "data": [
+          { "label": "Compute", "value": 1840 },
+          { "label": "Storage", "value": 620, "emphasis": true },
+          { "label": "Network", "value": 410 },
+          { "label": "Support", "value": 230 },
+          { "label": "Other", "value": 150 }
+        ],
+        "center": { "value": "$3.25M", "label": "per year" },
+        "prefix": "$",
+        "suffix": "K"
+      },
+      "durationMs": 6000
+    }
+  ]
+}
