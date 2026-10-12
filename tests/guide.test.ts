@@ -83,8 +83,7 @@ describe("docs/agent-guide.md", () => {
     for (const block of incorrect) expect(() => JSON.parse(block.body), `line ${block.line}`).not.toThrow();
   });
 
-  // Frozen until #133, which documents the new features in one pass and removes this skip.
-  it.skip("covers every kit component with a heading and an example", () => {
+  it("covers every kit component with a heading and an example", () => {
     const used = new Set(
       correct.flatMap(({ value }) =>
         asStoryboards(value).flatMap((sb) => (sb as { scenes: Array<{ component: string; props: Record<string, unknown> }> }).scenes.flatMap((s) => sceneComponents(s).map((u) => u.component))),

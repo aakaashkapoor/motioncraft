@@ -2,10 +2,6 @@
 
 Read `docs/design.md` (the pipeline) and `docs/design-v2.md` (the design system, transitions, kit and media) first.
 
-**The agent guide is frozen until #133.** Do not edit `docs/agent-guide.md`
-or write guide examples for new features; #133 documents them all in one pass
-and switches the guide-coverage test back on.
-
 ## Rules
 
 - **TypeScript, strict.** Source in `src/`, scripts in `scripts/`, tests in `tests/`.
@@ -65,7 +61,9 @@ engine. Source is pinned to commit `2905162d925fc87fb8242e24ed0bbf025d307ea1`:
 7. **Registering a new component** means: add it to `kit` in `src/kit/index.ts`;
    add a sample to `SAMPLES` in `tests/kit-ms-timing.test.tsx`; nest it in
    `tests/fixtures/section-nesting.json` and `section-nesting-wide.json`; add a
-   fixture pair `tests/fixtures/<kebab-name>.json` and `<kebab-name>-wide.json`.
+   fixture pair `tests/fixtures/<kebab-name>.json` and `<kebab-name>-wide.json`;
+   give it a `####` heading and a tested `json` example under the right group in
+   `docs/agent-guide.md` section 5.
 8. **Look before you finish.** Render stills of your fixture pair
    (`npx tsx scripts/stills.ts tests/fixtures/<name>.json --out <tmp> --per-scene`,
    and the wide one), including mid-motion frames, open the PNGs and fix anything
