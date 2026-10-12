@@ -525,6 +525,28 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "donut-chart",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A donut that sweeps in the slot",
+        "content": {
+          "component": "DonutChart",
+          "props": {
+            "data": [
+              { "label": "Acme", "value": 42, "emphasis": true },
+              { "label": "Globex", "value": 27 },
+              { "label": "Initech", "value": 19 },
+              { "label": "Other", "value": 12 }
+            ],
+            "suffix": "%"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

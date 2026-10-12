@@ -102,6 +102,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
   },
   ScrambleText: { text: "npm run render", style: "terminal", label: "Renders in 4.2 s" },
   WordSwap: { prefix: "Ship", options: ["faster", "smarter", "together"], cuesMs: [800, 1300] },
+  DonutChart: { title: "Market share", data: [{ label: "Acme", value: 42, emphasis: true }, { label: "Globex", value: 27 }, { label: "Initech", value: 19 }, { label: "Other", value: 12 }], suffix: "%" },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 
