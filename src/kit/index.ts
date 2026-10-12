@@ -32,6 +32,7 @@ import { BeforeAfter } from "./BeforeAfter";
 import { ScrambleText } from "./ScrambleText";
 import { WordSwap } from "./WordSwap";
 import { DonutChart } from "./DonutChart";
+import { BarChart } from "./BarChart";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -84,4 +85,5 @@ export const kit: Record<string, KitComponent> = {
   ScrambleText: asKitComponent(ScrambleText),
   WordSwap: asKitComponent(WordSwap),
   DonutChart: asKitComponent(DonutChart),
+  BarChart: asKitComponent(BarChart),
 };

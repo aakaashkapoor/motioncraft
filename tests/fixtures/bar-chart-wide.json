@@ -1,0 +1,43 @@
+{
+  "title": "BarChart kit component: bars that grow to their values, 16:9",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "revenue",
+      "component": "BarChart",
+      "props": {
+        "title": "Revenue by month, 2026",
+        "data": [
+          { "label": "Jan", "value": 480 },
+          { "label": "Feb", "value": 720 },
+          { "label": "Mar", "value": 1250, "emphasis": true },
+          { "label": "Apr", "value": 960 },
+          { "label": "May", "value": 610 }
+        ],
+        "prefix": "$"
+      },
+      "durationMs": 6000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "progress",
+      "component": "BarChart",
+      "props": {
+        "title": "Launch readiness",
+        "variant": "progress",
+        "data": [
+          { "label": "Tests", "value": 37.5 },
+          { "label": "Docs", "value": 82.5, "emphasis": true },
+          { "label": "Rollout", "value": 60 }
+        ],
+        "suffix": "%",
+        "decimals": 1
+      },
+      "durationMs": 6000
+    }
+  ]
+}
