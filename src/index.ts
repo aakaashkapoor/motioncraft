@@ -127,6 +127,8 @@ export { Notification, type NotificationProps } from "./kit/Notification";
 export { NOTIFICATION_DROP_MS, NOTIFICATION_MAX, bannerPoses, dropProgress, notificationErrors, notificationLayout, notificationTiming, type BannerPose, type NotificationItem, type NotificationLayout, type NotificationTiming } from "./kit/notificationPlan";
 export { RECEIPT_MAX_ITEMS, RECEIPT_MAX_SUMMARY, RECEIPT_MAX_TILT, receiptErrors, receiptLayout, receiptLines, receiptTiming, type ReceiptData, type ReceiptItem, type ReceiptLayout, type ReceiptLine, type ReceiptRow, type ReceiptTiming } from "./kit/receiptPlan";
 export { receiptTotalWarnings } from "./checks/receiptTotals";
+export { STROKE_TRACE_MAX_PATHS, StrokeTrace, strokeTraceErrors, strokeTraceLayout, strokeTracePaths, strokeTraceTiming, type StrokeTraceLayout, type StrokeTraceProps, type StrokeTraceTiming } from "./kit/StrokeTrace";
+export { pathLength } from "./kit/pathLength";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
 export { MotionDelay, NOMINAL_SCENE_MS, OPENING_SETTLE_MS, entering, SceneClockContext, SceneWordsContext, useMotionDelay, useSceneMs, useSceneTime, useSceneWords, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { cueErrors, resolveCue, useCueMs, type Cue } from "./kit/cues";
