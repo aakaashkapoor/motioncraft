@@ -1,8 +1,9 @@
 // Layer-1 automatic checks (no AI): overflow, safe area, contrast, readability,
-// type scale, centering and opening (warnings), and storyboard checks (transitions,
+// type scale, centering, opening and overlay overlap (warnings), and storyboard checks (transitions,
 // theme colors, media files).
 
-export { runChecks } from "./run";
+export { runChecks } from "./runWithOverlays";
+export { checkOverlayOverlap, OVERLAY_CHECK, runOverlayChecks } from "./overlays";
 export type { RunChecksOptions } from "./run";
 export { formatProblem, judge } from "./judge";
 export type { MeasuredFrame } from "./judge";

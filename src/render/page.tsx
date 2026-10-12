@@ -17,6 +17,7 @@ import { SceneClockContext, SceneWordsContext } from "../kit/frameContext";
 import { sceneWords } from "../kit/sceneWords";
 import { Ground } from "../kit/Ground";
 import { frameSize } from "../layout/frame";
+import { Overlays } from "../overlays/Overlays";
 import { WIDE_SHOT, opensSettled, type Storyboard } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { transitionStyle } from "../transitions";
@@ -139,7 +140,7 @@ function morphAt(info: ReturnType<typeof frameAt>, shared: SharedMeasurements | 
 
 /**
  * Exactly what is on screen at `frame`: the ground, then each scene's
- * component and caption. During a transition both scenes are stacked, the
+ * component and caption, then the overlays above them all. During a transition both scenes are stacked, the
  * incoming one on top, over one shared ground; elements the two scenes share
  * (see `shared`) are drawn once, morphing, above both.
  */
@@ -173,6 +174,9 @@ export function Frame({ storyboard, theme, timeline, frame, shared, targets, cam
           size={size}
           renderScene={(scene) => <SceneLayer {...layer} camera="live" scene={scene} />}
         />
+      )}
+      {storyboard.overlays !== undefined && (
+        <Overlays overlays={storyboard.overlays} sceneIds={storyboard.scenes.map((scene) => scene.id)} theme={theme} aspect={storyboard.aspect} timeline={timeline} frame={frame} />
       )}
     </div>
   );

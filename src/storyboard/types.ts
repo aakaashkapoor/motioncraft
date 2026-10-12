@@ -105,6 +105,27 @@ export interface StoryboardScene {
   shots?: SceneShot[];
 }
 
+export const OVERLAY_CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
+export type OverlayCorner = (typeof OVERLAY_CORNERS)[number];
+export const DEFAULT_OVERLAY_CORNER: OverlayCorner = "top-left";
+/** Most overlays a storyboard may have, and the most characters in one overlay's text. */
+export const MAX_OVERLAYS = 3;
+export const MAX_OVERLAY_TEXT = 28;
+
+/**
+ * A corner tag shown across chosen scenes (for example "EXAMPLE BILL" or
+ * "Sponsored"), inside the safe area. It is drawn above everything and does
+ * not move with the camera or a transition.
+ */
+export interface StoryboardOverlay {
+  /** 1-28 characters; drawn uppercase. */
+  text: string;
+  /** Defaults to `top-left`. */
+  corner?: OverlayCorner;
+  /** Ids of the scenes it shows on. Defaults to every scene. */
+  scenes?: string[];
+}
+
 /** A validated storyboard with defaults applied. */
 export interface Storyboard {
   title: string;
@@ -133,6 +154,8 @@ export interface Storyboard {
    * whitespace; values are one word of letters and apostrophes.
    */
   pronounce?: Record<string, string>;
+  /** Corner tags across chosen scenes, at most 3. */
+  overlays?: StoryboardOverlay[];
   scenes: StoryboardScene[];
 }
 

@@ -1,0 +1,47 @@
+{
+  "title": "Overlay corner tags",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "overlays": [
+    { "text": "Example bill", "corner": "top-left", "scenes": ["intro", "split"] },
+    { "text": "Sponsored", "corner": "top-right", "scenes": ["total", "outro"] },
+    { "text": "Not financial advice", "corner": "bottom-right", "scenes": ["total", "outro"] }
+  ],
+  "scenes": [
+    {
+      "id": "intro",
+      "component": "Headline",
+      "props": { "text": "Split any bill", "motion": "words", "emphasis": "bill" },
+      "durationMs": 3000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "split",
+      "component": "SceneFrame",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Everyone pays their share",
+        "content": {
+          "component": "CardRow",
+          "props": { "cards": [{ "icon": "chat", "title": "Scan" }, { "icon": "code", "title": "Split" }, { "icon": "play", "title": "Pay" }] }
+        }
+      },
+      "durationMs": 6000,
+      "transition": { "type": "slide" }
+    },
+    {
+      "id": "total",
+      "component": "BigNumber",
+      "props": { "value": 42, "prefix": "$", "label": "Each" },
+      "durationMs": 3000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "outro",
+      "component": "Headline",
+      "props": { "text": "No more math" },
+      "durationMs": 3000
+    }
+  ]
+}
