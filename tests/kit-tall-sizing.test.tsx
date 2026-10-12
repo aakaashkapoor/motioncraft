@@ -276,7 +276,7 @@ describe("16:9 keeps its layouts", () => {
     const bars = barChartLayout(lightTheme, WIDE, REVENUE);
     expect(rounded(bars.box)).toEqual({ x: 320, y: 64.6, width: 1280, height: 734.4 });
     expect(rounded(bars.plot)).toEqual({ x: 0, y: 308.4, width: 1280, height: 338 });
-    expect(bars.max).toBe(2000);
+    expect(bars.max).toBe(1500);
     const tracks = barChartLayout(lightTheme, WIDE, READINESS);
     expect(rounded(tracks.plot)).toEqual({ x: 217, y: 228.4, width: 907, height: 288 });
   });

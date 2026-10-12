@@ -16,7 +16,7 @@ import { TYPE_FIT_ATTRIBUTE, glyphPad, textBoxHeight, typeCss } from "../layout/
 import { mixColors, withAlpha } from "../theme/color";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
-import { chartErrors, emphasisIndex, formatChartValue, niceMax, type ChartDatum, type ChartValueFormat } from "./chart";
+import { chartErrors, emphasisIndex, formatChartValue, gridShares, niceMax, type ChartDatum, type ChartValueFormat } from "./chart";
 import { entering, useSceneTime } from "./frameContext";
 import { arrive, cascadeStep, exitOpacity, fade, pulse, tween } from "./motion";
 import type { KitProps } from "./types";
@@ -40,8 +40,6 @@ const BAR_INK = 0.45;
 const GRID_OPACITY = 0.08;
 const BASELINE_OPACITY = 0.18;
 const TRACK_OPACITY = 0.08;
-/** Gridlines at these shares of `max` (the baseline is the zero line). */
-const GRID_STEPS = [0.25, 0.5, 0.75, 1];
 /** A vertical bar's share of its band, and the widest a band and a bar may be, in px. */
 const BAND_SHARE = 0.62;
 const BAND_MAX_PX = 256;
@@ -303,7 +301,7 @@ export function BarChart(props: BarChartProps) {
         </div>
       )}
       {!isTracks &&
-        GRID_STEPS.map((k) => {
+        gridShares(layout.max).map((k) => {
           const at = round(k * full);
           const line = vertical
             ? { left: plot.x, top: round(plot.y + full - at - hairline / 2), width: plot.width, height: hairline }
