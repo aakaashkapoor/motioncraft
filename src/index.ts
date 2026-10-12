@@ -123,6 +123,9 @@ export { Handoff, handoffLayout, type HandoffLayout, type HandoffProps } from ".
 export { HEADLINE_MOTIONS, HEADLINE_ROLES, Headline, HeadlineText, MARK_STYLES, headlineBox, headlineMarks, headlineTiming, headlineWords, markSweep, wordLeaving, type HeadlineMarks, type HeadlineMotion, type HeadlineProps, type HeadlineRole, type HeadlineTextProps, type HeadlineTiming, type MarkStyle } from "./kit/Headline";
 export { SceneFrame, frameLineSpec, sceneFrameLayout, sceneFrameTiming, type SceneFrameLayout, type SceneFrameProps, type SceneFrameText, type SceneFrameTiming } from "./kit/SceneFrame";
 export { PromptCard, promptCardLayout, promptCardTiming, type PromptCardLayout, type PromptCardProps, type PromptCardTiming } from "./kit/PromptCard";
+export { Receipt, type ReceiptProps } from "./kit/Receipt";
+export { RECEIPT_MAX_ITEMS, RECEIPT_MAX_SUMMARY, RECEIPT_MAX_TILT, receiptErrors, receiptLayout, receiptLines, receiptTiming, type ReceiptData, type ReceiptItem, type ReceiptLayout, type ReceiptLine, type ReceiptRow, type ReceiptTiming } from "./kit/receiptPlan";
+export { receiptTotalWarnings } from "./checks/receiptTotals";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
 export { MotionDelay, NOMINAL_SCENE_MS, OPENING_SETTLE_MS, entering, SceneClockContext, SceneWordsContext, useMotionDelay, useSceneMs, useSceneTime, useSceneWords, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { cueErrors, resolveCue, useCueMs, type Cue } from "./kit/cues";

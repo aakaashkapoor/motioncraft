@@ -1,6 +1,7 @@
 // Layer-1 checks: the storyboard checks (transitions, theme colors, media files,
 // narration-fit when the narration is spoken, and narration-guess when the
-// voice's dictionaries are already downloaded),
+// voice's dictionaries are already downloaded, and receipt-total when a
+// Receipt's amounts do not add up to its total),
 // then the start, middle and end frame of every scene (overflow, safe area,
 // contrast, readability, and the type-scale warning). Prints the problems and
 // warnings and exits non-zero on any error or frame problem; warnings alone pass.
@@ -11,6 +12,7 @@ import { dirname } from "node:path";
 import { checkStoryboard, formatIssue, formatProblem, runChecks } from "../src/checks";
 import { defaultCacheDir } from "../src/narration/assets";
 import { narrationGuessWarnings } from "../src/narration/guesses";
+import { receiptTotalWarnings } from "../src/checks/receiptTotals";
 import { loadCachedNarration, missingNarrationNotice, narrationDir } from "../src/narration/narrate";
 import { sceneDurations } from "../src/render/durations";
 import { resolveTheme } from "../src/render/themes";
@@ -40,6 +42,8 @@ async function main(argv: string[]): Promise<void> {
   // Words the voice will sound out; only from dictionaries already cached, so this never touches the network.
   const guesses = await narrationGuessWarnings(storyboard, defaultCacheDir());
   for (const guess of guesses) console.log(guess);
+  const receipts = receiptTotalWarnings(storyboard);
+  for (const receipt of receipts) console.log(receipt);
   const errors = issues.filter((issue) => issue.severity === "error").length;
   if (errors > 0) {
     console.log(`${file}: ${errors} storyboard error${errors === 1 ? "" : "s"}; fix them before the frames can be checked`);
@@ -49,7 +53,7 @@ async function main(argv: string[]): Promise<void> {
 
   const result = await runChecks({ storyboard, theme, durations: sceneDurations(storyboard, narration, theme), mediaDir, narration });
   for (const warning of result.warnings) console.log(formatProblem(warning));
-  const warnings = issues.length + guesses.length + result.warnings.length;
+  const warnings = issues.length + guesses.length + receipts.length + result.warnings.length;
   if (result.passed) {
     console.log(`${file}: all layer-1 checks passed${warnings > 0 ? ` (${warnings} warning${warnings === 1 ? "" : "s"})` : ""}`);
     return;

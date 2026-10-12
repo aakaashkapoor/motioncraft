@@ -410,6 +410,29 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "receipt",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A receipt in the slot",
+        "content": {
+          "component": "Receipt",
+          "props": {
+            "title": "Corner Cafe",
+            "items": [
+              { "label": "Flat white", "amount": 4.5 },
+              { "label": "Croissant", "amount": 3.75 }
+            ],
+            "summary": [{ "label": "Tax", "amount": 0.66 }],
+            "total": { "amount": 8.91 },
+            "highlight": 0
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

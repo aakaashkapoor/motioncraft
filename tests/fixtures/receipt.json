@@ -1,0 +1,116 @@
+{
+  "title": "Receipt kit component: a dinner bill",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "bill",
+      "component": "Receipt",
+      "props": {
+        "title": "Trattoria Roma",
+        "items": [
+          {
+            "label": "Margherita pizza",
+            "amount": 14.5
+          },
+          {
+            "label": "Truffle pasta",
+            "amount": 22
+          },
+          {
+            "label": "Caesar salad",
+            "amount": 11.25,
+            "note": "no croutons"
+          },
+          {
+            "label": "Tiramisu",
+            "amount": 8
+          },
+          {
+            "label": "Sparkling water",
+            "amount": 4.5
+          }
+        ],
+        "summary": [
+          {
+            "label": "Subtotal",
+            "amount": 60.25
+          },
+          {
+            "label": "Tax",
+            "amount": 5.35
+          },
+          {
+            "label": "Tip",
+            "amount": 12
+          }
+        ],
+        "total": {
+          "amount": 77.6
+        },
+        "highlight": 1
+      },
+      "durationMs": 8500,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "split",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Split four ways",
+        "headline": "Everyone pays $19.40",
+        "content": {
+          "component": "Receipt",
+          "props": {
+            "title": "Trattoria Roma",
+            "items": [
+              {
+                "label": "Margherita pizza",
+                "amount": 14.5
+              },
+              {
+                "label": "Truffle pasta",
+                "amount": 22
+              },
+              {
+                "label": "Caesar salad",
+                "amount": 11.25,
+                "note": "no croutons"
+              },
+              {
+                "label": "Tiramisu",
+                "amount": 8
+              },
+              {
+                "label": "Sparkling water",
+                "amount": 4.5
+              }
+            ],
+            "summary": [
+              {
+                "label": "Subtotal",
+                "amount": 60.25
+              },
+              {
+                "label": "Tax",
+                "amount": 5.35
+              },
+              {
+                "label": "Tip",
+                "amount": 12
+              }
+            ],
+            "total": {
+              "amount": 77.6
+            },
+            "tilt": 2
+          }
+        }
+      },
+      "durationMs": 10000
+    }
+  ]
+}
