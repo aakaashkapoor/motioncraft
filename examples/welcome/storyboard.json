@@ -130,6 +130,7 @@
           "props": {
             "title": "render",
             "shareId": "term",
+            "typed": false,
             "lines": [
               {
                 "prompt": true,
@@ -159,6 +160,7 @@
           "props": {
             "title": "render",
             "shareId": "term",
+            "typed": false,
             "lines": [
               {
                 "prompt": true,

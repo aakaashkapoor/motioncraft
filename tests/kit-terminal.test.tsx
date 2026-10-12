@@ -213,6 +213,36 @@ describe("TerminalWindow", () => {
   it("escapes text", () => {
     expect(terminal(0.9, "9:16", { lines: [{ text: "<b>" }] })).toContain("&lt;b&gt;");
   });
+
+  describe("typed: false", () => {
+    const untyped = (progress: number, aspect: Aspect = "9:16") =>
+      renderToStaticMarkup(<TerminalWindow progress={progress} theme={lightTheme} aspect={aspect} lines={LINES} title="zsh" typed={false} />);
+    /** The drawn lines (text, place, opacity) with the caret taken out. */
+    const lineMarkup = (html: string) => html.slice(html.indexOf("<div data-terminal-line=")).replace(/<[a-z]+[^>]*data-terminal-caret[^>]*>(<\/[a-z]+>)?/g, "");
+
+    it("shows every line complete from the first frame, as a typed window settles", () => {
+      for (const aspect of ASPECTS) {
+        const first = untyped(0, aspect);
+        expect(lineMarkup(first)).toBe(lineMarkup(terminal(0.8, aspect)));
+        expect([...terminalTexts(first).values()]).toEqual(LINES.map((l) => l.text));
+      }
+    });
+
+    it("holds a blinking caret on the fresh prompt", () => {
+      const c = caret(untyped(0));
+      expect(c.line).toBe(LINES.length);
+      const values = [0, 0.01, 0.02, 0.03, 0.04].map((p) => caret(untyped(p)).opacity);
+      expect(Math.max(...values) - Math.min(...values)).toBeGreaterThan(0.3);
+    });
+
+    it("keeps the window the size of a typed one", () => {
+      expect(rootBox(untyped(0.5))).toEqual(rootBox(terminal(0.5)));
+    });
+
+    it("rejects a typed that is not a boolean", () => {
+      expect(() => renderToStaticMarkup(<TerminalWindow progress={0} theme={lightTheme} aspect="9:16" lines={LINES} typed={"no" as unknown as boolean} />)).toThrow(/typed.*boolean/);
+    });
+  });
 });
 
 const CODE = [

@@ -108,6 +108,8 @@ presentation. Windows (`AppWindow`, `BrowserWindow`, `TerminalWindow`,
 move: a window is the hero of one scene, then docks in a corner with `Pinned`
 while the next scene's content arrives beside it. Keep the window's props the
 same on both sides so its content does not jump.
+A `TerminalWindow` or `PromptCard` that was typed in the first scene should set
+`"typed": false` in the second, so it continues instead of re-typing.
 
 ### The camera: shots and breathing
 
@@ -1311,7 +1313,9 @@ command types behind a live caret at a human pace (a little uneven, pausing
 after punctuation), and its output fades in once it has been typed. Text stays
 at the mono size: a long session scrolls the window rather than shrinking it.
 `seed` (a number or string) changes the typing rhythm; the same seed types the
-same way on every render.
+same way on every render. A window carried into the next scene by a `shareId`
+should set `"typed": false` there (as `PromptCard` does), so it shows every
+line complete and continues instead of re-typing.
 
 ```json
 {

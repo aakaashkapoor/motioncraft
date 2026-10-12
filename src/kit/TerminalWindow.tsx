@@ -10,14 +10,14 @@ import type { Seed } from "../engine/random";
 import { typeCss } from "../layout/type";
 import { useSceneTime } from "./frameContext";
 import { syntaxColors } from "./syntaxColors";
-import { terminalFrame, terminalSchedule, PROMPT_MARKER, type TerminalLine } from "./terminalSchedule";
+import { terminalFrame, terminalSchedule, terminalSettledMs, PROMPT_MARKER, type TerminalLine } from "./terminalSchedule";
 import type { KitProps } from "./types";
 import { Caret } from "./Caret";
 import { caretBlink, typedText } from "./typing";
 import { TitleBar, WindowShell, type WindowChromeStyle } from "./AppWindow";
 import { windowBox } from "./windowLayout";
 
-export { terminalFrame, terminalSchedule, terminalTiming } from "./terminalSchedule";
+export { terminalFrame, terminalSchedule, terminalSettledMs, terminalTiming } from "./terminalSchedule";
 export type { TerminalEntry, TerminalEntryFrame, TerminalFrame, TerminalLine, TerminalLineTiming, TerminalSchedule, TerminalScheduleOptions, TerminalScroll } from "./terminalSchedule";
 
 export interface TerminalWindowProps extends KitProps {
@@ -29,16 +29,21 @@ export interface TerminalWindowProps extends KitProps {
   chrome?: WindowChromeStyle;
   /** Varies the typing rhythm; the same seed types the same way every time. Default 0. */
   seed?: Seed;
+  /** False shows every line complete from the first frame, for a window carried in from the scene before. Default true. */
+  typed?: boolean;
 }
 
 /** Rounds a px value for the markup. */
 const px = (value: number) => Math.round(value * 100) / 100;
 
-export function TerminalWindow({ progress, theme, aspect, area, lines, title = "Terminal", shareId, chrome = "traffic", seed = 0 }: TerminalWindowProps) {
+export function TerminalWindow({ progress, theme, aspect, area, lines, title = "Terminal", shareId, chrome = "traffic", seed = 0, typed = true }: TerminalWindowProps) {
+  if (typeof typed !== "boolean") throw new Error(`TerminalWindow: \`typed\` must be a boolean, got ${JSON.stringify(typed)}`);
   const time = useSceneTime(progress);
-  const { ms } = time;
   const schedule = terminalSchedule(theme, aspect, lines, { area, time, seed });
   const box = windowBox(theme, aspect, schedule.visibleRows * schedule.rowHeight, area);
+  // Untyped, the lines are drawn as they stand once typing has ended; only the caret keeps the scene's clock.
+  const sceneMs = time.ms;
+  const ms = typed ? sceneMs : terminalSettledMs(theme, schedule);
   const frame = terminalFrame(theme, schedule, ms);
   const colors = syntaxColors(theme);
   // The entry that has appeared most recently holds the caret.
@@ -60,7 +65,7 @@ export function TerminalWindow({ progress, theme, aspect, area, lines, title = "
     const prompt = line === undefined || line.prompt === true;
     // A command's caret blinks on the empty prompt and goes solid as it types; the fresh prompt's blinks for good.
     const holdsCaret = i === active && prompt && (line === undefined || ms < entry.end);
-    const caretOpacity = line !== undefined && ms >= entry.typeStart ? 1 : caretBlink(theme, ms - entry.start);
+    const caretOpacity = !typed ? caretBlink(theme, sceneMs) : line !== undefined && ms >= entry.typeStart ? 1 : caretBlink(theme, ms - entry.start);
     return (
       <div
         key={i}
