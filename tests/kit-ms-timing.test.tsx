@@ -103,6 +103,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
   ScrambleText: { text: "npm run render", style: "terminal", label: "Renders in 4.2 s" },
   WordSwap: { prefix: "Ship", options: ["faster", "smarter", "together"], cuesMs: [800, 1300] },
   DonutChart: { title: "Market share", data: [{ label: "Acme", value: 42, emphasis: true }, { label: "Globex", value: 27 }, { label: "Initech", value: 19 }, { label: "Other", value: 12 }], suffix: "%" },
+  BarChart: { title: "Revenue", data: [{ label: "Q1", value: 480 }, { label: "Q2", value: 720 }, { label: "Q3", value: 1250, emphasis: true }, { label: "Q4", value: 960 }], prefix: "$" },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 
@@ -203,6 +204,7 @@ describe("no progress-fraction timing in src/kit", () => {
       /useSceneTime\(progress\)/,
       /pageAt\(.*,\s*progress\)/, // caption pages share the whole scene
       /progress:\s*number/,
+      /"progress"/, // a variant name (BarChart), not the scene's progress
     ];
     const offending = sources
       .filter(({ file }) => !wholeScene.has(file))

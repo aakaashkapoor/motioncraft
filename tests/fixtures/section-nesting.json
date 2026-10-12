@@ -547,6 +547,29 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "bar-chart",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "Bars that grow in the slot",
+        "content": {
+          "component": "BarChart",
+          "props": {
+            "data": [
+              { "label": "Jan", "value": 480 },
+              { "label": "Feb", "value": 720 },
+              { "label": "Mar", "value": 1250, "emphasis": true },
+              { "label": "Apr", "value": 960 },
+              { "label": "May", "value": 610 }
+            ],
+            "prefix": "$"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }
