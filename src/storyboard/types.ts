@@ -179,12 +179,40 @@ export interface StoryboardOverlay {
   scenes?: string[];
 }
 
+/** Licenses a brand font may have: each allows commercial use and modification (AGENTS.md). */
+export const BRAND_FONT_LICENSES = ["OFL-1.1", "Apache-2.0", "MIT", "CC0-1.0", "UFL-1.0"] as const;
+export type BrandFontLicense = (typeof BRAND_FONT_LICENSES)[number];
+/** Font files a storyboard can load, by extension. */
+export const BRAND_FONT_EXTENSIONS = [".woff2", ".woff", ".ttf", ".otf"] as const;
+/** A brand font's weight range when it gives none: one regular face. */
+export const DEFAULT_BRAND_WEIGHTS: readonly [number, number] = [400, 400];
+
+/**
+ * A font file the storyboard brings, embedded in the render and named in
+ * `themeOverrides.fonts` by `name`. One family can span several files (a
+ * regular, a bold and an italic), each its own entry with the same name.
+ */
+export interface BrandFont {
+  /** The family's name, as `themeOverrides.fonts` names it. */
+  name: string;
+  /** A .woff2, .woff, .ttf or .otf file, relative to the storyboard. */
+  file: string;
+  /** One of `BRAND_FONT_LICENSES`. */
+  license: string;
+  /** The weights the file covers, [min, max]; a variable font gives its range. Defaults to [400, 400]. */
+  weights?: [number, number];
+  /** Whether the file is the italic face. Defaults to false. */
+  italic?: boolean;
+}
+
 /** A validated storyboard with defaults applied. */
 export interface Storyboard {
   title: string;
   aspect: Aspect;
   fps: number;
   theme: string;
+  /** Font files to embed, named by `themeOverrides.fonts`. */
+  fonts?: BrandFont[];
   /** Any theme tokens, deep-merged over the named theme (see `resolveTheme`). */
   themeOverrides?: ThemeOverrides;
   /** Shortcut for `themeOverrides.colors.accent`; a readable `accentText` is picked unless overridden. */

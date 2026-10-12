@@ -1,15 +1,17 @@
 // Turns a storyboard's theme choice into the theme its frames use: the named
 // built-in theme, with `themeOverrides` deep-merged over it, then the `accent`
 // and `accentIntensity` shortcuts, and the `safe` profile. Any color is allowed; the layer-1 checks
-// judge contrast in the rendered frames, so nothing is blocked here.
+// judge contrast in the rendered frames, so nothing is blocked here. Font
+// overrides name fonts; they resolve to private families (see `resolveFontStack`).
 
 import type { Storyboard } from "../storyboard/types";
 import { mixColors } from "./color";
 import { contrastRatio, roleColorIssues } from "./contrast";
 import { darkTheme } from "./dark";
+import { resolveFontStack } from "./fontStack";
 import { lightTheme } from "./light";
 import { neutralTheme } from "./neutral";
-import type { Theme, ThemeColors } from "./types";
+import type { Theme, ThemeColors, ThemeFonts } from "./types";
 
 /** Themes a storyboard can name in its `theme` field. */
 export const themes: Record<string, Theme> = {
@@ -110,12 +112,25 @@ function fullAccent(colors: ThemeColors): ThemeColors {
   };
 }
 
+/** The theme's fonts with each overridden stack resolved against the storyboard's brand fonts. */
+function overriddenFonts(fonts: ThemeFonts, overrides: Partial<ThemeFonts> | undefined, brandNames: readonly string[]): ThemeFonts {
+  const out = { ...fonts };
+  for (const key of ["display", "body", "mono"] as const) {
+    const stack = overrides?.[key];
+    if (stack !== undefined) out[key] = resolveFontStack(stack, brandNames, key === "mono");
+  }
+  return out;
+}
+
 /** The theme a storyboard renders with, or a built-in theme by name. */
-export function resolveTheme(source: string | Pick<Storyboard, "theme" | "themeOverrides" | "accent" | "accentIntensity" | "safe">): Theme {
+export function resolveTheme(source: string | Pick<Storyboard, "theme" | "themeOverrides" | "accent" | "accentIntensity" | "safe" | "fonts">): Theme {
   if (typeof source === "string") return namedTheme(source);
   const base = namedTheme(source.theme);
   const overrides = source.themeOverrides ?? {};
   let theme: Theme = deepMerge(base, overrides);
+  if (overrides.fonts !== undefined) {
+    theme = { ...theme, fonts: overriddenFonts(theme.fonts, overrides.fonts, (source.fonts ?? []).map((f) => f.name)) };
+  }
 
   const accent = source.accent ?? overrides.colors?.accent;
   if (accent !== undefined) {

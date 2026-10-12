@@ -3,6 +3,9 @@ export const VERSION = "0.0.0";
 
 export * from "./storyboard/types";
 export { validateCue, validateStoryboard } from "./storyboard/validate";
+export { brandFontsErrors, fontOverrideErrors } from "./storyboard/brandFonts";
+export { BRAND_FAMILY_PREFIX, brandFamily, brandFontLoadRequests } from "./render/fontFaces";
+export { GENERIC_FAMILIES, fontStackEntries, resolveFontStack, unknownFontNames } from "./theme/fontStack";
 
 export type {
   AccentIntensity,
