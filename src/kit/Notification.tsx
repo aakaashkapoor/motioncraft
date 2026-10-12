@@ -4,21 +4,24 @@
 // small muted line, a bold title and one line of body. A banner drops from
 // above on a crisp spring with a slight overshoot; a newer one lands on top
 // and pushes the earlier ones down on the same spring. They stay until the
-// exit. An optional `content` scene sits behind them.
+// exit. An optional `content` scene sits behind them, laid out in the whole
+// slot at full size (the banners overlay it), as it would be there alone.
 //
 // Ported from HyperFrames native-notification-pop (Apache-2.0), with a
 // generic look from the theme: no OS's chrome, fonts or icons.
 
 import { Icon } from "../icons";
 import { contentArea } from "../layout/caption";
-import { isTall } from "../layout/frame";
+import { frameSize, isTall, type Rect } from "../layout/frame";
 import { charsPerLine } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import { withAlpha } from "../theme/color";
 import type { TypeSpec } from "../theme/types";
 import { entering, useSceneTime } from "./frameContext";
+import { FULL_BLEED_COMPONENTS } from "./media";
 import { exitOpacity, fade } from "./motion";
 import { bannerPoses, notificationErrors, notificationLayout, notificationTiming, type NotificationItem } from "./notificationPlan";
+import { nestedComponent } from "./Section";
 import { Slot, type SlotContent } from "./Slot";
 import type { KitProps } from "./types";
 
@@ -46,6 +49,17 @@ function oneLine(text: string, width: number, spec: TypeSpec) {
   return fits ? ({ whiteSpace: "nowrap" } as const) : ({ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } as const);
 }
 
+/** `content` laid out in `area` (frame px), drawn inside the Notification's box at `area`'s corner. */
+function NestedContent({ progress, theme, aspect, area, content }: Pick<NotificationProps, "progress" | "theme" | "aspect"> & { area: Rect; content: SlotContent }) {
+  const Content = nestedComponent("Notification", content);
+  const frame = frameSize(aspect);
+  return (
+    <div data-notification-content="" style={{ position: "absolute", left: -area.x, top: -area.y, width: frame.width, height: frame.height }}>
+      <Content {...content.props} progress={progress} theme={theme} aspect={aspect} area={area} />
+    </div>
+  );
+}
+
 export function Notification(props: NotificationProps) {
   const errors = notificationErrors(props as unknown as Record<string, unknown>);
   if (errors.length > 0) throw new Error(`Notification: ${errors.join("; ")}`);
@@ -61,9 +75,14 @@ export function Notification(props: NotificationProps) {
 
   return (
     <div style={{ position: "absolute", left: area.x, top: area.y, width: area.width, height: area.height, opacity: exitOpacity(theme, time, motion.enter.ms) }}>
-      {content !== undefined && (
-        <Slot progress={progress} theme={theme} aspect={aspect} box={{ x: 0, y: 0, width: area.width, height: area.height }} content={content} attribute="data-notification-content" />
-      )}
+      {content !== undefined &&
+        (slot !== undefined && !FULL_BLEED_COMPONENTS.has(content.component) ? (
+          // In a slot (a Section's content), the content lays itself out in the whole slot at full size, as it would
+          // there alone; a scaled frame (the Slot below) would shrink it to a thumbnail. Drawn in frame coordinates.
+          <NestedContent progress={progress} theme={theme} aspect={aspect} area={area} content={content} />
+        ) : (
+          <Slot progress={progress} theme={theme} aspect={aspect} box={{ x: 0, y: 0, width: area.width, height: area.height }} content={content} attribute="data-notification-content" />
+        ))}
       {notifications.map((item, i) => {
         const pose = poses[i]!;
         if (pose.opacity <= 0) return null;

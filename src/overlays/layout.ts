@@ -1,6 +1,7 @@
 // Where an overlay's pill sits: a corner of the safe area, clear of the
 // platform's keep-outs and of the caption band. Pure; the page draws what this
-// says.
+// says. A scene's header makes room for a pill in a top corner (see
+// `sceneAreaUnderOverlays`), so the pill itself never moves.
 
 import { captionBand } from "../layout/caption";
 import type { Aspect, Rect } from "../layout/frame";
@@ -28,6 +29,20 @@ export function overlayRegion(theme: Theme, aspect: Aspect, corner: OverlayCorne
   const top = corner.startsWith("top") ? zones.area.y : floor - height;
   const column = clearOfKeepOuts(aspect, zones, zones.area, top, top + height);
   return { x: column.x, y: top, width: column.width, height };
+}
+
+/**
+ * How far a pill keeps from a scene's header text: a full gap beside it, since
+ * a tag and an eyebrow side by side on one row closer than that read as one
+ * line, and a line gap above or below it.
+ */
+export function overlayClearance(theme: Theme): { x: number; y: number } {
+  return { x: theme.spacing.lg, y: theme.spacing.xs };
+}
+
+/** `rect` grown by `by` on every side. */
+export function grownBy(rect: Rect, by: { x: number; y: number }): Rect {
+  return { x: rect.x - by.x, y: rect.y - by.y, width: rect.width + 2 * by.x, height: rect.height + 2 * by.y };
 }
 
 /** The pill's padding in px. */

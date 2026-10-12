@@ -5,7 +5,11 @@
 // `standard` sets 3-6 words in the ramp's `subtitle` on a plate; `punch` sets
 // 1-3 uppercase words in its `headline` on a dark outline; `pill` (ported from
 // HyperFrames `caption-pill-karaoke`) the same pages in sentence case, with an
-// accent pill sliding from word to word behind the spoken one. Captions follow
+// accent pill sliding from word to word behind the spoken one (its letters
+// switch to `accentText` as the pill reaches them). The pill's fade
+// deliberately starts at the opacity where `accentText` already reaches
+// contrast on it (`captionPillInk.ts`), so it pops in rather than blending
+// up from nothing; do not "fix" it back to a full blend. Captions follow
 // speech: they fade in quickly on the scene's lead and leave fast at its end.
 
 import { Fragment, type CSSProperties } from "react";
@@ -20,6 +24,7 @@ import { accentInk } from "../theme/roles";
 import type { Theme } from "../theme/types";
 import type { CaptionLimits } from "./captionPages";
 import { PILL_PAD_EM, estimateWordBoxes, pillAt, pillInsets, pillLayout, pillPagePadding } from "./captionPill";
+import { pillCovers, pillFadeOpacity, pillReadableOpacity } from "./captionPillInk";
 import { CAPTION_LEAD_MS, evenWordTimes, pageIndexAt, timedPages, wordLight, type TimedPage, type TimedWord } from "./captionWords";
 import { useSceneTime } from "./frameContext";
 import { exitMs, exitOpacity, fade, tween } from "./motion";
@@ -135,12 +140,10 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
   const pillState = pill ? pillAt(words, page, spokenMs) : undefined;
   const pillPad = { x: PILL_PAD_EM.x * size, y: PILL_PAD_EM.y * size };
   const pillBoxes = pillState === undefined ? [] : estimateWordBoxes(shown.map((word) => word.text), pillLayout(theme, aspect, size));
-  /** How far onto the pill word `k` of the page is, 0..1: its letters turn `accentText` as the pill arrives. */
-  const onPill = (k: number): number => {
-    if (pillState === undefined) return 0;
-    const arrived = pillState.from === pillState.word ? pillState.opacity : pillState.move;
-    return k === pillState.word ? arrived : k === pillState.from ? 1 - arrived : 0;
-  };
+  /** Whether word `k` of the page is on the pill: its letters switch to `accentText` once the pill is under their middle. */
+  const onPill = (k: number): boolean => pillState !== undefined && pillCovers(pillBoxes, pillState, pillPad, k);
+  // A fading pill starts where the lit word already reads on it over the band (or ground) behind it, so no frame loses the word.
+  const fadeFrom = pill ? pillReadableOpacity(theme.colors.accent, colors.plate ?? theme.colors.ground, colors.active) : 0;
   const pillRadius = (spec.lineHeight * size) / 2 + pillPad.y;
   // The pill's band is padded around it and rounded to match, so the two nest.
   const pagePad = pill ? pillPagePadding(theme, size) : { x: theme.spacing.md, y: theme.spacing.xs };
@@ -150,15 +153,15 @@ export function Caption({ progress, theme, aspect, text, captionStyle = DEFAULT_
     zIndex: -1,
     borderRadius: pillRadius,
     backgroundColor: theme.colors.accent,
-    opacity: pillState!.opacity,
+    opacity: pillFadeOpacity(pillState!.opacity, fadeFrom),
   });
 
   const wordStyle = (word: TimedWord, k: number): CSSProperties => {
     if (pill) {
-      const on = onPill(k);
       // Each word is a stacking context, so the pill paints under its own word's letters; the word it is leaving sits above it.
       const zIndex = pillState !== undefined && k === pillState.from && k !== pillState.word ? 1 : 0;
-      return { display: "inline-block", position: "relative", zIndex, color: on <= 0 ? colors.text : on >= 1 ? colors.active : mixColors(colors.text, colors.active, on) };
+      // Never a mix of the two colors: a mid tone reads on neither the pill nor what is behind it.
+      return { display: "inline-block", position: "relative", zIndex, color: onPill(k) ? colors.active : colors.text };
     }
     const light = wordLight(word, spokenMs, ramp);
     const lit: CSSProperties = { display: "inline-block", transform: `scale(${1 + (motion.wordScale - 1) * light})` };

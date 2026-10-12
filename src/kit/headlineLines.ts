@@ -3,7 +3,9 @@
 // each line starts. Pure, apart from the hooks at the end.
 
 import { useContext } from "react";
-import type { Theme } from "../theme/types";
+import { estimateLines } from "../layout/textFit";
+import type { Aspect } from "../storyboard/types";
+import type { Theme, TypeRole } from "../theme/types";
 import type { TimedWord } from "./captionWords";
 import { cueErrors, resolveCue, useCueMs, type Cue } from "./cues";
 import { SceneWordsContext } from "./frameContext";
@@ -87,6 +89,37 @@ export function headlineLinesErrors(props: Record<string, unknown>, textKey: "te
   const valid = lines as HeadlineLine[];
   if (mark !== undefined && markedLine(valid, mark) < 0) errors.push(`mark ${describe(mark)} is not a word of any line`);
   return [...errors, ...orderErrors(valid, narration)];
+}
+
+/**
+ * Average glyph width in em at which a line is sure to sit on one row: bold
+ * Source Sans 3 at the headline steps measures 0.40-0.50 em a character on
+ * ordinary lines ("Who owes what?" is 0.50), so this leaves a small margin.
+ * Narrower than `AVG_CHAR_EM`, which is generous for wrapped text.
+ */
+export const ONE_ROW_CHAR_EM = 0.52;
+
+/** Whether every line is estimated to fit one row of `width` px at `size` px. */
+export function linesOnOneRow(texts: readonly string[], width: number, size: number): boolean {
+  return texts.every((text) => estimateLines(text, width, size, ONE_ROW_CHAR_EM) <= 1);
+}
+
+/**
+ * The step for line-by-line text, from `steps` (largest first): the largest at
+ * which every line sits on one row (`linesOnOneRow`) and the block, each line
+ * one row, fits (`fits(step, ONE_ROW_CHAR_EM)`); failing that, the largest at
+ * which the wrapped lines fit (`fits(step)`); failing that, undefined.
+ */
+export function lineStep<T extends TypeRole>(
+  theme: Theme,
+  aspect: Aspect,
+  steps: readonly T[],
+  texts: readonly string[],
+  width: number,
+  fits: (step: T, charEm?: number) => boolean,
+): T | undefined {
+  const oneRow = steps.find((step) => linesOnOneRow(texts, width, theme.type[step][aspect].size) && fits(step, ONE_ROW_CHAR_EM));
+  return oneRow ?? steps.find((step) => fits(step));
 }
 
 /** The first line with the word `mark`, or -1. */

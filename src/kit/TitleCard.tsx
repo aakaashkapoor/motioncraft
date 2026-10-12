@@ -19,7 +19,7 @@ import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import { accentInk, headlineColor } from "../theme/roles";
 import { entering, useSceneTime } from "./frameContext";
 import { HeadlineLines, HeadlineText } from "./Headline";
-import { headlineLinesErrors, settlingLines, useHeadlineLinesCheck, useLineStarts, type HeadlineLine } from "./headlineLines";
+import { headlineLinesErrors, lineStep, linesOnOneRow, ONE_ROW_CHAR_EM, settlingLines, useHeadlineLinesCheck, useLineStarts, type HeadlineLine } from "./headlineLines";
 import { headlineTiming, headlineWords, linePose, wordLeaving, type HeadlineMotion, type MarkStyle } from "./headlineMotion";
 import { BrandMark } from "./BrandMark";
 import { logoErrors } from "./mediaSource";
@@ -70,10 +70,11 @@ export function titleCardMarkSize(theme: Theme, aspect: Aspect, step: TypeRole):
   return Math.round(theme.type[step][aspect].size * MARK_EM);
 }
 
-/** Estimated height in px of the card's text with the title at `step`. */
-function estimateCardHeight(theme: Theme, aspect: Aspect, width: number, text: TitleText, step: TypeRole): number {
+/** Estimated height in px of the card's text with the title at `step` (its lines' glyphs `charEm` wide, if given). */
+function estimateCardHeight(theme: Theme, aspect: Aspect, width: number, text: TitleText, step: TypeRole, charEm?: number): number {
   const { spacing, type } = theme;
-  let height = (text.lines ?? [text.title ?? ""]).reduce((sum, line) => sum + estimateTextHeight(line, width, type[step][aspect]), 0);
+  const title = type[step][aspect];
+  let height = (text.lines ?? [text.title ?? ""]).reduce((sum, line) => sum + estimateTextHeight(line, width, { ...title, charEm }), 0);
   if (text.logo !== undefined) height += titleCardMarkSize(theme, aspect, step) + spacing.md;
   if (text.kicker !== undefined) {
     height += spacing.md + estimateTextHeight(text.kicker, width, { ...type.eyebrow[aspect], charEm: KICKER_CHAR_EM });
@@ -86,12 +87,20 @@ function estimateCardHeight(theme: Theme, aspect: Aspect, width: number, text: T
 
 /**
  * The largest title step at which kicker, title and subtitle fit in `area`
- * (the content area, above the caption band, by default). If none fits, the smallest step: the card then overflows
- * visibly and the layer-1 checks report it.
+ * (the content area, above the caption band, by default); with `lines`, the
+ * largest at which each line also sits on one row, where one does (`lineStep`).
+ * If none fits, the smallest step: the card then overflows visibly and the
+ * layer-1 checks report it.
  */
 export function titleCardStep(theme: Theme, aspect: Aspect, text: TitleText, area: Rect = contentArea(theme, aspect)): TypeRole {
-  const fits = TITLE_STEPS.find((step) => estimateCardHeight(theme, aspect, area.width, text, step) <= area.height);
-  return fits ?? TITLE_STEPS[TITLE_STEPS.length - 1]!;
+  const fits = (step: TypeRole, charEm?: number) => estimateCardHeight(theme, aspect, area.width, text, step, charEm) <= area.height;
+  const step = text.lines === undefined ? TITLE_STEPS.find((s) => fits(s)) : lineStep(theme, aspect, TITLE_STEPS, text.lines, area.width, fits);
+  return step ?? TITLE_STEPS[TITLE_STEPS.length - 1]!;
+}
+
+/** The glyph width the card's lines are estimated at with the title at `step`: one row each where they fit one. */
+function linesCharEm(theme: Theme, aspect: Aspect, width: number, text: TitleText, step: TypeRole): number | undefined {
+  return text.lines !== undefined && linesOnOneRow(text.lines, width, theme.type[step][aspect].size) ? ONE_ROW_CHAR_EM : undefined;
 }
 
 /**
@@ -104,7 +113,7 @@ export function titleCardBox(theme: Theme, aspect: Aspect, text: TitleText, slot
   const area = slot ?? contentArea(theme, aspect);
   const width = Math.min(area.width, textColumn(theme, aspect).width);
   const step = titleCardStep(theme, aspect, text, { ...area, width });
-  const height = estimateCardHeight(theme, aspect, width, text, step);
+  const height = estimateCardHeight(theme, aspect, width, text, step, linesCharEm(theme, aspect, width, text, step));
   return { box: placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot)), step };
 }
 

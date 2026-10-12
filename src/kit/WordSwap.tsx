@@ -1,9 +1,12 @@
 // One held sentence with a word that keeps changing (ported from HyperFrames
-// `kinetic-type-swap`): the prefix and suffix stay still while a masked slot
+// `kinetic-type-swap`): the prefix and suffix hold while a masked slot
 // rolls its word up and out as the next comes up from below, a little blurred
-// while it moves, until the last option lands with one small pulse. The slot
-// is as wide as the widest option from the first frame, so the line never
-// reflows. "Ship faster / smarter / together".
+// while it moves, until the last option lands with one small pulse. The
+// slot's width follows the word it shows, easing to the next word's width
+// during each swap, so the line re-centres as the words roll and a short last
+// word leaves no hole; between swaps nothing moves. The line is set in the
+// largest of the hero, display and headline steps it fits at with its widest
+// option. "Ship faster / smarter / together".
 
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
@@ -12,8 +15,9 @@ import { TEXT_PIECES_ATTRIBUTE, TYPE_FIT_ATTRIBUTE, typeCss } from "../layout/ty
 import { easeInOutCubic } from "../engine/easing";
 import { accentInk } from "../theme/roles";
 import type { Aspect } from "../storyboard/types";
-import type { Theme } from "../theme/types";
+import type { Theme, TypeRole } from "../theme/types";
 import { entering, useSceneTime } from "./frameContext";
+import { largestFittingStep } from "./heroStep";
 import { arrive, exitOpacity, pulse } from "./motion";
 import type { KitProps } from "./types";
 
@@ -107,6 +111,19 @@ export function wordSwapCues(theme: Theme, count: number, endMs: number): number
   return Array.from({ length: count - 1 }, (_, i) => first + i * step);
 }
 
+/**
+ * Where the slot is `ms` into the scene: each swap's start (a cue closer than
+ * a swap to the one before waits for it), the option swapping in (or shown,
+ * 0 before the first swap) and how far its swap is, 0..1 (1 when it rests).
+ */
+function swapAt(cues: readonly number[], ms: number): { starts: number[]; index: number; t: number } {
+  const starts: number[] = [];
+  cues.forEach((c, i) => starts.push(i === 0 ? c : Math.max(c, starts[i - 1]! + WORD_SWAP_MS)));
+  const index = starts.filter((s) => ms >= s).length;
+  const t = index === 0 ? 1 : Math.min(1, (ms - starts[index - 1]!) / WORD_SWAP_MS);
+  return { starts, index, t };
+}
+
 /** A word in the slot: `offset` slot heights below its rest (negative: above), blurred and scaled. */
 export interface WordSwapWord {
   index: number;
@@ -123,17 +140,13 @@ export interface WordSwapWord {
  * as it lands. A cue closer than a swap to the one before waits for it.
  */
 export function wordSwapWords(theme: Theme, cues: readonly number[], ms: number): WordSwapWord[] {
-  const starts: number[] = [];
-  cues.forEach((c, i) => starts.push(i === 0 ? c : Math.max(c, starts[i - 1]! + WORD_SWAP_MS)));
-  const index = starts.filter((s) => ms >= s).length;
+  const { starts, index, t } = swapAt(cues, ms);
   const last = cues.length;
   const { pop, count } = theme.motion;
   const landed = (k: number) => {
     const scale = k === last && last > 0 ? round(1 + (pop.scale - 1) * pulse(pop, ms - starts[last - 1]! - WORD_SWAP_MS), 4) : 1;
     return { index: k, offset: 0, blur: 0, scale };
   };
-  if (index === 0) return [landed(0)];
-  const t = (ms - starts[index - 1]!) / WORD_SWAP_MS;
   if (t >= 1) return [landed(index)];
   const e = easeInOutCubic(t);
   const blur = round(count.blurMaxPx * Math.sin(Math.PI * t));
@@ -146,37 +159,80 @@ export function wordSwapWords(theme: Theme, cues: readonly number[], ms: number)
 export interface WordSwapLayout {
   /** The block the line is centered in, in frame px. */
   box: Rect;
-  /** The headline step's size, smaller when the line would not fit on one line. */
+  /** The ramp step the line is set in (its weight and tracking). */
+  role: TypeRole;
+  /** The step's size, smaller when the line would not fit on one line at the headline step. */
   size: number;
   fitted: boolean;
   /** The estimated width of a word at `size`, in px. */
   wordWidth: (text: string) => number;
-  /** The slot's width: the widest option's estimated width. */
+  /** The widest option's estimated width: the widest the slot gets. */
   slotWidth: number;
-  /** The whole line's estimated width. */
+  /** The whole line's estimated width with the widest option: the widest the line gets. */
   lineWidth: number;
   lineHeight: number;
   gap: number;
 }
 
-/** The sentence on one line at the headline step, shrunk to fit the text column, centered. */
+/**
+ * The sentence on one line, centered in the text column: in the largest of
+ * the hero, display and headline steps at which it fits with its widest
+ * option, or shrunk from the headline step when it fits none.
+ */
 export function wordSwapLayout(theme: Theme, aspect: Aspect, prefix: string | undefined, options: readonly string[], suffix: string | undefined, slot?: Rect): WordSwapLayout {
   const area = slot ?? contentArea(theme, aspect);
   const column = Math.min(area.width, textColumn(theme, aspect).width);
-  const spec = theme.type.headline[aspect];
-  const em = (text: string) => wordSwapEm(text, spec.tracking);
   const pieces = [prefix, suffix].filter((p): p is string => p !== undefined && p !== "");
-  const widest = Math.max(...options.map(em));
-  // The line in em, and room for rounding each piece up to a whole px.
-  const ems = pieces.reduce((sum, p) => sum + em(p), widest) + pieces.length * GAP_EM;
-  const size = Math.min(spec.size, Math.floor(((column - (pieces.length + 2)) / ems) * 100) / 100);
-  const wordWidth = (text: string) => Math.ceil(em(text) * size);
+  // Room for rounding each piece (and the slot) up to a whole px.
+  const room = column - (pieces.length + 2);
+  // The line in em at a step, with the widest option.
+  const lineEms = (role: TypeRole) => {
+    const em = (text: string) => wordSwapEm(text, theme.type[role][aspect].tracking);
+    return pieces.reduce((sum, p) => sum + em(p), Math.max(...options.map(em))) + pieces.length * GAP_EM;
+  };
+  // The largest step it fits at; one that fits none shrinks from the headline step.
+  const role = largestFittingStep(theme, aspect, room, lineEms) ?? "headline";
+  const spec = theme.type[role][aspect];
+  const size = Math.min(spec.size, Math.floor((room / lineEms(role)) * 100) / 100);
+  const wordWidth = (text: string) => Math.ceil(wordSwapEm(text, spec.tracking) * size);
   const slotWidth = Math.max(...options.map(wordWidth));
   const gap = Math.ceil(size * GAP_EM);
   const lineWidth = pieces.reduce((sum, p) => sum + wordWidth(p) + gap, slotWidth);
   const lineHeight = Math.ceil(size * LINE_EM);
   const box = placeBlock(area, { width: column, height: lineHeight }, blockCenterY(theme, aspect, slot));
-  return { box, size, fitted: size < spec.size, wordWidth, slotWidth, lineWidth, lineHeight, gap };
+  return { box, role, size, fitted: size < spec.size, wordWidth, slotWidth, lineWidth, lineHeight, gap };
+}
+
+/**
+ * How wide the slot is `ms` into the scene: the shown option's estimated
+ * width, easing (with the words' roll) from one option's width to the next's
+ * during a swap, so the line re-centres as the words change and only then.
+ */
+export function wordSwapSlotWidth(layout: WordSwapLayout, options: readonly string[], cues: readonly number[], ms: number): number {
+  const { index, t } = swapAt(cues, ms);
+  const to = layout.wordWidth(options[index]!);
+  if (t >= 1) return to;
+  const from = layout.wordWidth(options[index - 1]!);
+  return round(from + (to - from) * easeInOutCubic(t));
+}
+
+/** The line with the slot `slotWidth` wide, centered in the box: each piece's left edge and the line's width, in frame px. */
+export interface WordSwapLine {
+  prefixX: number;
+  slotX: number;
+  /** Where the suffix starts; the slot's right edge plus the gap when there is no suffix. */
+  suffixX: number;
+  lineWidth: number;
+}
+
+/** Where the pieces sit with the slot `slotWidth` wide (estimated widths, centered as the flex row centers them). */
+export function wordSwapLine(layout: WordSwapLayout, prefix: string | undefined, suffix: string | undefined, slotWidth: number): WordSwapLine {
+  const before = prefix !== undefined && prefix !== "" ? layout.wordWidth(prefix) + layout.gap : 0;
+  const after = suffix !== undefined && suffix !== "" ? layout.gap + layout.wordWidth(suffix) : 0;
+  const lineWidth = before + slotWidth + after;
+  const prefixX = layout.box.x + (layout.box.width - lineWidth) / 2;
+  const slotX = prefixX + before;
+  return { prefixX, slotX, suffixX: slotX + slotWidth + layout.gap, lineWidth };
 }
 
 /** The slot masks words above and below it, but not at its sides, so a word a little wider than estimated is never cut. */
@@ -196,6 +252,9 @@ export function WordSwap(props: WordSwapProps) {
   const rise = round((1 - move) * spacing.md);
   const cues = cuesMs ?? wordSwapCues(theme, options.length, time.endMs);
   const drawn = wordSwapWords(theme, cues, time.ms);
+  // The mask stays as wide as the widest option; negative margins either side
+  // narrow the room it takes in the line to the shown word's width.
+  const inset = round((layout.slotWidth - wordSwapSlotWidth(layout, options, cues, time.ms)) / 2);
   const blurs = [...new Set(drawn.map((w) => w.blur).filter((b) => b > 0))];
   const ink = accentInk(theme);
   const line = `${layout.lineHeight}px`;
@@ -223,7 +282,7 @@ export function WordSwap(props: WordSwapProps) {
           gap: layout.gap,
           height: layout.lineHeight,
           fontFamily: fonts.display,
-          ...typeCss(theme.type.headline[aspect]),
+          ...typeCss(theme.type[layout.role][aspect]),
           fontSize: layout.size,
           lineHeight: line,
           whiteSpace: "pre",
@@ -235,7 +294,16 @@ export function WordSwap(props: WordSwapProps) {
         <span
           data-wordswap-slot=""
           {...{ [TEXT_PIECES_ATTRIBUTE]: "" }}
-          style={{ flex: "0 0 auto", position: "relative", display: "inline-block", width: layout.slotWidth, height: layout.lineHeight, clipPath: CLIP, color: ink }}
+          style={{
+            flex: "0 0 auto",
+            position: "relative",
+            display: "inline-block",
+            width: layout.slotWidth,
+            height: layout.lineHeight,
+            ...(inset !== 0 && { marginLeft: -inset, marginRight: -inset }),
+            clipPath: CLIP,
+            color: ink,
+          }}
         >
           {drawn.map((w) => (
             <span

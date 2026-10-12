@@ -1,11 +1,15 @@
 // Overlay check (a warning): an overlay's pill must not sit on any scene text
-// or caption. The layout keeps it to a corner of the safe area, but a scene's
-// own text can still reach that corner, and only the render shows it.
+// or caption, and must keep `overlayClearance` from the scene's header (the
+// eyebrow and headline of a `SceneFrame` or `Section`), which shares a top
+// corner's row. The layout keeps it to a corner of the safe area, clear of the
+// estimated header, but a scene's own text can still reach that corner, and
+// only the render shows it.
 // Overlaps are measured on the same sampled frames as the other layer-1 checks.
 
 import { frameAt, buildTimeline } from "../engine/timeline";
 import type { Rect } from "../layout/frame";
-import { overlayPadding } from "../overlays/layout";
+import { grownBy, overlayClearance, overlayPadding } from "../overlays/layout";
+import { sceneHeaderText } from "../overlays/sceneHeaders";
 import { overlayOpacity, overlayRanges } from "../overlays/timing";
 import { prepareMedia } from "../render/media";
 import { checkComponents, showFrame, withRenderPage } from "../render/session";
@@ -22,13 +26,24 @@ export const OVERLAY_CHECK = "overlay" as CheckName;
 const overlaps = (a: Rect, b: Rect): boolean =>
   Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > TOLERANCE_PX && Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > TOLERANCE_PX;
 
+/** Text compared for identity: case and spacing aside (a Section eyebrow is drawn uppercase; a headline is measured from its pieces). */
+const sameText = (a: string, b: string): boolean => a.replace(/\s+/g, "").toLowerCase() === b.replace(/\s+/g, "").toLowerCase();
+
 /**
  * Messages for the overlays on `measurement` whose pill (the overlay's measured
- * text plus its padding) covers other visible text. `shown` are the overlays
- * on screen at the measured frame.
+ * text plus its padding) covers other visible text, or comes closer than
+ * `overlayClearance` to the scene's header text (`header`: the on-screen
+ * scene's eyebrow and headline). `shown` are the overlays on screen at the
+ * measured frame.
  */
-export function checkOverlayOverlap(measurement: FrameMeasurement, shown: readonly Pick<StoryboardOverlay, "text">[], theme: Theme): string[] {
+export function checkOverlayOverlap(
+  measurement: FrameMeasurement,
+  shown: readonly Pick<StoryboardOverlay, "text">[],
+  theme: Theme,
+  header: readonly string[] = [],
+): string[] {
   const pad = overlayPadding(theme);
+  const clearance = overlayClearance(theme);
   const visible = measurement.texts.filter((text) => text.opacity >= VISIBLE_OPACITY && !text.outOfShot);
   const messages: string[] = [];
   for (const overlay of shown) {
@@ -36,7 +51,10 @@ export function checkOverlayOverlap(measurement: FrameMeasurement, shown: readon
     if (own === undefined) continue;
     const pill = { x: own.rect.x - pad.x, y: own.rect.y - pad.y, width: own.rect.width + 2 * pad.x, height: own.rect.height + 2 * pad.y };
     for (const text of visible) {
-      if (text !== own && overlaps(pill, text.rect)) messages.push(`overlay ${quote(overlay.text)} covers ${text.caption ? "caption " : ""}text ${quote(text.text)}`);
+      if (text === own) continue;
+      if (!text.caption && header.some((line) => sameText(line, text.text))) {
+        if (overlaps(grownBy(pill, clearance), text.rect)) messages.push(`overlay ${quote(overlay.text)} crowds the scene's header ${quote(text.text)}`);
+      } else if (overlaps(pill, text.rect)) messages.push(`overlay ${quote(overlay.text)} covers ${text.caption ? "caption " : ""}text ${quote(text.text)}`);
     }
   }
   return messages;
@@ -62,8 +80,10 @@ export async function runOverlayChecks(options: RunChecksOptions): Promise<Probl
   const problems: Problem[] = [];
   for (const { frame, measurement } of measured) {
     const shown = (storyboard.overlays ?? []).filter((_, i) => overlayOpacity(ranges[i]!, frame, timeline) >= VISIBLE_OPACITY);
-    for (const message of checkOverlayOverlap(measurement, shown, theme)) {
-      const { sceneId } = frameAt(timeline, frame);
+    const { sceneId, sceneIndex } = frameAt(timeline, frame);
+    const text = sceneHeaderText(storyboard.scenes[sceneIndex]!);
+    const header = text === undefined ? [] : [text.headline, ...(text.eyebrow === undefined ? [] : [text.eyebrow])];
+    for (const message of checkOverlayOverlap(measurement, shown, theme, header)) {
       const key = `${sceneId}|${message}`;
       if (warned.has(key)) continue;
       warned.add(key);

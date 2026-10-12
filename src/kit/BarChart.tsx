@@ -208,7 +208,17 @@ export function barChartLayout(theme: Theme, aspect: Aspect, input: LayoutInput,
   const labelColumn = labelsAbove ? 0 : Math.max(...labels.map((l) => textWidth(l, label.spec)));
   const labelLine = lineBox(label.spec);
   const valueLine = lineBox(value.spec);
-  const length = Math.max(0, Math.floor(chartWidth - (labelsAbove ? 0 : labelColumn + spacing.md) - spacing.sm - valueColumn));
+  const beside = chartWidth - (labelsAbove ? 0 : labelColumn + spacing.md);
+  // The track (the value `max`) leaves room for a value after a full-length bar.
+  let length = Math.max(0, Math.floor(beside - spacing.sm - valueColumn));
+  const longest = Math.max(...input.data.map((d) => share(d.value)));
+  if (isTall(aspect) && !tracks && longest > 0) {
+    // In tall aspects (9:16, 4:5) the longest bar and its value reach the
+    // column's right edge instead, so the block fills the narrow frame rather
+    // than leaving the right of it empty: the track runs on under the values,
+    // never past the chart.
+    length = Math.max(length, Math.floor(Math.min(beside, (beside - spacing.sm - valueColumn) / longest)));
+  }
 
   // Thickness and gaps at their natural size; when the rows would not fit, the gaps close up first, then the bars thin.
   const text = Math.max(labelsAbove ? 0 : labelLine, valueLine);
