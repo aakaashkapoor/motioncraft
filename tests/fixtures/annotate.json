@@ -1,0 +1,48 @@
+{
+  "title": "Annotate kit component: underline, circle and highlight",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "underline",
+      "component": "Annotate",
+      "props": {
+        "text": "Ship the story, not the spec",
+        "mark": "story",
+        "note": "what people remember",
+        "markStyle": "underline"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "circle",
+      "component": "Annotate",
+      "props": {
+        "text": "Latency fell 40 percent",
+        "mark": "40 percent",
+        "note": "p99, last quarter",
+        "markStyle": "circle",
+        "notePosition": "above"
+      },
+      "durationMs": 4000,
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "highlight",
+      "component": "Annotate",
+      "props": {
+        "text": "Every frame is drawn in code",
+        "mark": "drawn in code",
+        "note": "no AI footage",
+        "markStyle": "highlight"
+      },
+      "durationMs": 4000
+    }
+  ]
+}

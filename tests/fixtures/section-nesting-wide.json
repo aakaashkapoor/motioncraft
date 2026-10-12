@@ -466,6 +466,20 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "annotate",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "An annotation in the slot",
+        "content": {
+          "component": "Annotate",
+          "props": { "text": "Ship the story, not the spec", "mark": "story", "note": "what people remember" }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }
