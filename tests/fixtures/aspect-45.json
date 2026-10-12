@@ -1,0 +1,364 @@
+{
+  "title": "Every kit component at 4:5",
+  "aspect": "4:5",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "title-card",
+      "component": "TitleCard",
+      "props": { "kicker": "Splitly", "title": "Split every bill in seconds", "subtitle": "No more awkward math at dinner" },
+      "durationMs": 4500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "caption",
+      "component": "Caption",
+      "props": { "text": "Six friends, one dinner, and a very long receipt." },
+      "durationMs": 3500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "big-number",
+      "component": "BigNumber",
+      "props": { "value": 184.6, "prefix": "$", "decimals": 2, "label": "Tonight's dinner bill" },
+      "durationMs": 4000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "flow-diagram",
+      "component": "FlowDiagram",
+      "props": { "nodes": ["Scan", "Split", "Settle"], "caption": "From receipt to paid back" },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "step-list",
+      "component": "StepList",
+      "props": { "title": "Split a bill in three steps", "items": ["Scan the receipt", "Split it by item", "Settle up in one tap"], "highlight": 1 },
+      "durationMs": 7500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "section",
+      "component": "Section",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Everyone pays their share",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              { "icon": "file", "title": "Snap", "subtitle": "The receipt" },
+              { "icon": "users", "title": "Tag", "subtitle": "Who had what" },
+              { "icon": "check", "title": "Settle", "subtitle": "In one tap" }
+            ]
+          }
+        },
+        "note": "Works with any currency"
+      },
+      "durationMs": 7500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "app-window",
+      "component": "AppWindow",
+      "props": {
+        "title": "Dinner at Trattoria Roma",
+        "content": { "component": "StepList", "props": { "items": ["Maya owes $36.10", "Sam owes $28.40", "Priya is all settled"], "highlight": 0, "marker": "dot" } }
+      },
+      "durationMs": 5000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "browser-window",
+      "component": "BrowserWindow",
+      "props": {
+        "url": "https://example.com/split/dinner",
+        "content": { "component": "Card", "props": { "icon": "users", "title": "Join the split", "subtitle": "Six people invited" } }
+      },
+      "durationMs": 5000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "terminal-window",
+      "component": "TerminalWindow",
+      "props": {
+        "lines": [
+          { "prompt": true, "text": "npm run deploy" },
+          { "text": "building split-service..." },
+          { "text": "uploaded 42 files" },
+          { "text": "done in 4.2s" }
+        ]
+      },
+      "durationMs": 5000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "code-window",
+      "component": "CodeWindow",
+      "props": {
+        "title": "split.ts",
+        "language": "typescript",
+        "highlightLines": [2],
+        "code": "function split(total, people) {\n  const share = total / people;\n  return round(share, 2);\n}"
+      },
+      "durationMs": 9000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "chat-window",
+      "component": "ChatWindow",
+      "props": {
+        "channel": "dinner-club",
+        "messages": [
+          { "author": "Maya Chen", "time": "9:41 PM", "text": "Who is paying for dinner tonight?" },
+          { "author": "Splitly", "avatar": { "initials": "SP" }, "badge": "APP", "time": "9:42 PM", "text": "The bill is split: $30.77 each." },
+          { "author": "Sam Ortiz", "time": "9:43 PM", "text": "Paid! That was painless.", "reactions": [{ "emoji": "🎉", "count": 4 }], "highlight": true }
+        ]
+      },
+      "durationMs": 12500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "arrow",
+      "component": "Arrow",
+      "props": { "from": { "x": 260, "y": 1000 }, "to": { "x": 820, "y": 380 }, "curve": 0.3, "label": "Then" },
+      "durationMs": 3500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "card",
+      "component": "Card",
+      "props": { "icon": "shield", "title": "Payments stay private", "subtitle": "Only the group sees the bill", "step": 1, "highlighted": true },
+      "durationMs": 4000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "card-row",
+      "component": "CardRow",
+      "props": {
+        "cards": [
+          { "icon": "file", "title": "Snap", "subtitle": "The receipt", "step": 1 },
+          { "icon": "users", "title": "Tag", "subtitle": "Who had what", "step": 2 },
+          { "icon": "check", "title": "Settle", "subtitle": "In one tap", "step": 3 }
+        ],
+        "highlight": 1
+      },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "feature-list",
+      "component": "FeatureList",
+      "props": {
+        "title": "Why groups love it",
+        "items": [
+          { "icon": "file", "text": "Reads any receipt" },
+          { "icon": "users", "text": "Split by item or evenly" },
+          { "icon": "check", "text": "Tracks who has paid" },
+          { "icon": "chat", "text": "Nudges people kindly" }
+        ]
+      },
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "video-clip",
+      "component": "VideoClip",
+      "props": { "src": "../../examples/showcase/media/sample.mp4", "fit": "cover", "muted": true },
+      "durationMs": 3500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "image",
+      "component": "Image",
+      "props": { "src": "media/landscape.png", "alt": "A view from the trip", "focus": { "x": 0.7, "y": 0.3 }, "zoom": { "from": 1, "to": 1.15 }, "pan": { "x": -0.06 } },
+      "durationMs": 3500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "pinned",
+      "component": "Pinned",
+      "props": {
+        "arrive": "animate",
+        "pinned": { "component": "TerminalWindow", "props": { "lines": [{ "prompt": true, "text": "npm test" }, { "text": "42 passed" }] } },
+        "content": { "component": "CardRow", "props": { "cards": [{ "icon": "check", "title": "All green" }, { "icon": "clock", "title": "Under a minute" }] } }
+      },
+      "durationMs": 7000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "handoff",
+      "component": "Handoff",
+      "props": {
+        "from": { "component": "Card", "props": { "icon": "file", "title": "The receipt", "subtitle": "Trattoria Roma" } },
+        "to": { "component": "AppWindow", "props": { "title": "Split", "content": { "component": "StepList", "props": { "items": ["Maya", "Sam", "Priya"] } } } },
+        "label": "split"
+      },
+      "durationMs": 5000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "headline",
+      "component": "Headline",
+      "props": { "text": "Everyone pays their share", "motion": "words", "emphasis": "share" },
+      "durationMs": 3500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "scene-frame",
+      "component": "SceneFrame",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Three taps to settle up",
+        "content": {
+          "component": "CardRow",
+          "props": { "cards": [{ "icon": "file", "title": "Scan" }, { "icon": "users", "title": "Split" }, { "icon": "check", "title": "Settle" }] }
+        },
+        "footer": "No sign-up needed",
+        "mark": "settle"
+      },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "prompt-card",
+      "component": "PromptCard",
+      "props": { "text": "Split dinner for six by what each person ordered" },
+      "durationMs": 5000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "receipt",
+      "component": "Receipt",
+      "props": {
+        "title": "Trattoria Roma",
+        "items": [
+          { "label": "Margherita pizza", "amount": 14.5 },
+          { "label": "Truffle pasta", "amount": 22 },
+          { "label": "Caesar salad", "amount": 11.25, "note": "no croutons" },
+          { "label": "Tiramisu", "amount": 8 },
+          { "label": "Sparkling water", "amount": 4.5 }
+        ],
+        "summary": [
+          { "label": "Subtotal", "amount": 60.25 },
+          { "label": "Tax", "amount": 5.35 },
+          { "label": "Tip", "amount": 12 }
+        ],
+        "total": { "amount": 77.6 },
+        "highlight": 1
+      },
+      "durationMs": 8500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "notification",
+      "component": "Notification",
+      "props": {
+        "notifications": [
+          { "app": "Splitly", "title": "Sam paid you $30.77", "body": "Dinner at Trattoria Roma", "icon": "check", "time": "2m ago" },
+          { "app": "Messages", "title": "New message from Maya", "body": "Thanks for sorting the bill!", "icon": "chat", "time": "now" }
+        ]
+      },
+      "durationMs": 7500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "stroke-trace",
+      "component": "StrokeTrace",
+      "props": { "icon": "shield", "label": "Private by default", "fill": true },
+      "durationMs": 4000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "annotate",
+      "component": "Annotate",
+      "props": { "text": "Settled up in 40 seconds", "mark": "40 seconds", "note": "average group of six", "markStyle": "circle", "notePosition": "above" },
+      "durationMs": 4000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "before-after",
+      "component": "BeforeAfter",
+      "props": {
+        "before": { "component": "StepList", "props": { "items": ["Add it up by hand", "Chase people for weeks"] } },
+        "after": { "component": "StepList", "props": { "items": ["Scan the receipt", "Settle in one tap"], "highlight": 1 } },
+        "split": 0.5,
+        "beforeLabel": "By hand",
+        "afterLabel": "With Splitly"
+      },
+      "durationMs": 8500,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "scramble-text",
+      "component": "ScrambleText",
+      "props": { "text": "ALL SETTLED", "label": "Six people, zero awkward math" },
+      "durationMs": 4000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "word-swap",
+      "component": "WordSwap",
+      "props": { "prefix": "Split", "options": ["dinners", "trips", "rent"] },
+      "durationMs": 4000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "donut-chart",
+      "component": "DonutChart",
+      "props": {
+        "title": "Where the trip money went",
+        "data": [
+          { "label": "Lodging", "value": 42, "emphasis": true },
+          { "label": "Food", "value": 27 },
+          { "label": "Travel", "value": 19 },
+          { "label": "Other", "value": 12 }
+        ],
+        "suffix": "%"
+      },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "bar-chart",
+      "component": "BarChart",
+      "props": {
+        "title": "Bills split by month, 2026",
+        "data": [
+          { "label": "Jan", "value": 480 },
+          { "label": "Feb", "value": 720 },
+          { "label": "Mar", "value": 1250, "emphasis": true },
+          { "label": "Apr", "value": 960 },
+          { "label": "May", "value": 610 }
+        ]
+      },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "line-chart",
+      "component": "LineChart",
+      "props": {
+        "title": "Monthly active groups, 2026",
+        "data": [
+          { "label": "Jan", "value": 1200 },
+          { "label": "Feb", "value": 1850 },
+          { "label": "Mar", "value": 1540 },
+          { "label": "Apr", "value": 3120, "emphasis": true },
+          { "label": "May", "value": 2680 },
+          { "label": "Jun", "value": 3460 }
+        ]
+      },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "end-card",
+      "component": "EndCard",
+      "props": { "name": "Splitly", "logo": "media/logo.svg", "line": "Split your next bill", "accent": "Free forever", "cta": { "label": "Get the app", "note": "Link in bio" } },
+      "durationMs": 6000
+    }
+  ]
+}

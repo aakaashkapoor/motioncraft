@@ -15,7 +15,7 @@ import { estimateDurations } from "../src/render/durations";
 import { showFrame, withRenderPage } from "../src/render/session";
 import { resolveTheme } from "../src/render/themes";
 
-const FIXTURES: Record<Aspect, string> = { "9:16": "camera.json", "16:9": "camera-wide.json" };
+const FIXTURES: Record<Aspect, string> = { "9:16": "camera.json", "16:9": "camera-wide.json", "4:5": "camera-45.json" };
 
 async function load(aspect: Aspect): Promise<Storyboard> {
   const result = validateStoryboard(JSON.parse(await readFile(join(import.meta.dirname, "fixtures", FIXTURES[aspect]), "utf8")));

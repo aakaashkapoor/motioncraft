@@ -5,7 +5,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { DonutChart, SceneClockContext, donutChartErrors, donutChartLayout, lightTheme, type Aspect, type DonutChartProps } from "../src/index";
+import { ASPECTS, DonutChart, SceneClockContext, donutChartErrors, donutChartLayout, isTall, lightTheme, type Aspect, type DonutChartProps } from "../src/index";
 
 const FPS = 30;
 const FRAMES = 150;
@@ -69,7 +69,7 @@ describe("DonutChart", () => {
     for (const frame of [0, 10, 25, 40, HOLD]) expect(draw(SHARE, frame)).toBe(draw(SHARE, frame));
   });
 
-  it.each(["9:16", "16:9"] as const)("on the hold, arcs are proportional to value/total and fill the ring minus the gaps (%s)", (aspect) => {
+  it.each(ASPECTS)("on the hold, arcs are proportional to value/total and fill the ring minus the gaps (%s)", (aspect) => {
     const drawn = arcs(draw(SHARE, HOLD, aspect));
     expect(drawn.map((a) => a.index)).toEqual([0, 1, 2, 3]);
     const total = SHARE.data.reduce((sum, d) => sum + d.value, 0);
@@ -142,9 +142,9 @@ describe("DonutChart", () => {
     const ringT = box(tall, "ring");
     const legendT = box(tall, "legend");
     expect(legendT.y).toBeGreaterThanOrEqual(ringT.y + ringT.height);
-    for (const aspect of ["9:16", "16:9"] as const) {
+    for (const aspect of ASPECTS) {
       const layout = donutChartLayout(lightTheme, aspect, SHARE);
-      expect(layout.arrangement).toBe(aspect === "16:9" ? "beside" : "below");
+      expect(layout.arrangement).toBe(isTall(aspect) ? "below" : "beside");
     }
   });
 

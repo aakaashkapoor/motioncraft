@@ -3,7 +3,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, NOMINAL_SCENE_MS, TitleCard, contentArea, lightTheme, type Aspect, type TitleCardProps } from "../src/index";
+import { ASPECTS, NOMINAL_SCENE_MS, TitleCard, frameSize, contentArea, lightTheme, type Aspect, type TitleCardProps } from "../src/index";
 import { titleCardBox, titleCardErrors } from "../src/kit/TitleCard";
 import { mediaUrl } from "../src/kit/mediaSource";
 
@@ -40,7 +40,7 @@ describe("TitleCard logo", () => {
     const area = contentArea(theme, aspect);
     expect(branded.box.y).toBeGreaterThanOrEqual(area.y);
     expect(branded.box.y + branded.box.height).toBeLessThanOrEqual(area.y + area.height);
-    expect(branded.box.x + branded.box.width / 2).toBeCloseTo(aspect === "9:16" ? 540 : 960, 0);
+    expect(branded.box.x + branded.box.width / 2).toBeCloseTo(frameSize(aspect).width / 2, 0);
   });
 
   it("pops the logo in on the scene's lead", () => {

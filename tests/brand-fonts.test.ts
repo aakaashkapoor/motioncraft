@@ -209,7 +209,7 @@ describe("storyboard fonts: layer-1 check", () => {
   });
 });
 
-const FIXTURES: Record<Aspect, string> = { "9:16": "brand-font.json", "16:9": "brand-font-wide.json" };
+const FIXTURES: Record<Aspect, string> = { "9:16": "brand-font.json", "16:9": "brand-font-wide.json", "4:5": "brand-font-45.json" };
 
 async function fixture(aspect: Aspect): Promise<Storyboard> {
   return valid(JSON.parse(await readFile(join(FIXTURES_DIR, FIXTURES[aspect]), "utf8")));

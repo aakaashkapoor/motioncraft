@@ -19,7 +19,7 @@
 import { Icon } from "../icons";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
-import type { Rect, Size } from "../layout/frame";
+import { isTall, type Rect, type Size } from "../layout/frame";
 import { safeZones } from "../layout/safe";
 import { AVG_CHAR_EM, charsPerLine, estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
@@ -84,7 +84,7 @@ export function cardMetrics(theme: Theme, aspect: Aspect, titleStep: CardTitleSt
     badge,
     iconSize: Math.round(badge * 0.55),
     stepSize: Math.round(subtitle.size * 1.5),
-    padding: aspect === "9:16" ? theme.spacing.md : Math.round(theme.spacing.md * 0.8),
+    padding: isTall(aspect) ? theme.spacing.md : Math.round(theme.spacing.md * 0.8),
     border: theme.hairline,
   };
 }
@@ -360,7 +360,7 @@ const WIDE_CARD_SHARE = 0.4;
  * area in 16:9, and never more than `area`.
  */
 export function maxCardWidth(theme: Theme, aspect: Aspect, area: Rect): number {
-  const max = aspect === "9:16" ? safeZones(aspect, theme.safe).primaryWidth : Math.round(contentArea(theme, aspect).width * WIDE_CARD_SHARE);
+  const max = isTall(aspect) ? safeZones(aspect, theme.safe).primaryWidth : Math.round(contentArea(theme, aspect).width * WIDE_CARD_SHARE);
   return Math.min(area.width, max);
 }
 

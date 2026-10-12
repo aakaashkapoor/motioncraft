@@ -20,10 +20,13 @@ import { resolveTheme } from "../src/render/themes";
 import { sceneComponents, type ComponentUse } from "../src/storyboard/components";
 
 const DIR = join(import.meta.dirname, "..", "examples", "showcase");
-const FILES: Record<Aspect, string> = { "9:16": "storyboard.json", "16:9": "storyboard-wide.json" };
-const SIZE: Record<Aspect, [number, number]> = { "9:16": [1080, 1920], "16:9": [1920, 1080] };
+/** The showcase is made in 9:16 and 16:9 only. */
+type ShowcaseAspect = Extract<Aspect, "9:16" | "16:9">;
+const SHOWCASE_ASPECTS: readonly ShowcaseAspect[] = ["9:16", "16:9"];
+const FILES: Record<ShowcaseAspect, string> = { "9:16": "storyboard.json", "16:9": "storyboard-wide.json" };
+const SIZE: Record<ShowcaseAspect, [number, number]> = { "9:16": [1080, 1920], "16:9": [1920, 1080] };
 
-async function load(aspect: Aspect): Promise<Storyboard> {
+async function load(aspect: ShowcaseAspect): Promise<Storyboard> {
   const result = validateStoryboard(JSON.parse(await readFile(join(DIR, FILES[aspect]), "utf8")));
   if (!result.ok) throw new Error(result.errors.join("\n"));
   return result.storyboard;
@@ -58,7 +61,7 @@ afterAll(async () => {
   await rm(outDir, { recursive: true, force: true });
 });
 
-describe.each(["9:16", "16:9"] as const)("examples/showcase (%s)", (aspect) => {
+describe.each(SHOWCASE_ASPECTS)("examples/showcase (%s)", (aspect) => {
   it("is a light-theme storyboard of 40-70 s in its aspect", async () => {
     const sb = await load(aspect);
     expect(sb.aspect).toBe(aspect);

@@ -70,7 +70,7 @@ describe("the living ground, rendered", { timeout: 120_000 }, () => {
   });
 });
 
-const FIXTURES: Record<Aspect, string> = { "9:16": "ground.json", "16:9": "ground-wide.json" };
+const FIXTURES: Record<Aspect, string> = { "9:16": "ground.json", "16:9": "ground-wide.json", "4:5": "ground-45.json" };
 
 async function fixture(aspect: Aspect): Promise<Storyboard> {
   const result = validateStoryboard(JSON.parse(await readFile(join(import.meta.dirname, "fixtures", FIXTURES[aspect]), "utf8")));

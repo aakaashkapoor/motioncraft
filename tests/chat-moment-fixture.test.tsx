@@ -17,9 +17,10 @@ import { BrowserNotFoundError } from "../src/render/browser";
 import { estimateDurations } from "../src/render/durations";
 import { Frame } from "../src/render/page";
 import { showFrame, withRenderPage } from "../src/render/session";
+import { isTall } from "../src/layout/frame";
 import { resolveTheme } from "../src/render/themes";
 
-const FIXTURES: Record<Aspect, string> = { "9:16": "chat-moment.json", "16:9": "chat-moment-wide.json" };
+const FIXTURES: Record<Aspect, string> = { "9:16": "chat-moment.json", "16:9": "chat-moment-wide.json", "4:5": "chat-moment-45.json" };
 
 async function load(aspect: Aspect): Promise<Storyboard> {
   const result = validateStoryboard(JSON.parse(await readFile(join(import.meta.dirname, "fixtures", FIXTURES[aspect]), "utf8")));
@@ -95,11 +96,11 @@ describe.each(ASPECTS)("tests/fixtures/chat-moment (%s)", (aspect) => {
     expect(opacityOf(clicked, "data-chat-resolved=")).toBeCloseTo(1, 3);
     expect(clicked).not.toContain("data-chat-lift");
 
-    // Lifted: the card floats, settled, carrying the shareId; the message is a ghost (16:9) or gone, the list closed up over it (9:16).
+    // Lifted: the card floats, settled, carrying the shareId; the message is a ghost (16:9) or gone, the list closed up over it (tall).
     const lifted = at(liftMs + theme.motion.enter.ms + 100);
     expect(lifted).toMatch(/data-chat-lift="1"[^>]*data-share-id="deploy"/);
     expect(styleOf(lifted, 'data-chat-lift="1"')!.get("transform")).toMatch(/^translate\(0px, 0px\) scale\(1\.04\)$/);
-    expect(opacityOf(lifted, 'data-chat-message="1"')).toBeCloseTo(aspect === "16:9" ? theme.motion.liftOut.ghostOpacity : 0, 3);
+    expect(opacityOf(lifted, 'data-chat-message="1"')).toBeCloseTo(!isTall(aspect) ? theme.motion.liftOut.ghostOpacity : 0, 3);
     expect(lifted).not.toContain("data-cursor=");
   });
 
@@ -133,7 +134,7 @@ describe.each(ASPECTS)("tests/fixtures/chat-moment (%s)", (aspect) => {
     expect(tip!.y).toBeGreaterThan(button!.y);
     expect(tip!.y).toBeLessThan(button!.y + button!.height);
     // The card's padding and border wrap the message exactly where it is drawn.
-    const inset = (aspect === "9:16" ? theme.spacing.md : Math.round(theme.spacing.md * 0.8)) + theme.hairline;
+    const inset = (isTall(aspect) ? theme.spacing.md : Math.round(theme.spacing.md * 0.8)) + theme.hairline;
     expect(Math.abs(message!.x - (card!.x + inset))).toBeLessThan(1.5);
     expect(Math.abs(message!.width - (card!.width - 2 * inset))).toBeLessThan(1.5);
     expect(Math.abs(message!.y + message!.height - (card!.y + card!.height - inset))).toBeLessThan(1.5);

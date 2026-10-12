@@ -11,7 +11,7 @@
 
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { charsPerLine, estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import type { Seed } from "../engine/random";
@@ -71,8 +71,8 @@ const longestWord = (text: string) => Math.max(0, ...text.split(/\s+/).map((word
 export function promptCardLayout(theme: Theme, aspect: Aspect, { text }: Pick<PromptCardProps, "text">, slot?: Rect): PromptCardLayout {
   const area = slot ?? contentArea(theme, aspect);
   const { spacing, hairline, weights, type } = theme;
-  const width = aspect === "16:9" ? Math.min(area.width, Math.round(contentArea(theme, aspect).width * WIDE_SHARE)) : maxCardWidth(theme, aspect, area);
-  const padding = aspect === "9:16" ? spacing.md : Math.round(spacing.md * 0.8);
+  const width = !isTall(aspect) ? Math.min(area.width, Math.round(contentArea(theme, aspect).width * WIDE_SHARE)) : maxCardWidth(theme, aspect, area);
+  const padding = isTall(aspect) ? spacing.md : Math.round(spacing.md * 0.8);
   const label = { ...type.label[aspect], weight: weights.semibold };
   const chip = Math.round(label.size * label.lineHeight * CHIP_LINES);
   const inner = width - 2 * (padding + hairline);

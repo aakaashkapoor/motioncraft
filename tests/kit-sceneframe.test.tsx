@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   ASPECTS,
+  frameSize,
   SceneClockContext,
   SceneFrame,
   contentArea,
@@ -69,7 +70,7 @@ const PROPS = { eyebrow: "How it works", headline: "Three steps to a video", con
 const HEADLINE_WORDS = PROPS.headline.split(" ");
 
 const frame = (extra: Record<string, unknown> = {}, aspect: Aspect = "9:16") => <SceneFrame progress={0} theme={theme} aspect={aspect} {...PROPS} {...extra} />;
-const mid = (aspect: Aspect) => (aspect === "9:16" ? 540 : 960);
+const mid = (aspect: Aspect) => frameSize(aspect).width / 2;
 
 describe("SceneFrame layout", () => {
   it("is registered in the kit", () => {

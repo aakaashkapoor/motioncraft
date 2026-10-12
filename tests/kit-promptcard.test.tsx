@@ -5,7 +5,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, NOMINAL_SCENE_MS, PromptCard, contentArea, kit, lightTheme, promptCardLayout, promptCardTiming, type Aspect, type PromptCardProps } from "../src/index";
+import { ASPECTS, NOMINAL_SCENE_MS, PromptCard, frameSize, isTall, contentArea, kit, lightTheme, promptCardLayout, promptCardTiming, type Aspect, type PromptCardProps } from "../src/index";
 
 const theme = lightTheme;
 const TEXT = "A 40-second launch video for motioncraft";
@@ -24,9 +24,9 @@ describe("PromptCard", () => {
 
   it.each(ASPECTS)("sits centered on the frame, wide, its prompt in a ramp step no smaller than label (%s)", (aspect) => {
     const layout = promptCardLayout(theme, aspect, { text: TEXT });
-    const frameWidth = aspect === "9:16" ? 1080 : 1920;
+    const frameWidth = frameSize(aspect).width;
     expect(layout.box.x + layout.box.width / 2).toBeCloseTo(frameWidth / 2, 0);
-    expect(layout.box.width).toBeGreaterThanOrEqual(aspect === "9:16" ? 760 : 640);
+    expect(layout.box.width).toBeGreaterThanOrEqual(isTall(aspect) ? 760 : 640);
     expect(layout.text.size).toBeGreaterThanOrEqual(theme.type.label[aspect].size);
     expect([theme.type.title[aspect].size, theme.type.subtitle[aspect].size, theme.type.body[aspect].size, theme.type.label[aspect].size]).toContain(layout.text.size);
   });

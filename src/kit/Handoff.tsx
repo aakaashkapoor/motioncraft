@@ -3,7 +3,7 @@
 // from the source into the receiver. The source arrives on the scene's lead,
 // the arrow sweeps out of it once it shows, and the receiver arrives as the
 // arrow lands, all in about the first 1.2 s. Side by side when a 16:9 area is
-// wide, stacked when it is tall and always in 9:16, so it lays out in both
+// wide, stacked when it is tall and always in tall aspects (9:16, 4:5), so it lays out in both
 // aspects and inside a Section or SceneFrame slot. The arrow
 // runs between the two boxes' facing edges; receivers that fill their box
 // (AppWindow, BrowserWindow) meet its head exactly. Under a moving camera
@@ -12,7 +12,7 @@
 
 import { CameraLayer, useLayerPoint } from "../camera/Camera";
 import { contentArea } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { Arrow, type ArrowProps } from "./Arrow";
@@ -42,7 +42,7 @@ export interface HandoffLayout {
   end: Point;
 }
 
-/** Side by side only when the area is clearly wider than tall (and never in 9:16, where the column is the frame's width). */
+/** Side by side only when the area is clearly wider than tall (and never in tall aspects, where the column is the frame's width). */
 const ROW_RATIO = 1.3;
 /** The source's share of the area along the direction of travel. */
 const FROM_SHARE = { row: 0.34, column: 0.26 } as const;
@@ -51,7 +51,7 @@ const GAP_STEPS = { row: 2.5, column: 1.5 } as const;
 
 /** Where the source, the receiver and the arrow go inside `area`. Pure. */
 export function handoffLayout(theme: Theme, aspect: Aspect, area: Rect = contentArea(theme, aspect), fromShare?: number): HandoffLayout {
-  const direction = aspect === "16:9" && area.width >= area.height * ROW_RATIO ? "row" : "column";
+  const direction = !isTall(aspect) && area.width >= area.height * ROW_RATIO ? "row" : "column";
   const gap = theme.spacing.xxl * GAP_STEPS[direction];
   const share = fromShare ?? FROM_SHARE[direction];
   if (direction === "row") {

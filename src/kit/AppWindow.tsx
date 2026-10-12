@@ -8,7 +8,7 @@
 
 import type { ReactNode } from "react";
 import { contentArea } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
@@ -63,7 +63,7 @@ export interface WindowLayout {
  * text inside stays off the right rail. Pure.
  */
 export function windowLayout(theme: Theme, aspect: Aspect, toolbar: boolean, area: Rect = contentArea(theme, aspect)): WindowLayout {
-  const width = aspect === "9:16" ? windowWidth(theme, aspect, area).width : area.width;
+  const width = isTall(aspect) ? windowWidth(theme, aspect, area).width : area.width;
   const box = { ...area, x: area.x + (area.width - width) / 2, width };
   const em = theme.type.label[aspect].size;
   const titleBar = windowMetrics(theme, aspect).barHeight;

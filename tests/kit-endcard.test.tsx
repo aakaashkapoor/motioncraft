@@ -4,7 +4,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, EndCard, NOMINAL_SCENE_MS, accentInk, captionBand, contentArea, endCardLayout, endCardTiming, kit, lightTheme, safeZones, type Aspect, type EndCardProps } from "../src/index";
+import { ASPECTS, EndCard, frameSize, NOMINAL_SCENE_MS, accentInk, captionBand, contentArea, endCardLayout, endCardTiming, kit, lightTheme, safeZones, type Aspect, type EndCardProps } from "../src/index";
 import { endCardErrors } from "../src/kit/EndCard";
 import { SAFE_PROFILES } from "../src/storyboard/types";
 import { mediaUrl } from "../src/kit/mediaSource";
@@ -26,7 +26,7 @@ describe("EndCard", () => {
 
   it.each(ASPECTS)("stacks the name, its lines and the card, each centered on the frame, the block on the optical center (%s)", (aspect) => {
     const layout = endCardLayout(theme, aspect, { ...TEXT, card: true });
-    const mid = aspect === "9:16" ? 540 : 960;
+    const mid = frameSize(aspect).width / 2;
     for (const rect of [layout.brand, layout.line!, layout.accent!, layout.card!]) expect(centerX(rect)).toBeCloseTo(mid, 0);
     expect(layout.line!.y).toBeGreaterThanOrEqual(layout.brand.y + layout.brand.height);
     expect(layout.accent!.y).toBeGreaterThanOrEqual(layout.line!.y + layout.line!.height);
@@ -147,7 +147,7 @@ describe("EndCard call to action", () => {
       const layout = endCardLayout(theme, aspect, { ...TEXT, cta: CTA, card });
       const { cta } = layout;
       expect(cta).toBeDefined();
-      const mid = aspect === "9:16" ? 540 : 960;
+      const mid = frameSize(aspect).width / 2;
       expect(centerX(cta!.pill)).toBeCloseTo(mid, 0);
       expect(centerX(cta!.note!)).toBeCloseTo(mid, 0);
       expect(cta!.pill.y).toBeGreaterThanOrEqual(layout.accent!.y + layout.accent!.height);

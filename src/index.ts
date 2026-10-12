@@ -60,8 +60,8 @@ export { mixColors, withAlpha } from "./theme/color";
 export { contrastRatio, relativeLuminance, roleColorIssues } from "./theme/contrast";
 export { groundTint, MESH_STOPS, meshFalloff, meshLayout, type MeshRest } from "./theme/mesh";
 
-export { frameSize } from "./layout/frame";
-export { clearOfKeepOuts, safeArea, safeZones, type SafeZones } from "./layout/safe";
+export { frameSize, isTall } from "./layout/frame";
+export { clearOfKeepOuts, safeArea, safeZones, usesSafeProfiles, type SafeZones } from "./layout/safe";
 export { blockCenterY, placeBlock } from "./layout/block";
 export type { Rect, Size } from "./layout/frame";
 export { fontSize, rampSizes, rampSteps, TYPE_FIT_ATTRIBUTE, typeCss, typeSpec, type TypeCss } from "./layout/type";

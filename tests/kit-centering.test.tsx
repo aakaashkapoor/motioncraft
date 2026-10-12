@@ -29,6 +29,8 @@ import {
   type Rect,
   type SafeProfile,
   type Theme,
+  ASPECTS,
+  frameSize,
 } from "../src/index";
 import { windowBox } from "../src/kit/windowLayout";
 import { AVG_CHAR_EM } from "../src/layout/textFit";
@@ -191,10 +193,10 @@ describe("Pinned", () => {
   const chat = { component: "ChatWindow", props: { channel: "launch", messages: [{ author: "Maya", time: "9:41", text: "Intro video?" }], shareId: "chat" } };
   const content = { component: "CardRow", props: { cards: CARDS } };
 
-  it.each(["9:16", "16:9"] as const)("%s: the docked element is at least 40 percent of the frame width", (aspect) => {
+  it.each(ASPECTS)("%s: the docked element is at least 40 percent of the frame width", (aspect) => {
     const layout = pinnedLayout(lightTheme, aspect);
     expect(layout.mode).toBe("dock");
-    const frameWidth = aspect === "9:16" ? 1080 : 1920;
+    const frameWidth = frameSize(aspect).width;
     // The element fills its dock's width: the pinned box is what it shows at.
     expect(layout.pinned.width).toBeGreaterThanOrEqual(0.4 * frameWidth - 0.5);
   });
@@ -279,7 +281,7 @@ describe("Section", () => {
       for (const part of ["eyebrow", "headline", "note"]) {
         const style = partStyle(html, part);
         expect(style.get("text-align"), `${aspect} ${part}`).toBe("center");
-        expect(Math.abs(centerX(boxOf(style)) - (aspect === "9:16" ? 540 : 960))).toBeLessThanOrEqual(TOLERANCE);
+        expect(Math.abs(centerX(boxOf(style)) - frameSize(aspect).width / 2)).toBeLessThanOrEqual(TOLERANCE);
       }
     }
   });

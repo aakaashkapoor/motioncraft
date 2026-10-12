@@ -3,7 +3,7 @@
 
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { safeZones } from "../layout/safe";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
@@ -29,7 +29,7 @@ export interface WindowMetrics {
 export function windowMetrics(theme: Theme, aspect: Aspect): WindowMetrics {
   return {
     barHeight: Math.round(theme.type.label[aspect].size * TITLE_BAR_EM),
-    padding: aspect === "9:16" ? theme.spacing.md : Math.round(theme.spacing.md * 1.25),
+    padding: isTall(aspect) ? theme.spacing.md : Math.round(theme.spacing.md * 1.25),
     border: theme.hairline,
   };
 }

@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Section, cardRowLayout, chatWindowLayout, contentArea, flowDiagramLayout, kit, neutralTheme, sectionLayout, type Aspect, type Rect } from "../src/index";
+import { ASPECTS, Section, cardRowLayout, chatWindowLayout, contentArea, flowDiagramLayout, kit, neutralTheme, sectionLayout, type Aspect, type Rect } from "../src/index";
 import { Arrow } from "../src/kit/Arrow";
 import type { SectionContent } from "../src/kit/Section";
 import { windowWidth } from "../src/kit/windowLayout";
@@ -20,9 +20,9 @@ const theme = neutralTheme;
  */
 const NOT_NESTED = ["Section", "SceneFrame", "Pinned", "Caption", "EndCard"];
 
-const FIXTURES: Record<Aspect, string> = { "9:16": "section-nesting.json", "16:9": "section-nesting-wide.json" };
-/** 16:9 puts narrow content beside the headline; 9:16 puts it below. */
-const ARRANGEMENT: Record<Aspect, "beside" | "below"> = { "16:9": "beside", "9:16": "below" };
+const FIXTURES: Record<Aspect, string> = { "9:16": "section-nesting.json", "16:9": "section-nesting-wide.json", "4:5": "section-nesting-45.json" };
+/** 16:9 puts narrow content beside the headline; the tall aspects (9:16, 4:5) put it below. */
+const ARRANGEMENT: Record<Aspect, "beside" | "below"> = { "16:9": "beside", "9:16": "below", "4:5": "below" };
 
 interface NestingScene {
   id: string;
@@ -76,7 +76,7 @@ const inside = (outer: Rect, inner: Rect) =>
 
 const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-describe.each(["16:9", "9:16"] as const)("kit components nested in a Section (%s)", (aspect) => {
+describe.each(ASPECTS)("kit components nested in a Section (%s)", (aspect) => {
   const all = scenes(aspect);
 
   it("the fixture nests every registered component", () => {
@@ -98,10 +98,11 @@ describe.each(["16:9", "9:16"] as const)("kit components nested in a Section (%s
   });
 });
 
-// Slots a Section gives narrow content: beside the headline in 16:9, below it in 9:16.
+// Slots a Section gives narrow content: beside the headline in 16:9, below it in 9:16 and 4:5.
 const SLOT: Record<Aspect, Rect> = {
   "16:9": sectionLayout(theme, "16:9", { headline: "Every part in its slot" }).content,
   "9:16": sectionLayout(theme, "9:16", { headline: "Every part in its slot" }).content,
+  "4:5": sectionLayout(theme, "4:5", { headline: "Every part in its slot" }).content,
 };
 
 const card = (title: string) => ({ icon: "check", title, subtitle: "A short line" });
@@ -144,7 +145,7 @@ describe("sizing scales to the slot", () => {
   });
 
   it("windows keep their standalone width but never exceed the slot", () => {
-    for (const aspect of ["16:9", "9:16"] as const) {
+    for (const aspect of ASPECTS) {
       const standalone = windowWidth(theme, aspect).width;
       expect(windowWidth(theme, aspect, SLOT[aspect]).width).toBe(Math.min(standalone, SLOT[aspect].width));
     }

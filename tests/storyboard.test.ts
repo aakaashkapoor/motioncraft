@@ -74,13 +74,13 @@ describe("validateStoryboard: document-level rules", () => {
   });
 
   it("rejects an unknown aspect", () => {
-    expect(errorsOf(board({ aspect: "4:3" }))).toEqual(['aspect must be "9:16" or "16:9" (got "4:3")']);
+    expect(errorsOf(board({ aspect: "4:3" }))).toEqual(['aspect must be "9:16", "16:9" or "4:5" (got "4:3")']);
   });
 
   it("requires aspect", () => {
     const b = board();
     delete b.aspect;
-    expect(errorsOf(b)).toEqual(['aspect must be "9:16" or "16:9" (got undefined)']);
+    expect(errorsOf(b)).toEqual(['aspect must be "9:16", "16:9" or "4:5" (got undefined)']);
   });
 
   it("rejects a non-positive or non-integer fps", () => {

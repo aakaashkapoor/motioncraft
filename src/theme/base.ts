@@ -22,10 +22,24 @@ const MONO_WEIGHT = 450;
 
 const spec = (size: number, weight: number, tracking: number, lineHeight: number): TypeSpec => ({ size, weight, tracking, lineHeight });
 
-/** One step in both aspects: the same weight, tracking and line height, a size for each. */
+/** Width of the 4:5 safe area (1080 less 64 px margins): its text column. */
+const CONTENT_45 = 952;
+/** Width of the 9:16 shorts text column (x 120-960). */
+const CONTENT_916 = 840;
+
+/**
+ * 4:5 type is the 9:16 ramp scaled by the content-width ratio, never below
+ * 0.9x. It is capped at 1: both frames are 1080 wide and show at the same
+ * width in a feed, and the shorter 4:5 frame has no extra height to give
+ * larger text. So today 4:5 sizes equal 9:16's; a constant so it can be tuned.
+ */
+export const RAMP_45_SCALE = Math.max(0.9, Math.min(1, CONTENT_45 / CONTENT_916));
+
+/** One step in every aspect: the same weight, tracking and line height, a size for each (4:5 derives from 9:16). */
 const step = (tall: number, wide: number, weight: number, tracking: number, lineHeight: number) => ({
   "9:16": spec(tall, weight, tracking, lineHeight),
   "16:9": spec(wide, weight, tracking, lineHeight),
+  "4:5": spec(Math.round(tall * RAMP_45_SCALE), weight, tracking, lineHeight),
 });
 
 /**

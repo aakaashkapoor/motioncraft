@@ -2,8 +2,10 @@
 // aspect, for each safe profile. In 9:16 the platform draws its UI over the
 // frame; the text column is symmetric about the frame's center line, and the
 // button rail on the right is a keep-out for text, not a shift of the layout.
+// 16:9 and 4:5 (the 1080x1350 feed post) have no overlaid UI, so plain margins
+// and no keep-outs, the same for every profile.
 
-import { DEFAULT_SAFE_PROFILE, type SafeProfile } from "../storyboard/types";
+import { DEFAULT_SAFE_PROFILE, SAFE_PROFILES, type SafeProfile } from "../storyboard/types";
 import { frameSize, type Aspect, type Rect } from "./frame";
 
 export interface SafeZones {
@@ -57,8 +59,30 @@ const TALL: Record<SafeProfile, ZoneSpec> = {
  */
 const WIDE: ZoneSpec = { area: rect(96, 64, 1824, 1016), keepOut: [], captionBottom: 1016, primaryWidth: Math.round(1728 * 0.8) };
 
+/**
+ * 1080x1350, the 4:5 feed post: no overlaid UI, so 64 px margins all round
+ * (a 952 px column, wider than 9:16's 840) and the same for every profile.
+ * The caption's bottom sits 96 px above the frame's bottom; the primary
+ * visual is 760 px, as in 9:16 shorts, so a camera shot (fill 0.75) can bring
+ * docked text back to full size.
+ */
+const FEED: ZoneSpec = { area: rect(64, 64, 1016, 1286), keepOut: [], captionBottom: 1350 - 96, primaryWidth: 760 };
+
+/** Each aspect's zones for a profile; only 9:16 depends on it. */
+const ZONES: Record<Aspect, (profile: SafeProfile) => ZoneSpec> = {
+  "9:16": (profile) => TALL[profile],
+  "16:9": () => WIDE,
+  "4:5": () => FEED,
+};
+
+/** Whether the safe profile changes the aspect's zones: only 9:16 has platform UI drawn over the frame. */
+export function usesSafeProfiles(aspect: Aspect): boolean {
+  const zones = ZONES[aspect];
+  return SAFE_PROFILES.some((profile) => zones(profile) !== zones(DEFAULT_SAFE_PROFILE));
+}
+
 export function safeZones(aspect: Aspect, profile: SafeProfile = DEFAULT_SAFE_PROFILE): SafeZones {
-  const spec = aspect === "9:16" ? TALL[profile] : WIDE;
+  const spec = ZONES[aspect](profile);
   return { ...spec, opticalCenter: spec.area.y + spec.area.height / 2 };
 }
 

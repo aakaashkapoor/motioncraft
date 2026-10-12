@@ -6,7 +6,7 @@
 // when it is sent. Optional floating message cards slide in
 // beside the window afterwards. The window arrives on the scene's lead; the
 // conversation plays at the same pace in any scene, speeding up only when a
-// scene is too short to fit it. In 9:16 the sidebar collapses into the header;
+// scene is too short to fit it. In tall aspects (9:16, 4:5) the sidebar collapses into the header;
 // in a narrow 16:9 area (a Section slot) the window stacks over its cards as in 9:16.
 // The owner's reference's interface moment: a message can carry actions
 // (Approve / Reject); a scripted `cursor` moves to one and clicks it, and the
@@ -19,7 +19,7 @@ import type { Seed } from "../engine/random";
 import { Icon } from "../icons";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
-import type { Rect, Size } from "../layout/frame";
+import { isTall, type Rect, type Size } from "../layout/frame";
 import { estimateLines, estimateTextHeight } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
@@ -287,7 +287,7 @@ export interface ChatWindowLayout {
 type LayoutInput = Pick<ChatWindowProps, "messages" | "sidebar" | "cards">;
 
 /** A lifted card's padding: a card's (see `cardMetrics`). */
-const liftPadding = (theme: Theme, aspect: Aspect) => (aspect === "9:16" ? theme.spacing.md : Math.round(theme.spacing.md * 0.8));
+const liftPadding = (theme: Theme, aspect: Aspect) => (isTall(aspect) ? theme.spacing.md : Math.round(theme.spacing.md * 0.8));
 
 /** Height of one line of text in a ramp step, in px. */
 const lineOf = (spec: TypeSpec) => spec.size * spec.lineHeight;
@@ -302,7 +302,7 @@ function sizesFor(theme: Theme, aspect: Aspect, textRole: TypeRole, typedTexts: 
   const text = type[textRole][aspect];
   const meta = type.label[aspect];
   const avatarSize = Math.round(text.size * AVATAR_EM);
-  const headerHeight = Math.ceil(lineOf(type.body[aspect]) + 2 * spacing.xs + (aspect === "9:16" ? lineOf(meta) : 0));
+  const headerHeight = Math.ceil(lineOf(type.body[aspect]) + 2 * spacing.xs + (isTall(aspect) ? lineOf(meta) : 0));
   const typedLines = Math.max(0, ...typedTexts.map((t) => estimateLines(t + CARET_ROOM, composerWidth, text.size)));
   const composerHeight = Math.ceil(Math.max(lineOf(meta), typedLines * lineOf(text)) + 4 * spacing.xs);
   return { textRole, text, meta, avatarSize, headerHeight, composerHeight };
@@ -342,7 +342,7 @@ export function chatWindowLayout(theme: Theme, aspect: Aspect, { messages, sideb
   const hasLift = messages.some((m) => m.lift !== undefined);
   if (hasCards && hasLift) throw new Error("ChatWindow: a message that lifts out settles where the cards go; give it cards or a lift, not both");
   const side = hasCards || hasLift;
-  const wide = aspect === "16:9" && area.width >= area.height * WIDE_RATIO;
+  const wide = !isTall(aspect) && area.width >= area.height * WIDE_RATIO;
   const pad = liftPadding(theme, aspect);
   const sidebarFor = (w: number) => (wide && sidebar ? Math.min(MAX_SIDEBAR_WIDTH, Math.floor(w * SIDEBAR_SHARE)) : 0);
   // A lifted card leaves holding the message at its width in the list.
@@ -722,7 +722,7 @@ function Header({ channel, workspace, layout, theme, aspect }: { channel: string
         boxSizing: "border-box",
       }}
     >
-      {aspect === "9:16" && workspace !== undefined && (
+      {isTall(aspect) && workspace !== undefined && (
         <div style={{ color: colors.textMuted, ...typeCss(layout.meta), fontWeight: theme.weights.semibold }}>{workspace}</div>
       )}
       <div style={{ color: colors.text, ...typeCss(theme.type.body[aspect]), fontWeight: theme.weights.bold }}>{`# ${channel}`}</div>

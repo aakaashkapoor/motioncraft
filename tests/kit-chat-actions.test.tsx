@@ -18,6 +18,7 @@ import {
   type ChatMessage,
   type ChatWindowProps,
   type Rect,
+  isTall,
 } from "../src/index";
 
 const theme = lightTheme;
@@ -213,7 +214,7 @@ describe("ChatWindow lift out", () => {
     expect(card.y).toBeGreaterThanOrEqual(area.y - 0.5);
     expect(card.y + card.height).toBeLessThanOrEqual(area.y + area.height + 0.5);
     const w = layout.window;
-    if (aspect === "16:9") expect(card.x).toBeGreaterThanOrEqual(w.x + w.width);
+    if (!isTall(aspect)) expect(card.x).toBeGreaterThanOrEqual(w.x + w.width);
     else {
       expect(card.y + card.height).toBeGreaterThan(w.y + w.height);
       expect(card.x + card.width / 2).toBeCloseTo(w.x + w.width / 2, 0);

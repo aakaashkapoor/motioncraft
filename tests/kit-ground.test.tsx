@@ -62,7 +62,7 @@ describe.each(ASPECTS)("Ground (%s)", (aspect) => {
   it.each(GROUND_STYLES)("covers the frame in %s without painting a background color", (style) => {
     const html = render(withGround(style));
     expect(html).toContain(`data-ground="${style}"`);
-    const [width, height] = aspect === "9:16" ? [1080, 1920] : [1920, 1080];
+    const { width, height } = frameSize(aspect);
     expect(html).toContain(`width:${width}px;height:${height}px`);
     expect(html).not.toContain("background-color");
   });

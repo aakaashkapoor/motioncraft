@@ -3,7 +3,7 @@
 // previous scene (same `shareId`) docks here while this scene's content
 // arrives beside it. The docked component lays itself out in a dock area on
 // its own full frame, scaled so it shows at a share of the frame width that
-// never drops below 40% (design v3, section C). 9:16 docks it centered in a
+// never drops below 40% (design v3, section C). Tall aspects (9:16, 4:5) dock it centered in a
 // band at the top or bottom; 16:9 in a column at the side. When docking at
 // that size would crowd out the content, it becomes an icon chip instead of a
 // tiny window. The content lays out at its own size in the box that is left.
@@ -13,7 +13,7 @@
 import { CameraFree, CameraLayer } from "../camera/Camera";
 import { Icon, isIconName, type IconName } from "../icons";
 import { contentArea, textColumn } from "../layout/caption";
-import { frameSize, type Rect } from "../layout/frame";
+import { frameSize, isTall, type Rect } from "../layout/frame";
 import { AVG_CHAR_EM } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
@@ -53,7 +53,7 @@ export const MIN_PINNED_SHARE = 0.4;
  * room for a short chat at its body size in 9:16, about the content area's
  * height in 16:9.
  */
-const DOCK_RATIO: Record<Aspect, number> = { "9:16": 0.9, "16:9": 0.55 };
+const DOCK_RATIO: Record<Aspect, number> = { "9:16": 0.9, "16:9": 0.55, "4:5": 0.9 };
 /** Docking must leave the content at least this share of the area (its height in 9:16, its width in 16:9); otherwise a chip. */
 const MIN_CONTENT_SHARE = 0.5;
 
@@ -92,7 +92,7 @@ export function pinnedLayout(theme: Theme, aspect: Aspect, corner: PinnedCorner 
   const gap = theme.spacing.lg;
   const right = corner.endsWith("Right");
   const bottom = corner.startsWith("bottom");
-  const tall = aspect === "9:16";
+  const tall = isTall(aspect);
 
   // The docked component lays out a window's width on its own frame, scaled to its share of the frame.
   const dockWidth = windowWidth(theme, aspect, area).width;

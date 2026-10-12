@@ -13,7 +13,7 @@
 
 import { CameraFree } from "../camera/Camera";
 import { contentArea } from "../layout/caption";
-import { frameSize, type Rect } from "../layout/frame";
+import { frameSize, isTall, type Rect } from "../layout/frame";
 import { typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { withAlpha } from "../theme/color";
@@ -42,7 +42,7 @@ export interface BeforeAfterProps extends KitProps {
   afterLabel?: string;
   /** Where the divider rests, as a share of the card from the start edge: 0.2-0.8, default 0.5. */
   split?: number;
-  /** `horizontal`: the divider moves left to right. Default horizontal in 16:9, vertical in 9:16. */
+  /** `horizontal`: the divider moves left to right. Default horizontal in 16:9, vertical in tall aspects (9:16, 4:5). */
   direction?: BeforeAfterDirection;
 }
 
@@ -143,7 +143,7 @@ export interface BeforeAfterLayout {
  */
 export function beforeAfterLayout(theme: Theme, aspect: Aspect, direction: BeforeAfterDirection, split: number, area: Rect = contentArea(theme, aspect)): BeforeAfterLayout {
   const { spacing, hairline } = theme;
-  const width = aspect === "9:16" ? windowWidth(theme, aspect, area).width : area.width;
+  const width = isTall(aspect) ? windowWidth(theme, aspect, area).width : area.width;
   const card = { ...area, x: area.x + (area.width - width) / 2, width };
   const label = theme.type.label[aspect];
   const chip = Math.ceil(label.size * label.lineHeight + 2 * spacing.xs + 2 * hairline);
@@ -226,7 +226,7 @@ export function BeforeAfter(props: BeforeAfterProps) {
   const errors = beforeAfterErrors(props as unknown as Record<string, unknown>);
   if (errors.length > 0) throw new Error(`BeforeAfter: ${errors.join("; ")}`);
   const { progress, theme, aspect, area, before, after, beforeLabel = "Before", afterLabel = "After", split = 0.5 } = props;
-  const direction = props.direction ?? (aspect === "9:16" ? "vertical" : "horizontal");
+  const direction = props.direction ?? (isTall(aspect) ? "vertical" : "horizontal");
   const horizontal = direction === "horizontal";
   const layout = beforeAfterLayout(theme, aspect, direction, split, area);
   const { card, chipInset, handle } = layout;

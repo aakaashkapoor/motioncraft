@@ -7,7 +7,7 @@
 import { spring } from "../engine/spring";
 import { isIconName } from "../icons";
 import { contentArea } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
 import type { SceneTime } from "./frameContext";
@@ -129,10 +129,10 @@ const lineOf = (spec: TypeSpec) => spec.size * spec.lineHeight;
 export function notificationLayout(theme: Theme, aspect: Aspect, notifications: readonly NotificationItem[], slot?: Rect): NotificationLayout {
   const area = slot ?? contentArea(theme, aspect);
   const { spacing, weights, type } = theme;
-  const width = aspect === "9:16" ? area.width : Math.min(WIDE_BANNER_PX, area.width);
-  const x = aspect === "9:16" ? area.x + (area.width - width) / 2 : area.x + area.width - width;
+  const width = isTall(aspect) ? area.width : Math.min(WIDE_BANNER_PX, area.width);
+  const x = isTall(aspect) ? area.x + (area.width - width) / 2 : area.x + area.width - width;
   const gap = spacing.xs;
-  const padding = aspect === "9:16" ? spacing.md : spacing.sm;
+  const padding = isTall(aspect) ? spacing.md : spacing.sm;
   const sized = (step: (typeof STEPS)[number]) => {
     const [meta, title, body] = step.map((role) => type[role][aspect]) as [TypeSpec, TypeSpec, TypeSpec];
     const specs = { meta: { ...meta, weight: weights.medium, tracking: 0.02 }, title: { ...title, weight: weights.bold }, body: { ...body, weight: weights.regular } };

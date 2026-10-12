@@ -4,7 +4,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { SceneClockContext, WordSwap, lightTheme, wordSwapCues, wordSwapErrors, wordSwapLayout, type Aspect, type WordSwapProps } from "../src/index";
+import { ASPECTS, SceneClockContext, WordSwap, lightTheme, wordSwapCues, wordSwapErrors, wordSwapLayout, type Aspect, type WordSwapProps } from "../src/index";
 
 const FPS = 30;
 const FRAMES = 150;
@@ -45,7 +45,7 @@ describe("WordSwap", () => {
     for (const frame of [0, 10, 25, 40, 90]) expect(draw(SUFFIX, frame)).toBe(draw(SUFFIX, frame));
   });
 
-  it.each(["9:16", "16:9"] as const)("sizes the slot to the widest option's estimated width on every frame (%s)", (aspect) => {
+  it.each(ASPECTS)("sizes the slot to the widest option's estimated width on every frame (%s)", (aspect) => {
     const layout = wordSwapLayout(lightTheme, aspect, SHIP.prefix, SHIP.options, SHIP.suffix);
     const widest = Math.max(...SHIP.options.map((o) => layout.wordWidth(o)));
     expect(layout.slotWidth).toBe(widest);
@@ -132,7 +132,7 @@ describe("WordSwap", () => {
     expect(wordSwapErrors({ options: ["a", "b"], prefix: 3 })).not.toEqual([]);
   });
 
-  it.each(["9:16", "16:9"] as const)("keeps a long line on one line inside the text column (%s)", (aspect) => {
+  it.each(ASPECTS)("keeps a long line on one line inside the text column (%s)", (aspect) => {
     const layout = wordSwapLayout(lightTheme, aspect, "Every frame you render is", ["checked", "deterministic"], "by default");
     expect(layout.lineWidth).toBeLessThanOrEqual(layout.box.width);
     expect(layout.fitted).toBe(true);
