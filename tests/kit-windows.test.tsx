@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   ASPECTS,
+  isTall,
   AppWindow,
   BrowserWindow,
   CodeWindow,
@@ -75,11 +76,11 @@ const browser = (aspect: Aspect, progress: number, extra: Record<string, unknown
   );
 
 describe("windowLayout", () => {
-  it.each(ASPECTS)("fills the content area (9:16: the primary width, centered) with a content box below the chrome (%s)", (aspect) => {
+  it.each(ASPECTS)("fills the content area (tall: the primary width, centered) with a content box below the chrome (%s)", (aspect) => {
     for (const toolbar of [false, true]) {
       const layout = windowLayout(lightTheme, aspect, toolbar);
       const full = contentArea(lightTheme, aspect);
-      const width = aspect === "9:16" ? safeZones(aspect).primaryWidth : full.width;
+      const width = isTall(aspect) ? safeZones(aspect).primaryWidth : full.width;
       const area = { ...full, x: full.x + (full.width - width) / 2, width };
       expect(layout.box).toEqual(area);
       expect(layout.titleBar).toBeGreaterThan(0);

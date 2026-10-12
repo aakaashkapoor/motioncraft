@@ -1,0 +1,598 @@
+{
+  "title": "Kit components nested in a Section",
+  "aspect": "4:5",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "title-card",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A title inside a section",
+        "content": {
+          "component": "TitleCard",
+          "props": {
+            "kicker": "Launch",
+            "title": "Ship day",
+            "subtitle": "Everything at once"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "big-number",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Why it matters",
+        "headline": "Teams ship faster",
+        "content": {
+          "component": "BigNumber",
+          "props": {
+            "value": 12500,
+            "suffix": "+",
+            "label": "Videos rendered"
+          }
+        },
+        "note": "Counted across every team in 2026"
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "step-list",
+      "component": "Section",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Three steps, no timeline",
+        "content": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Write a storyboard",
+              "Render the stills",
+              "Run the checks"
+            ],
+            "highlight": 1
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "flow",
+      "component": "Section",
+      "props": {
+        "eyebrow": "The pipeline",
+        "headline": "From prompt to video",
+        "content": {
+          "component": "FlowDiagram",
+          "props": {
+            "nodes": [
+              "Write",
+              "Render",
+              "Check"
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "card",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Privacy",
+        "headline": "Nothing leaves your machine",
+        "content": {
+          "component": "Card",
+          "props": {
+            "icon": "shield",
+            "title": "Runs locally",
+            "subtitle": "No network calls",
+            "highlighted": true
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "card-row",
+      "component": "Section",
+      "props": {
+        "eyebrow": "The kit",
+        "headline": "Four building blocks",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              {
+                "icon": "terminal",
+                "title": "Write",
+                "subtitle": "Describe it"
+              },
+              {
+                "icon": "code",
+                "title": "Build",
+                "subtitle": "From the kit"
+              },
+              {
+                "icon": "check",
+                "title": "Check",
+                "subtitle": "Layout rules"
+              },
+              {
+                "icon": "play",
+                "title": "Ship",
+                "subtitle": "A finished MP4"
+              }
+            ],
+            "highlight": 3
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "feature-list",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Included",
+        "headline": "Batteries included",
+        "content": {
+          "component": "FeatureList",
+          "props": {
+            "items": [
+              {
+                "icon": "shield",
+                "text": "Runs locally"
+              },
+              {
+                "icon": "chat",
+                "text": "Burned-in captions"
+              },
+              {
+                "icon": "check",
+                "text": "Layout checks"
+              }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "chat",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Feedback",
+        "headline": "Teams love it",
+        "content": {
+          "component": "ChatWindow",
+          "props": {
+            "channel": "launch",
+            "messages": [
+              {
+                "author": "Ana Ruiz",
+                "time": "9:41",
+                "text": "The new video is up"
+              },
+              {
+                "author": "Kai Moreno",
+                "avatar": {
+                  "initials": "KM",
+                  "color": "#2f54d4"
+                },
+                "time": "9:42",
+                "text": "Looks great, ship it"
+              }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "app-window",
+      "component": "Section",
+      "props": {
+        "eyebrow": "The app",
+        "headline": "One window, any content",
+        "content": {
+          "component": "AppWindow",
+          "props": {
+            "title": "Dashboard",
+            "content": {
+              "component": "BigNumber",
+              "props": {
+                "value": 42,
+                "label": "Builds today"
+              }
+            }
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "browser-window",
+      "component": "Section",
+      "props": {
+        "eyebrow": "On the web",
+        "headline": "Share a link",
+        "content": {
+          "component": "BrowserWindow",
+          "props": {
+            "url": "https://example.com/videos",
+            "content": {
+              "component": "TitleCard",
+              "props": {
+                "title": "Your video"
+              }
+            }
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "terminal",
+      "component": "Section",
+      "props": {
+        "eyebrow": "One command",
+        "headline": "Render from the shell",
+        "content": {
+          "component": "TerminalWindow",
+          "props": {
+            "lines": [
+              {
+                "prompt": true,
+                "text": "npm run render"
+              },
+              {
+                "text": "wrote video.mp4"
+              }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "code",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Storyboards",
+        "headline": "Scenes are plain data",
+        "content": {
+          "component": "CodeWindow",
+          "props": {
+            "code": "const scene = {\n  component: \"Card\",\n  props: { title: \"Hi\" },\n};",
+            "highlightLines": [
+              2
+            ]
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "arrow",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Connections",
+        "headline": "Point at what matters",
+        "content": {
+          "component": "Arrow",
+          "props": {
+            "anchors": {
+              "a": {
+                "x": 100,
+                "y": 780,
+                "width": 200,
+                "height": 100
+              },
+              "b": {
+                "x": 650,
+                "y": 1100,
+                "width": 200,
+                "height": 100
+              }
+            },
+            "from": {
+              "anchor": "a"
+            },
+            "to": {
+              "anchor": "b"
+            },
+            "curve": 0.2,
+            "label": "Then"
+          }
+        }
+      },
+      "durationMs": 9000
+    },
+    {
+      "id": "video-clip",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A clip inside a section",
+        "content": {
+          "component": "VideoClip",
+          "props": {
+            "src": "media/clip.mp4",
+            "muted": true
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "image",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "An image inside a section",
+        "content": {
+          "component": "Image",
+          "props": {
+            "src": "media/landscape.png",
+            "alt": "A still"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "handoff",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A prompt into a window",
+        "content": {
+          "component": "Handoff",
+          "props": {
+            "from": {
+              "component": "Card",
+              "props": {
+                "icon": "chat",
+                "title": "Prompt"
+              }
+            },
+            "to": {
+              "component": "AppWindow",
+              "props": {
+                "title": "Plan"
+              }
+            },
+            "label": "plan"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "headline",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A statement in the slot",
+        "content": {
+          "component": "Headline",
+          "props": {
+            "text": "Videos from a prompt",
+            "motion": "words",
+            "emphasis": "prompt",
+            "mark": "Videos"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "prompt",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A prompt in the slot",
+        "content": {
+          "component": "PromptCard",
+          "props": {
+            "text": "A launch video for motioncraft"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "receipt",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A receipt in the slot",
+        "content": {
+          "component": "Receipt",
+          "props": {
+            "title": "Corner Cafe",
+            "items": [
+              { "label": "Flat white", "amount": 4.5 },
+              { "label": "Croissant", "amount": 3.75 }
+            ],
+            "summary": [{ "label": "Tax", "amount": 0.66 }],
+            "total": { "amount": 8.91 },
+            "highlight": 0
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "notification",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A notification in the slot",
+        "content": {
+          "component": "Notification",
+          "props": {
+            "notifications": [
+              { "app": "Deploys", "title": "Deploy finished", "body": "web-app is live", "icon": "check", "time": "now" },
+              { "app": "Messages", "title": "New message", "body": "Is the intro ready?", "icon": "chat", "time": "now" }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "stroke-trace",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A mark that draws itself",
+        "content": {
+          "component": "StrokeTrace",
+          "props": { "icon": "shield", "label": "Safe by default", "fill": true }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "annotate",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "An annotation in the slot",
+        "content": {
+          "component": "Annotate",
+          "props": { "text": "Ship the story, not the spec", "mark": "story", "note": "what people remember" }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "before-after",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A comparison in the slot",
+        "content": {
+          "component": "BeforeAfter",
+          "props": {
+            "before": { "component": "StepList", "props": { "items": ["Write it by hand", "Wait for review"] } },
+            "after": { "component": "StepList", "props": { "items": ["Describe it", "Render"] } }
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "scramble-text",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A line that decodes in the slot",
+        "content": {
+          "component": "ScrambleText",
+          "props": { "text": "npm run render", "style": "terminal", "label": "done in 4.2 s" }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "word-swap",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A word that swaps in the slot",
+        "content": {
+          "component": "WordSwap",
+          "props": { "prefix": "Ship", "options": ["faster", "smarter", "together"] }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "donut-chart",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A donut that sweeps in the slot",
+        "content": {
+          "component": "DonutChart",
+          "props": {
+            "data": [
+              { "label": "Acme", "value": 42, "emphasis": true },
+              { "label": "Globex", "value": 27 },
+              { "label": "Initech", "value": 19 },
+              { "label": "Other", "value": 12 }
+            ],
+            "suffix": "%"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "bar-chart",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "Bars that grow in the slot",
+        "content": {
+          "component": "BarChart",
+          "props": {
+            "data": [
+              { "label": "Jan", "value": 480 },
+              { "label": "Feb", "value": 720 },
+              { "label": "Mar", "value": 1250, "emphasis": true },
+              { "label": "Apr", "value": 960 },
+              { "label": "May", "value": 610 }
+            ],
+            "prefix": "$"
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "line-chart",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A line that draws in the slot",
+        "content": {
+          "component": "LineChart",
+          "props": {
+            "data": [
+              { "label": "Jan", "value": 120 },
+              { "label": "Feb", "value": 180 },
+              { "label": "Mar", "value": 150 },
+              { "label": "Apr", "value": 310, "emphasis": true },
+              { "label": "May", "value": 260 },
+              { "label": "Jun", "value": 340 }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    }
+  ]
+}

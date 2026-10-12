@@ -1,14 +1,14 @@
 // The standard frame for explanatory scenes (design v2, section 4): an optional
 // eyebrow, a headline, a content slot holding any other kit component, and an
 // optional one-line note at the bottom. In 16:9 narrow content sits beside the
-// headline and wide content below it; 9:16 always stacks. Stacked, the text is
+// headline and wide content below it; tall aspects (9:16, 4:5) always stack. Stacked, the text is
 // centered on the frame (design v3); beside, it keeps a left edge. The eyebrow
 // fades in on the scene's lead, the headline rises word by word (`text.in`,
 // see `HeadlineText`), the content plays its own entrance as the headline
 // lands, and the note (the takeaway) arrives once the content has built.
 
 import { contentArea, textColumn } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { glyphPad, textBoxHeight, typeCss } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
 import { headlineColor } from "../theme/roles";
@@ -88,7 +88,7 @@ export function sectionLayout(
   area: Rect = contentArea(theme, aspect),
 ): SectionLayout {
   const { spacing, type } = theme;
-  const arrangement = aspect === "16:9" && contentWidth === "narrow" ? "beside" : "below";
+  const arrangement = !isTall(aspect) && contentWidth === "narrow" ? "beside" : "below";
 
   // The note sits low in the frame: no wider than the text column, so it stays off the right rail.
   const noteWidth = Math.min(area.width, textColumn(theme, aspect).width);

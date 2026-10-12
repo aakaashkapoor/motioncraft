@@ -20,10 +20,10 @@ import {
   type AnnotateProps,
   type Aspect,
   type Rect,
+  ASPECTS,
 } from "../src/index";
 
 const theme = lightTheme;
-const ASPECTS = ["9:16", "16:9"] as const;
 
 const BASE = { text: "Ship the story, not the spec", mark: "story", note: "what people remember" };
 

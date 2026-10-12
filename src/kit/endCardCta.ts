@@ -2,7 +2,7 @@
 // Android") on the accent, and a small muted note under it ("Link in bio").
 // Its prop check, its size and its timing. Pure.
 
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { safeZones } from "../layout/safe";
 import { textBoxHeight } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
@@ -60,7 +60,7 @@ export interface CtaSize {
  * the column even at the top of the pop.
  */
 export function ctaMaxWidth(theme: Theme, aspect: Aspect, columnWidth: number): number {
-  const width = aspect === "9:16" ? Math.min(columnWidth, safeZones(aspect, theme.safe).primaryWidth) : columnWidth;
+  const width = isTall(aspect) ? Math.min(columnWidth, safeZones(aspect, theme.safe).primaryWidth) : columnWidth;
   return Math.floor(width / theme.motion.pop.scale);
 }
 

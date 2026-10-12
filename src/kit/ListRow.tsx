@@ -8,7 +8,7 @@
 
 import type { ReactNode } from "react";
 import { contentArea, textColumn } from "../layout/caption";
-import type { Rect, Size } from "../layout/frame";
+import { isTall, type Rect, type Size } from "../layout/frame";
 import type { Aspect } from "../storyboard/types";
 import type { Theme } from "../theme/types";
 import { accentRing, liftShadow, popScale, type CardEntrance } from "./Card";
@@ -42,7 +42,7 @@ export function listRowMetrics(theme: Theme): ListRowMetrics {
  */
 export function listRowsWidth(theme: Theme, aspect: Aspect, area: Rect): number {
   const column = Math.min(area.width, textColumn(theme, aspect).width);
-  const width = aspect === "16:9" ? Math.min(column, Math.round(contentArea(theme, aspect).width * WIDE_LIST_SHARE)) : column;
+  const width = !isTall(aspect) ? Math.min(column, Math.round(contentArea(theme, aspect).width * WIDE_LIST_SHARE)) : column;
   return width - 2 * Math.ceil((width * (theme.motion.pop.scale - 1)) / 2);
 }
 

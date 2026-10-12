@@ -23,6 +23,7 @@ import {
   withAlpha,
   type Aspect,
   type Point,
+  ASPECTS,
 } from "../src/index";
 
 const theme = lightTheme;
@@ -240,7 +241,7 @@ describe("FlowDiagram: nodes light in sequence", () => {
     }
   });
 
-  it.each(["9:16", "16:9"] as const)("has the active node glowing as the dot arrives, at given ms (%s)", (aspect) => {
+  it.each(ASPECTS)("has the active node glowing as the dot arrives, at given ms (%s)", (aspect) => {
     const fast = theme.motion["fx.fast"].ms;
     expectLit(glows(at(timing.flow + fast, diagram(aspect))), [1, 0, 0, 0]);
     expect(glows(at(timing.flow + flow.ms, diagram(aspect)))).toEqual([0, 1, 0, 0]);
@@ -249,7 +250,7 @@ describe("FlowDiagram: nodes light in sequence", () => {
     expectLit(glows(at(timing.flow + 3 * flow.ms + fast, diagram(aspect))), [1, 0, 0, 0]);
   });
 
-  it.each(["9:16", "16:9"] as const)("sends the dot down each arrow in turn, at given ms (%s)", (aspect) => {
+  it.each(ASPECTS)("sends the dot down each arrow in turn, at given ms (%s)", (aspect) => {
     // In the diagram's own px, like its arrows.
     const { arrows } = flowDiagramLayout(theme, aspect, NODES, "From idea to video");
     const middle = (i: number) => ({ x: (arrows[i]!.x1 + arrows[i]!.x2) / 2, y: (arrows[i]!.y1 + arrows[i]!.y2) / 2 });

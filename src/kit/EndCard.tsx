@@ -1,7 +1,7 @@
 // The calm end card from the owner's reference: a logo mark and the product
 // name, one line under it, the accent line under that, and a card carried in
 // below (the prompt card, again). Everything is centered on the frame and the
-// block on its optical center. In 16:9 the mark sits beside the name; in 9:16
+// block on its optical center. In 16:9 the mark sits beside the name; in tall aspects (9:16, 4:5)
 // above it, so the name can stay large. The mark is an icon tile or the
 // brand's own image (`logo`). An optional call to action (`cta`) sits under
 // the lines: a pill on the accent and a small note under it.
@@ -13,7 +13,7 @@
 
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { AVG_CHAR_EM } from "../layout/textFit";
 import { glyphPad, textBoxHeight, typeCss, TYPE_FIT_ATTRIBUTE } from "../layout/type";
 import type { Aspect } from "../storyboard/types";
@@ -98,7 +98,7 @@ export function endCardLayout(
 ): EndCardLayout {
   const area = slot ?? contentArea(theme, aspect);
   const { spacing, type } = theme;
-  const direction = aspect === "16:9" ? "row" : "column";
+  const direction = !isTall(aspect) ? "row" : "column";
   const lineSpec = type.subtitle[aspect];
   const markFor = (spec: TypeSpec) => Math.round(spec.size * MARK_EM);
   const nameWidth = (spec: TypeSpec) => Math.ceil([...text.name].length * spec.size * AVG_CHAR_EM);

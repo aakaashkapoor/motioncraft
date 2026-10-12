@@ -3,7 +3,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { SceneClockContext, ScrambleText, contentArea, lightTheme, scrambleTextAccent, scrambleTextTiming, type Aspect, type ScrambleTextProps } from "../src/index";
+import { ASPECTS, SceneClockContext, ScrambleText, contentArea, lightTheme, scrambleTextAccent, scrambleTextTiming, type Aspect, type ScrambleTextProps } from "../src/index";
 
 const FPS = 30;
 const FRAMES = 150;
@@ -111,7 +111,7 @@ describe("ScrambleText", () => {
     expect(drawn.findIndex((s) => s.state === "locking")).toBe(drawn.filter((s) => s.state !== "scrambled").length - 1);
   });
 
-  it.each(["9:16", "16:9"] as const)("keeps the line and every slot the same width on every frame (%s)", (aspect) => {
+  it.each(ASPECTS)("keeps the line and every slot the same width on every frame (%s)", (aspect) => {
     for (const props of [CLEAN, TERMINAL]) {
       const widths = new Set<string>();
       const slotWidths = new Set<string>();
@@ -146,7 +146,7 @@ describe("ScrambleText", () => {
     expect(shown(draw(CLEAN, frame))).not.toBe(shown(draw({ ...CLEAN, seed: "other" }, frame)));
   });
 
-  it.each(["9:16", "16:9"] as const)("centers the block in the content area (%s)", (aspect) => {
+  it.each(ASPECTS)("centers the block in the content area (%s)", (aspect) => {
     for (const props of [CLEAN, TERMINAL, { text: "X".repeat(40) }]) {
       const html = draw(props, HOLD, aspect);
       const area = contentArea(lightTheme, aspect);

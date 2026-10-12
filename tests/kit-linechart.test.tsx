@@ -4,7 +4,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { LineChart, SceneClockContext, lightTheme, lineChartErrors, lineChartLayout, lineChartPoints, lineChartValues, type Aspect, type LineChartProps } from "../src/index";
+import { ASPECTS, LineChart, SceneClockContext, lightTheme, lineChartErrors, lineChartLayout, lineChartPoints, lineChartValues, type Aspect, type LineChartProps } from "../src/index";
 
 const FPS = 30;
 const FRAMES = 150;
@@ -69,7 +69,7 @@ describe("LineChart", () => {
     for (const frame of [0, 10, 25, 40, HOLD]) expect(draw(MONTHS, frame)).toBe(draw(MONTHS, frame));
   });
 
-  it.each(["9:16", "16:9"] as const)("places points evenly in x and in proportion to value/max in y (%s)", (aspect) => {
+  it.each(ASPECTS)("places points evenly in x and in proportion to value/max in y (%s)", (aspect) => {
     const drawn = points(draw(MONTHS, HOLD, aspect));
     expect(drawn.map((p) => p.index)).toEqual([0, 1, 2, 3, 4, 5]);
     const layout = lineChartLayout(lightTheme, aspect, MONTHS);
@@ -132,7 +132,7 @@ describe("LineChart", () => {
     expect(calloutOpacity(draw(MONTHS, HOLD))).toBe(1);
   });
 
-  it.each(["9:16", "16:9"] as const)("keeps the last value clear of a neighboring callout (%s)", (aspect) => {
+  it.each(ASPECTS)("keeps the last value clear of a neighboring callout (%s)", (aspect) => {
     const data = MONTHS.data.map((d, i) => ({ label: d.label, value: [42.5, 38.2, 51.8, 47.1, 63.4, 58.9][i]!, emphasis: i === 4 }));
     const format = { prefix: "$", suffix: "K", decimals: 1 };
     const layout = lineChartLayout(lightTheme, aspect, { data, ...format });

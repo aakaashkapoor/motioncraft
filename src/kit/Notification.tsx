@@ -11,6 +11,7 @@
 
 import { Icon } from "../icons";
 import { contentArea } from "../layout/caption";
+import { isTall } from "../layout/frame";
 import { charsPerLine } from "../layout/textFit";
 import { typeCss } from "../layout/type";
 import { withAlpha } from "../theme/color";
@@ -55,7 +56,7 @@ export function Notification(props: NotificationProps) {
   const time = useSceneTime(progress);
   const { drops } = notificationTiming(theme, notifications.length, atMs, time);
   const poses = bannerPoses(layout, drops, entering(time).ms, (elapsed) => fade(motion.fx, elapsed));
-  const corner = aspect === "9:16" ? radius.lg : radius.md;
+  const corner = isTall(aspect) ? radius.lg : radius.md;
   const textWidth = (width: number) => width - 2 * layout.padding - layout.icon - spacing.sm;
 
   return (

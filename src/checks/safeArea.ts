@@ -5,7 +5,7 @@
 // shot is scenery the camera moves; the wide frames around the shot judge it.
 
 import { frameSize, type Aspect, type Rect } from "../layout/frame";
-import { safeArea, safeZones } from "../layout/safe";
+import { safeArea, safeZones, usesSafeProfiles } from "../layout/safe";
 import { DEFAULT_SAFE_PROFILE, type SafeProfile } from "../storyboard/types";
 import { contains, describeExcess, TOLERANCE_PX } from "./geometry";
 import { quote, VISIBLE_OPACITY, type FrameMeasurement } from "./types";
@@ -26,7 +26,7 @@ function describeKeepOut(keepOut: Rect, aspect: Aspect): string {
 export function checkSafeArea(measurement: FrameMeasurement, aspect: Aspect, profile: SafeProfile = DEFAULT_SAFE_PROFILE): string[] {
   const safe = safeArea(aspect, profile);
   const { keepOut } = safeZones(aspect, profile);
-  const where = aspect === "9:16" ? `the 9:16 "${profile}" safe area` : `the ${aspect} safe area`;
+  const where = usesSafeProfiles(aspect) ? `the 9:16 "${profile}" safe area` : `the ${aspect} safe area`;
   const messages: string[] = [];
   for (const text of measurement.texts) {
     if (text.opacity < VISIBLE_OPACITY || text.outOfShot) continue;

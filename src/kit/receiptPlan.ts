@@ -3,7 +3,7 @@
 
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { AVG_CHAR_EM } from "../layout/textFit";
 import type { Aspect } from "../storyboard/types";
 import type { Theme, TypeRole, TypeSpec } from "../theme/types";
@@ -204,8 +204,8 @@ export function receiptLayout(
 ): ReceiptLayout {
   const area = slot ?? contentArea(theme, aspect);
   const { spacing, weights } = theme;
-  const width = aspect === "16:9" ? Math.min(area.width, WIDE_MAX_WIDTH) : maxCardWidth(theme, aspect, area);
-  const padding = aspect === "9:16" ? spacing.lg : spacing.md;
+  const width = !isTall(aspect) ? Math.min(area.width, WIDE_MAX_WIDTH) : maxCardWidth(theme, aspect, area);
+  const padding = isTall(aspect) ? spacing.lg : spacing.md;
   const tooth = spacing.xs;
   const divider = spacing.sm;
   const lines = receiptLines(data);

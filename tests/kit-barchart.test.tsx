@@ -4,7 +4,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { BarChart, SceneClockContext, barChartErrors, barChartLayout, lightTheme, type Aspect, type BarChartProps } from "../src/index";
+import { ASPECTS, BarChart, SceneClockContext, barChartErrors, barChartLayout, lightTheme, type Aspect, type BarChartProps } from "../src/index";
 
 const FPS = 30;
 const FRAMES = 150;
@@ -73,7 +73,7 @@ describe("BarChart", () => {
     for (const frame of [0, 8, 20, 35, HOLD]) expect(draw(REVENUE, frame)).toBe(draw(REVENUE, frame));
   });
 
-  it.each(["9:16", "16:9"] as const)("shows every formatted value exactly on the hold (%s)", (aspect) => {
+  it.each(ASPECTS)("shows every formatted value exactly on the hold (%s)", (aspect) => {
     expect(values(draw(REVENUE, HOLD, aspect))).toEqual(["$480", "$720", "$1,250", "$960", "$610"]);
     expect(values(draw(PROGRESS, HOLD, aspect))).toEqual(["37.5%", "99.9%", "62.0%"]);
   });
@@ -84,7 +84,7 @@ describe("BarChart", () => {
     expect(early[0]).toMatch(/^\$[\d,]+$/);
   });
 
-  it.each(["9:16", "16:9"] as const)("makes bar lengths proportional to value/max on the hold (%s)", (aspect) => {
+  it.each(ASPECTS)("makes bar lengths proportional to value/max on the hold (%s)", (aspect) => {
     for (const props of [REVENUE, { ...REVENUE, orientation: "vertical" as const }, { ...REVENUE, orientation: "horizontal" as const }, PROGRESS]) {
       const html = draw(props, HOLD, aspect);
       const plot = plotLength(html);
@@ -143,7 +143,7 @@ describe("BarChart", () => {
   });
 
   it("stays inside its slot in both aspects", () => {
-    for (const aspect of ["9:16", "16:9"] as const) {
+    for (const aspect of ASPECTS) {
       for (const props of [REVENUE, PROGRESS, { ...REVENUE, orientation: "vertical" as const }]) {
         const slot = { x: 100, y: 300, width: 800, height: 600 };
         const { box } = barChartLayout(lightTheme, aspect, props, slot);

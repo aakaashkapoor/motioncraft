@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { OVERLAY_CORNERS, SAFE_PROFILES, captionBand, lightTheme, safeZones, validateStoryboard, type Aspect, type SafeProfile, type Storyboard, type Theme } from "../src/index";
+import { ASPECTS, OVERLAY_CORNERS, SAFE_PROFILES, captionBand, lightTheme, safeZones, validateStoryboard, type Aspect, type SafeProfile, type Storyboard, type Theme } from "../src/index";
 import { checkOverlayOverlap } from "../src/checks";
 import { buildTimeline } from "../src/engine/timeline";
 import { OVERLAY_FADE_MS, overlayBox } from "../src/overlays/layout";
@@ -26,7 +26,7 @@ const errorsOf = (extra: Record<string, unknown>) => {
 };
 
 describe("overlay placement", () => {
-  for (const aspect of ["9:16", "16:9"] as Aspect[]) {
+  for (const aspect of ASPECTS) {
     for (const profile of SAFE_PROFILES) {
       for (const corner of OVERLAY_CORNERS) {
         it(`${aspect} ${profile} ${corner}: inside the safe area, off the rail and the caption band`, () => {

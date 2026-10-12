@@ -7,6 +7,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   ASPECTS,
+  frameSize,
+  isTall,
   NOMINAL_SCENE_MS,
   Receipt,
   contentArea,
@@ -126,11 +128,11 @@ describe("Receipt", () => {
     expect(scaleAt(3000)).toBe(1);
   });
 
-  it.each(ASPECTS)("lays out centered, primary width in 9:16 and at most 720 px in 16:9 (%s)", (aspect) => {
+  it.each(ASPECTS)("lays out centered, primary width when tall and at most 720 px in 16:9 (%s)", (aspect) => {
     const { box } = receiptLayout(theme, aspect, BILL);
-    const frameWidth = aspect === "9:16" ? 1080 : 1920;
+    const frameWidth = frameSize(aspect).width;
     expect(box.x + box.width / 2).toBeCloseTo(frameWidth / 2, 0);
-    if (aspect === "16:9") expect(box.width).toBeLessThanOrEqual(720);
+    if (!isTall(aspect)) expect(box.width).toBeLessThanOrEqual(720);
     else expect(box.width).toBe(safeZones(aspect, theme.safe).primaryWidth);
   });
 

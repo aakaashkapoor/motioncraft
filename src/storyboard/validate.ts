@@ -244,7 +244,7 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
 
   if (!isNonEmptyString(title)) errors.push("title is required and must be a non-empty string");
   if (!ASPECTS.includes(aspect as Aspect)) {
-    errors.push(`aspect must be ${ASPECTS.map((a) => `"${a}"`).join(" or ")} (got ${describe(aspect)})`);
+    errors.push(`aspect must be ${oneOf(ASPECTS)} (got ${describe(aspect)})`);
   }
   if (!isPositiveInteger(fps)) errors.push(`fps must be a positive integer (got ${describe(fps)})`);
   if (!isNonEmptyString(theme)) errors.push("theme must be a non-empty string");

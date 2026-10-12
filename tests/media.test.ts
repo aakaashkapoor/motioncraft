@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Page } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it, type TestContext } from "vitest";
-import { buildTimeline, lightTheme, validateStoryboard, type Storyboard } from "../src/index";
+import { ASPECTS, buildTimeline, frameSize, lightTheme, validateStoryboard, type Storyboard } from "../src/index";
 import { BrowserNotFoundError } from "../src/render/browser";
 import { checkMediaFiles } from "../src/checks/storyboard";
 import { endCardLayout } from "../src/kit/EndCard";
@@ -226,7 +226,7 @@ describe("VideoClip (integration)", () => {
   });
 
   it("plays inside an AppWindow, in both aspect ratios", { timeout: 120_000 }, async (ctx) => {
-    for (const aspect of ["9:16", "16:9"] as const) {
+    for (const aspect of ASPECTS) {
       const sb = storyboard({
         aspect,
         scenes: [{ id: "w", component: "AppWindow", props: { title: "Demo", content: { component: "VideoClip", props: { src: "numbers.mp4", fit: "contain" } } }, durationMs: 1000 }],
@@ -269,8 +269,8 @@ describe("Image (integration)", () => {
   const isBlue = (l: number) => Math.abs(l - BLUE_LUMA) < 12;
 
   it("covers the frame around its focal point, in both aspect ratios", { timeout: 120_000 }, async (ctx) => {
-    for (const aspect of ["9:16", "16:9"] as const) {
-      const { width, height } = aspect === "9:16" ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
+    for (const aspect of ASPECTS) {
+      const { width, height } = frameSize(aspect);
       const pts = [[10, height / 2], [width - 10, height / 2]] as const;
       const scene = (focus: { x: number; y: number }) => storyboard({ aspect, scenes: [{ id: "i", component: "Image", props: { src: "halves.png", focus }, durationMs: 500 }] });
       // Cover crops the 4:1 image's sides; the focal point picks which part stays.

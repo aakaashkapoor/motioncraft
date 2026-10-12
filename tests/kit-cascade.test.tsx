@@ -30,6 +30,7 @@ import {
   withAlpha,
   type CardData,
   type HighlightSpec,
+  ASPECTS,
 } from "../src/index";
 
 const theme = lightTheme;
@@ -254,7 +255,7 @@ describe("CardRow: the highlight moves along the cards", () => {
 });
 
 describe("step cards (the reference)", () => {
-  it.each(["16:9", "9:16"] as const)("put the number chip first, top-left, the text after it and the icon last (%s)", (aspect) => {
+  it.each(ASPECTS)("put the number chip first, top-left, the text after it and the icon last (%s)", (aspect) => {
     const html = at(<CardRow progress={0} theme={theme} aspect={aspect} cards={STEPS.slice(0, 3)} />, 5000);
     for (const card of items(html, 'data-card="')) {
       const chip = card.indexOf("data-card-step");

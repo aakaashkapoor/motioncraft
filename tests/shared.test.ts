@@ -23,6 +23,7 @@ import {
   type SharedBox,
   type SharedMeasurements,
   type Storyboard,
+  isTall,
 } from "../src/index";
 import { BrowserNotFoundError } from "../src/render/browser";
 import { estimateDurations } from "../src/render/durations";
@@ -187,7 +188,7 @@ describe("Pinned", () => {
     expect(scale).toBeLessThan(1);
     expect(pinned.width).toBeGreaterThanOrEqual(0.4 * frameSize(aspect).width - 0.5);
     // At the top of the content area: in the right corner in 16:9, centered in 9:16.
-    if (aspect === "16:9") expect(pinned.x + pinned.width).toBeCloseTo(area.x + area.width);
+    if (!isTall(aspect)) expect(pinned.x + pinned.width).toBeCloseTo(area.x + area.width);
     else expect(pinned.x + pinned.width / 2).toBeCloseTo(area.x + area.width / 2);
     expect(pinned.y).toBeCloseTo(area.y);
     // The content box stays inside the area and clear of the pinned box.

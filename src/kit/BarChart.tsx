@@ -9,7 +9,7 @@
 
 import { Fragment } from "react";
 import { textColumn } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { AVG_CHAR_EM } from "../layout/textFit";
 import { TYPE_FIT_ATTRIBUTE, glyphPad, textBoxHeight, typeCss } from "../layout/type";
@@ -28,7 +28,7 @@ export interface BarChartProps extends KitProps, ChartValueFormat {
   data: ChartDatum[];
   /** `bars` (default) or `progress`: one labeled track per item, filling left to right. */
   variant?: "bars" | "progress";
-  /** Which way the bars grow. Default: vertical in 16:9, horizontal in 9:16. `progress` is always horizontal. */
+  /** Which way the bars grow. Default: vertical in 16:9, horizontal in tall aspects (9:16, 4:5). `progress` is always horizontal. */
   orientation?: "vertical" | "horizontal";
   /** The value a full-length bar stands for. Default: the nice max of the largest value; 100 for `progress`. */
   max?: number;
@@ -71,10 +71,10 @@ export function barChartMax(input: Pick<BarChartProps, "data" | "variant" | "max
   return niceMax(Math.max(...input.data.map((d) => d.value)));
 }
 
-/** Which way the bars grow: `orientation`, else vertical in 16:9 and horizontal in 9:16; `progress` always horizontal. */
+/** Which way the bars grow: `orientation`, else vertical in 16:9 and horizontal in tall aspects (9:16, 4:5); `progress` always horizontal. */
 export function barChartOrientation(aspect: Aspect, input: Pick<BarChartProps, "variant" | "orientation">): "vertical" | "horizontal" {
   if (input.variant === "progress") return "horizontal";
-  return input.orientation ?? (aspect === "16:9" ? "vertical" : "horizontal");
+  return input.orientation ?? (!isTall(aspect) ? "vertical" : "horizontal");
 }
 
 /** Each bar's color: the accent on the emphasized one, one step of the ink on the rest. */

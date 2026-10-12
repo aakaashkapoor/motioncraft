@@ -4,7 +4,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { SceneClockContext, StrokeTrace, contentArea, lightTheme, pathLength, strokeTraceTiming, type Aspect, type StrokeTraceProps } from "../src/index";
+import { ASPECTS, SceneClockContext, StrokeTrace, contentArea, lightTheme, pathLength, strokeTraceTiming, type Aspect, type StrokeTraceProps } from "../src/index";
 
 const FPS = 30;
 const FRAMES = 150;
@@ -123,7 +123,7 @@ describe("StrokeTrace", () => {
     expect(strokes(draw({ icon: "lock" }, HOLD)).length).toBeGreaterThan(1);
   });
 
-  it.each(["9:16", "16:9"] as const)("draws large and centered in the content area (%s)", (aspect) => {
+  it.each(ASPECTS)("draws large and centered in the content area (%s)", (aspect) => {
     const html = draw({ icon: "zap", label: "Fast" }, HOLD, aspect);
     const size = Number(/<svg[^>]*width="([\d.]+)"/.exec(html)![1]);
     const area = contentArea(lightTheme, aspect);

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ASPECTS, Handoff, contentArea, handoffLayout, kit, lightTheme, sectionLayout, type Rect } from "../src/index";
+import { ASPECTS, Handoff, contentArea, handoffLayout, isTall, kit, lightTheme, sectionLayout, type Rect } from "../src/index";
 
 const theme = lightTheme;
 
@@ -22,7 +22,7 @@ describe("handoffLayout", () => {
   it.each(ASPECTS)("%s: two boxes in the content area, the arrow running from one into the other", (aspect) => {
     const area = contentArea(theme, aspect);
     const layout = handoffLayout(theme, aspect);
-    expect(layout.direction).toBe(aspect === "16:9" ? "row" : "column");
+    expect(layout.direction).toBe(isTall(aspect) ? "column" : "row");
     expect(inside(area, layout.from)).toBe(true);
     expect(inside(area, layout.to)).toBe(true);
     expect(overlaps(layout.from, layout.to)).toBe(false);

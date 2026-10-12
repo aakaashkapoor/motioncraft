@@ -8,7 +8,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { SceneClockContext, kit, lightTheme, type Aspect } from "../src/index";
+import { ASPECTS, SceneClockContext, kit, lightTheme, type Aspect } from "../src/index";
 
 const FPS = 30;
 const SHORT = 90;
@@ -151,7 +151,7 @@ describe("kit motion runs on the scene clock", () => {
     expect(Object.keys(SAMPLES).sort()).toEqual(Object.keys(kit).sort());
   });
 
-  describe.each(["9:16", "16:9"] as const)("%s", (aspect) => {
+  describe.each(ASPECTS)("%s", (aspect) => {
     // Renders every frame of a 9 s scene: slow under a parallel full-suite run.
     it.each(Object.keys(kit))("%s plays its entrance identically in a 3 s and a 9 s scene", { timeout: 30_000 }, (name) => {
       const short = Array.from({ length: HOLD_END + 1 }, (_, f) => draw(name, aspect, SHORT, f));

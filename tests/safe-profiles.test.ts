@@ -19,6 +19,7 @@ import {
   safeArea,
   safeZones,
   textColumn,
+  usesSafeProfiles,
   validateStoryboard,
   type SafeProfile,
   type Theme,
@@ -86,6 +87,19 @@ describe("safe profiles", () => {
       expect(zones.keepOut).toEqual([]);
       expect(zones.opticalCenter).toBe(540);
     }
+  });
+
+  it("4:5: the same zones in every profile, 64 px margins and no rail", () => {
+    for (const profile of SAFE_PROFILES) {
+      expect(safeZones("4:5", profile)).toEqual(safeZones("4:5"));
+    }
+    expect(safeZones("4:5").area).toEqual({ x: 64, y: 64, width: 952, height: 1222 });
+  });
+
+  it("apply only to 9:16, the one aspect with platform UI drawn over the frame", () => {
+    expect(usesSafeProfiles("9:16")).toBe(true);
+    expect(usesSafeProfiles("16:9")).toBe(false);
+    expect(usesSafeProfiles("4:5")).toBe(false);
   });
 });
 

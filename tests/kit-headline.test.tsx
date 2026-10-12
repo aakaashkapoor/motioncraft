@@ -10,6 +10,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   ASPECTS,
+  frameSize,
   Headline,
   SceneClockContext,
   Section,
@@ -332,7 +333,7 @@ describe("Headline as a kit component", () => {
   it.each(ASPECTS)("centers on the frame and its optical center, no wider than the text column (%s)", (aspect) => {
     const html = at(2000, <Headline progress={0} theme={theme} aspect={aspect} text="Videos from a prompt" />);
     const root = boxOf(parseStyle(/^<div[^>]*?style="([^"]*)"/.exec(html)![1]!));
-    const mid = aspect === "9:16" ? 540 : 960;
+    const mid = frameSize(aspect).width / 2;
     expect(Math.abs(root.x + root.width / 2 - mid)).toBeLessThanOrEqual(1);
     expect(Math.abs(root.y + root.height / 2 - safeZones(aspect).opticalCenter)).toBeLessThanOrEqual(1);
     expect(html).toContain('data-block="Headline"');
@@ -462,7 +463,7 @@ describe("lines: each line enters on its own cue", () => {
   it.each(ASPECTS)("Headline: centers the stacked lines, one block per line (%s)", (aspect) => {
     const html = heard(4000, lined({}, aspect));
     const root = boxOf(parseStyle(/^<div[^>]*?style="([^"]*)"/.exec(html)![1]!));
-    const mid = aspect === "9:16" ? 540 : 960;
+    const mid = frameSize(aspect).width / 2;
     expect(Math.abs(root.x + root.width / 2 - mid)).toBeLessThanOrEqual(1);
     // Placed as a single headline is: on the optical center, kept inside the content area.
     const { box, step } = headlineBox(theme, aspect, LINES.map((l) => l.text));

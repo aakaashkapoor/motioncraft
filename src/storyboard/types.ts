@@ -5,15 +5,15 @@ import type { Cue } from "../kit/cues";
 import type { ColorRole } from "../theme/roles";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
-export const ASPECTS = ["9:16", "16:9"] as const;
+export const ASPECTS = ["9:16", "16:9", "4:5"] as const;
 export type Aspect = (typeof ASPECTS)[number];
 
 /**
  * Which platform UI a 9:16 frame keeps its text clear of (design v3, section
  * C): `shorts` (YouTube Shorts, the default) or `crosspost` (the union of
  * TikTok, Reels and Shorts: smaller, but safe on all three) or `tiktok` (clear of
- * TikTok's UI only, so content fills more of the frame). 16:9 has no
- * overlaid UI, so both profiles are the same there.
+ * TikTok's UI only, so content fills more of the frame). 16:9 and 4:5 have no
+ * overlaid UI, so every profile is the same there.
  */
 export const SAFE_PROFILES = ["shorts", "crosspost", "tiktok"] as const;
 export type SafeProfile = (typeof SAFE_PROFILES)[number];

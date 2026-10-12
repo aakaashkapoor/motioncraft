@@ -205,7 +205,7 @@ describe("the kit reads type from the ramp", () => {
   });
 });
 
-const FIXTURES: Record<Aspect, string> = { "9:16": "type-ramp.json", "16:9": "type-ramp-wide.json" };
+const FIXTURES: Record<Aspect, string> = { "9:16": "type-ramp.json", "16:9": "type-ramp-wide.json", "4:5": "type-ramp-45.json" };
 
 describe("tests/fixtures/type-ramp (integration)", () => {
   for (const aspect of ASPECTS) {

@@ -9,10 +9,13 @@ import {
   estimateTextHeight,
   fontSize,
   frameSize,
+  isTall,
   neutralTheme,
   safeArea,
+  safeZones,
   type Aspect,
 } from "../src/index";
+import { RAMP_45_SCALE } from "../src/theme/base";
 
 describe("frameSize", () => {
   it("is 1080x1920 for 9:16", () => {
@@ -21,6 +24,18 @@ describe("frameSize", () => {
 
   it("is 1920x1080 for 16:9", () => {
     expect(frameSize("16:9")).toEqual({ width: 1920, height: 1080 });
+  });
+
+  it("is 1080x1350 for 4:5", () => {
+    expect(frameSize("4:5")).toEqual({ width: 1080, height: 1350 });
+  });
+});
+
+describe("isTall", () => {
+  it("is true for the tall aspects, which stack, and false for 16:9", () => {
+    expect(isTall("9:16")).toBe(true);
+    expect(isTall("4:5")).toBe(true);
+    expect(isTall("16:9")).toBe(false);
   });
 });
 
@@ -47,6 +62,15 @@ describe("safeArea", () => {
   it("uses 96 px sides and 64 px top and bottom in 16:9", () => {
     expect(safeArea("16:9")).toEqual({ x: 96, y: 64, width: 1728, height: 952 });
   });
+
+  it("uses 64 px margins all round in 4:5, with no rail", () => {
+    const zones = safeZones("4:5");
+    expect(zones.area).toEqual({ x: 64, y: 64, width: 952, height: 1222 });
+    expect(zones.keepOut).toEqual([]);
+    expect(zones.captionBottom).toBe(1254);
+    expect(zones.primaryWidth).toBe(760);
+    expect(zones.opticalCenter).toBe(675);
+  });
 });
 
 describe("type sizes", () => {
@@ -66,6 +90,18 @@ describe("type sizes", () => {
   it("never sets 16:9 text below 0.9x of 9:16: a 16:9 video plays smaller on a phone", () => {
     for (const role of ["display", "title", "body", "label"] as const) {
       expect(fontSize(neutralTheme, role, "16:9")).toBeGreaterThanOrEqual(0.9 * fontSize(neutralTheme, role, "9:16"));
+    }
+  });
+
+  it("scales the 9:16 ramp for 4:5 by the content-width ratio, capped at 1 and never below 0.9x", () => {
+    expect(RAMP_45_SCALE).toBeGreaterThanOrEqual(0.9);
+    expect(RAMP_45_SCALE).toBeLessThanOrEqual(1);
+    for (const [role, specs] of Object.entries(neutralTheme.type)) {
+      const tall = specs["9:16"];
+      const feed = specs["4:5"];
+      expect(feed.size, role).toBe(Math.round(tall.size * RAMP_45_SCALE));
+      expect(feed.size, role).toBeGreaterThanOrEqual(0.9 * tall.size);
+      expect({ ...feed, size: 0 }, role).toEqual({ ...tall, size: 0 });
     }
   });
 });

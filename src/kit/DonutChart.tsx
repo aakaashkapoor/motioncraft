@@ -4,10 +4,10 @@
 // accent and lifts out a little as it lands; the others are steps of the ink.
 // The center number counts up with the sweep and pops as it lands, and a
 // legend (swatch, label, value) cascades in beside the ring in 16:9 and below
-// it in 9:16. "Acme 42% of the market".
+// it in tall aspects (9:16, 4:5). "Acme 42% of the market".
 
 import { contentArea } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { AVG_CHAR_EM } from "../layout/textFit";
 import { TYPE_FIT_ATTRIBUTE, glyphPad, textBoxHeight, typeCss } from "../layout/type";
@@ -154,11 +154,11 @@ function fitStep(theme: Theme, aspect: Aspect, roles: TypeRole[], text: string, 
   return { spec: { ...last, size: Math.min(last.size, Math.max(1, size)) }, fitted: true };
 }
 
-/** Where the title, ring and legend go: legend beside the ring in 16:9, below it in 9:16. */
+/** Where the title, ring and legend go: legend beside the ring in 16:9, below it in tall aspects (9:16, 4:5). */
 export function donutChartLayout(theme: Theme, aspect: Aspect, input: LayoutInput, slot?: Rect): DonutChartLayout {
   const { spacing } = theme;
   const area = slot ?? contentArea(theme, aspect);
-  const arrangement = aspect === "16:9" ? "beside" : "below";
+  const arrangement = !isTall(aspect) ? "beside" : "below";
   const format = { prefix: input.prefix, suffix: input.suffix, decimals: input.decimals };
   const n = input.data.length;
 

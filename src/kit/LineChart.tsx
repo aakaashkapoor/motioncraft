@@ -6,7 +6,7 @@
 // category labels sit under the baseline. "Signups peaked in April".
 
 import { contentArea, textColumn } from "../layout/caption";
-import type { Rect } from "../layout/frame";
+import { isTall, type Rect } from "../layout/frame";
 import { blockCenterY, placeBlock } from "../layout/block";
 import { AVG_CHAR_EM } from "../layout/textFit";
 import { TYPE_FIT_ATTRIBUTE, glyphPad, textBoxHeight, typeCss } from "../layout/type";
@@ -145,7 +145,7 @@ export function lineChartLayout(theme: Theme, aspect: Aspect, input: LayoutInput
   const below = spacing.sm + lineHeight(labelSpec);
 
   const room = area.height - titleHeight - titleGap - headroom - below;
-  const plotHeight = Math.max(0, Math.floor(aspect === "9:16" ? Math.min(room, chartWidth * TALL_PLOT_SHARE) : room));
+  const plotHeight = Math.max(0, Math.floor(isTall(aspect) ? Math.min(room, chartWidth * TALL_PLOT_SHARE) : room));
   const height = titleHeight + titleGap + headroom + plotHeight + below;
   const box = placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot));
   const plotTop = titleHeight + titleGap + headroom;
