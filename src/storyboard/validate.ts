@@ -12,11 +12,13 @@ import {
   type Opening,
   type SafeProfile,
   type SceneShot,
+  type StoryboardOverlay,
   type SceneTransition,
   type Storyboard,
   type StoryboardScene,
   type StoryboardValidation,
 } from "./types";
+import { overlaysErrors } from "../overlays/errors";
 import { sceneComponents } from "./components";
 import { shotsErrors } from "./shots";
 import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
@@ -32,7 +34,7 @@ export function isVoiceSpeed(value: unknown): value is number {
   return typeof value === "number" && value >= MIN_VOICE_SPEED && value <= MAX_VOICE_SPEED;
 }
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "scenes"]);
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "scenes"]);
 const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "durationMs", "transition", "shots"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction"]);
 
@@ -224,6 +226,11 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (pronounce !== undefined) errors.push(...pronounceErrors(pronounce));
 
   const scenes = validateScenes(input.scenes, errors);
+  const { overlays } = input;
+  if (overlays !== undefined) {
+    const ids = Array.isArray(input.scenes) ? input.scenes.map((scene: unknown) => (isObject(scene) ? scene.id : undefined)).filter((id): id is string => typeof id === "string") : [];
+    errors.push(...overlaysErrors(overlays, ids));
+  }
 
   if (errors.length > 0) return { ok: false, errors };
   const storyboard: Storyboard = { title: title as string, aspect: aspect as Aspect, fps: fps as number, theme: theme as string, scenes };
@@ -236,5 +243,6 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (voice !== undefined) storyboard.voice = voice as string;
   if (voiceSpeed !== undefined) storyboard.voiceSpeed = voiceSpeed as number;
   if (pronounce !== undefined) storyboard.pronounce = pronounce as Record<string, string>;
+  if (overlays !== undefined) storyboard.overlays = overlays as StoryboardOverlay[];
   return { ok: true, storyboard };
 }
