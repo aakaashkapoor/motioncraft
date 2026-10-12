@@ -1,0 +1,369 @@
+{
+  "title": "What's new in motioncraft",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "captionStyle": "pill",
+  "voice": "af_heart",
+  "voiceSpeed": 1.1,
+  "pronounce": {
+    "motioncraft": "motion craft",
+    "Motioncraft": "Motion craft"
+  },
+  "overlays": [
+    {
+      "text": "Made with motioncraft",
+      "corner": "top-right",
+      "scenes": [
+        "decode",
+        "swap",
+        "tests",
+        "overnight",
+        "receipt",
+        "code",
+        "pipeline"
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "Headline",
+      "props": {
+        "lines": [
+          {
+            "text": "Made by motioncraft.",
+            "at": {
+              "word": "made"
+            }
+          },
+          {
+            "text": "Every frame.",
+            "at": {
+              "word": "every frame"
+            }
+          },
+          {
+            "text": "In code.",
+            "at": {
+              "word": "in code"
+            }
+          }
+        ],
+        "motion": "words",
+        "emphasis": 2
+      },
+      "narration": "This video was made by motioncraft. Every frame. In code.",
+      "transition": {
+        "type": "whipPan",
+        "direction": "left",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "decode",
+      "component": "ScrambleText",
+      "props": {
+        "text": "npm run render",
+        "style": "terminal",
+        "label": "one prompt in, one video out"
+      },
+      "narration": "One command, and it just learned a lot of new tricks.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "swap",
+      "component": "WordSwap",
+      "props": {
+        "prefix": "Now with",
+        "options": [
+          "charts",
+          "receipts",
+          "transitions",
+          "more"
+        ]
+      },
+      "narration": "Now with charts, receipts, new transitions, and more.",
+      "durationMs": 4200,
+      "transition": {
+        "type": "slide",
+        "direction": "left",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "tests",
+      "component": "BigNumber",
+      "props": {
+        "value": 3323,
+        "from": 1806,
+        "color": "positive",
+        "label": "tests passing",
+        "at": {
+          "word": "grew"
+        }
+      },
+      "narration": "Overnight, the test suite grew from eighteen hundred to over three thousand.",
+      "transition": {
+        "type": "iris",
+        "durationMs": 800
+      }
+    },
+    {
+      "id": "overnight",
+      "component": "DonutChart",
+      "props": {
+        "title": "What landed overnight",
+        "data": [
+          {
+            "label": "New features",
+            "value": 13,
+            "emphasis": true
+          },
+          {
+            "label": "HyperFrames ports",
+            "value": 11
+          },
+          {
+            "label": "Groundwork, 4:5 and docs",
+            "value": 3
+          }
+        ],
+        "center": {
+          "value": "27",
+          "label": "issues merged"
+        }
+      },
+      "narration": "Twenty seven issues, built, checked and merged by agents while we slept.",
+      "transition": {
+        "type": "slide",
+        "direction": "left",
+        "durationMs": 600
+      },
+      "durationMs": 6000
+    },
+    {
+      "id": "receipt",
+      "component": "Receipt",
+      "props": {
+        "title": "Trattoria Roma",
+        "items": [
+          {
+            "label": "Margherita pizza",
+            "amount": 14.5
+          },
+          {
+            "label": "Truffle pasta",
+            "amount": 22
+          },
+          {
+            "label": "Caesar salad",
+            "amount": 11.25,
+            "note": "no croutons"
+          },
+          {
+            "label": "Tiramisu",
+            "amount": 8
+          }
+        ],
+        "summary": [
+          {
+            "label": "Subtotal",
+            "amount": 55.75
+          },
+          {
+            "label": "Tip",
+            "amount": 10
+          }
+        ],
+        "total": {
+          "amount": 65.75
+        },
+        "highlight": 1
+      },
+      "narration": "It prints receipts, line by line, for when the story is about money.",
+      "durationMs": 7000,
+      "transition": {
+        "type": "wipe",
+        "direction": "left",
+        "durationMs": 700
+      }
+    },
+    {
+      "id": "compare",
+      "component": "BeforeAfter",
+      "props": {
+        "before": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Keyframe by hand",
+              "Export, again"
+            ]
+          }
+        },
+        "after": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Write one prompt",
+              "Render"
+            ],
+            "highlight": 1
+          }
+        },
+        "beforeLabel": "By hand",
+        "afterLabel": "With motioncraft"
+      },
+      "narration": "Before, every change meant animating by hand. Now it's one prompt, and a render.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 600
+      },
+      "durationMs": 6000
+    },
+    {
+      "id": "code",
+      "component": "Annotate",
+      "props": {
+        "text": "Every frame is drawn in code",
+        "mark": "drawn in code",
+        "markStyle": "circle",
+        "note": "no stock footage, no AI video"
+      },
+      "narration": "No stock footage, and no AI video. Every frame is drawn in code.",
+      "transition": {
+        "type": "slide",
+        "direction": "left",
+        "durationMs": 600
+      }
+    },
+    {
+      "id": "pipeline",
+      "component": "StepList",
+      "props": {
+        "title": "How it works",
+        "items": [
+          "Write a storyboard",
+          "Check every frame",
+          "Render the video"
+        ],
+        "shareIds": [
+          "write",
+          "check",
+          "render"
+        ]
+      },
+      "narration": "You write a storyboard. It checks every frame, then renders the video.",
+      "effects": [
+        {
+          "target": "check",
+          "kind": "ring",
+          "at": {
+            "word": "checks"
+          }
+        }
+      ],
+      "transition": {
+        "type": "zoomBlur",
+        "durationMs": 700
+      },
+      "durationMs": 5600
+    },
+    {
+      "id": "render",
+      "component": "Notification",
+      "props": {
+        "notifications": [
+          {
+            "app": "motioncraft",
+            "title": "Render finished",
+            "body": "whats-new.mp4 is ready to post",
+            "icon": "check",
+            "time": "now"
+          }
+        ],
+        "atMs": [
+          1600
+        ],
+        "content": {
+          "component": "TerminalWindow",
+          "props": {
+            "title": "render",
+            "lines": [
+              {
+                "prompt": true,
+                "text": "npm run render"
+              },
+              {
+                "text": "rendering on your machine..."
+              }
+            ]
+          }
+        }
+      },
+      "narration": "It all runs on your machine, and you get a file you can post.",
+      "transition": {
+        "type": "whipPan",
+        "direction": "left",
+        "durationMs": 600
+      },
+      "durationMs": 6600
+    },
+    {
+      "id": "formats",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Every format",
+        "headline": "Shorts, widescreen and feed",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              {
+                "icon": "play",
+                "title": "9:16",
+                "subtitle": "Shorts and TikTok"
+              },
+              {
+                "icon": "laptop",
+                "title": "16:9",
+                "subtitle": "Widescreen"
+              },
+              {
+                "icon": "file",
+                "title": "4:5",
+                "subtitle": "Feed posts"
+              }
+            ],
+            "highlight": 2
+          }
+        }
+      },
+      "narration": "Shorts, widescreen, and now four by five, for your feed.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 700
+      },
+      "durationMs": 5600
+    },
+    {
+      "id": "end",
+      "component": "EndCard",
+      "props": {
+        "name": "motioncraft",
+        "line": "Prompt in, video out",
+        "accent": "Open source, free forever",
+        "cta": {
+          "label": "Star it on GitHub",
+          "note": "github.com/aakaashkapoor/motioncraft"
+        }
+      },
+      "narration": "Motioncraft. Prompt in, video out. Open source, and free forever.",
+      "durationMs": 6000
+    }
+  ]
+}
