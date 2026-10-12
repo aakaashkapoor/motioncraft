@@ -96,6 +96,10 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
   },
   StrokeTrace: { icon: "zap", label: "Fast to render" },
   Annotate: { text: "Ship the story, not the spec", mark: "story", note: "what people remember", markStyle: "circle" },
+  BeforeAfter: {
+    before: { component: "StepList", props: { items: ["Write it by hand", "Wait for review"] } },
+    after: { component: "StepList", props: { items: ["Describe it", "Render"] } },
+  },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 

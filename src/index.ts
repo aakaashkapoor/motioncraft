@@ -128,6 +128,7 @@ export { NOTIFICATION_DROP_MS, NOTIFICATION_MAX, bannerPoses, dropProgress, noti
 export { RECEIPT_MAX_ITEMS, RECEIPT_MAX_SUMMARY, RECEIPT_MAX_TILT, receiptErrors, receiptLayout, receiptLines, receiptTiming, type ReceiptData, type ReceiptItem, type ReceiptLayout, type ReceiptLine, type ReceiptRow, type ReceiptTiming } from "./kit/receiptPlan";
 export { Annotate, type AnnotateProps } from "./kit/Annotate";
 export { ANNOTATE_MARK_STYLES, ANNOTATE_NOTE_MAX, ANNOTATE_NOTE_POSITIONS, annotateErrors, annotateLayout, annotateTiming, connectorStroke, markStroke, wrapText, type AnnotateData, type AnnotateLayout, type AnnotateMarkStyle, type AnnotateNotePosition, type AnnotateTiming, type AnnotateStroke } from "./kit/annotatePlan";
+export { BEFORE_AFTER_DIRECTIONS, BEFORE_AFTER_SPLIT_MAX, BEFORE_AFTER_SPLIT_MIN, BeforeAfter, beforeAfterClip, beforeAfterErrors, beforeAfterLayout, beforeAfterSplit, beforeAfterTiming, type BeforeAfterDirection, type BeforeAfterLayout, type BeforeAfterProps, type BeforeAfterTiming } from "./kit/BeforeAfter";
 export { receiptTotalWarnings } from "./checks/receiptTotals";
 export { STROKE_TRACE_MAX_PATHS, StrokeTrace, strokeTraceErrors, strokeTraceLayout, strokeTracePaths, strokeTraceTiming, type StrokeTraceLayout, type StrokeTraceProps, type StrokeTraceTiming } from "./kit/StrokeTrace";
 export { pathLength } from "./kit/pathLength";
