@@ -452,6 +452,20 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "stroke-trace",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A mark that draws itself",
+        "content": {
+          "component": "StrokeTrace",
+          "props": { "icon": "shield", "label": "Safe by default", "fill": true }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }
