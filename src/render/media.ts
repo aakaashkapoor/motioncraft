@@ -1,6 +1,6 @@
-// Real media for the renderer: finds the VideoClip and Image files a storyboard
-// uses, checks them before any browser starts (clear errors for missing or
-// unsupported files and bad props), resolves `durationMs: "clip"`, serves the
+// Real media for the renderer: finds the VideoClip and Image files (and the
+// EndCard and TitleCard logos) a storyboard uses, checks them before any
+// browser starts (clear errors for missing or unsupported files and bad props), resolves `durationMs: "clip"`, serves the
 // files to the render page (byte ranges, so the page can seek; never the
 // network), and lays out the clips' audio on the timeline for the audio mix (see audioPlan.ts).
 
@@ -9,7 +9,7 @@ import { access, open, readFile, stat } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import type { Page } from "playwright-core";
 import type { Timeline } from "../engine/timeline";
-import { MEDIA_URL_PREFIX, mediaSrc, NARRATION_URL_PREFIX, narrationFile, narrationFileName } from "../kit/mediaSource";
+import { LOGO_COMPONENTS, LOGO_TYPES, MEDIA_URL_PREFIX, mediaSrc, NARRATION_URL_PREFIX, narrationFile, narrationFileName } from "../kit/mediaSource";
 import type { SceneNarration } from "../narration/types";
 import { sceneComponents } from "../storyboard/components";
 import type { Storyboard } from "../storyboard/types";
@@ -40,15 +40,22 @@ const MP4_FAMILY = new Set([".mp4", ".m4v", ".mov"]);
 const MEDIA_COMPONENTS = { VideoClip: VIDEO_TYPES, Image: IMAGE_TYPES } as const;
 type MediaComponent = keyof typeof MEDIA_COMPONENTS;
 
-/** One VideoClip or Image in a scene. */
+/** One VideoClip or Image in a scene, or the `logo` of an EndCard or TitleCard. */
 export interface MediaUse {
   sceneId: string;
-  component: MediaComponent;
+  component: string;
+  /** The prop naming the file: `src`, or `logo`. */
+  prop: "src" | "logo";
   props: Record<string, unknown>;
-  /** The `src` prop as written, or undefined if missing. */
+  /** The file as written, or undefined if missing. */
   src: string | undefined;
   /** `src` resolved against the media directory. */
   path: string | undefined;
+}
+
+/** The file types a use may be, by extension, with the type they are served as. */
+function useTypes(use: MediaUse): Readonly<Record<string, string>> {
+  return use.prop === "logo" ? LOGO_TYPES : MEDIA_COMPONENTS[use.component as MediaComponent];
 }
 
 export class MediaError extends Error {
@@ -58,15 +65,16 @@ export class MediaError extends Error {
   }
 }
 
-/** Every VideoClip and Image in the storyboard, scene by scene. */
+/** Every VideoClip and Image in the storyboard, and every EndCard and TitleCard logo, scene by scene. */
 export function mediaUses(storyboard: Storyboard, mediaDir = process.cwd()): MediaUse[] {
   return storyboard.scenes.flatMap((scene) =>
-    sceneComponents(scene)
-      .filter((use): use is { component: MediaComponent; props: Record<string, unknown> } => Object.hasOwn(MEDIA_COMPONENTS, use.component))
-      .map(({ component, props }) => {
-        const src = typeof props.src === "string" && props.src.trim() !== "" ? props.src : undefined;
-        return { sceneId: scene.id, component, props, src, path: src === undefined ? undefined : resolve(mediaDir, src) };
-      }),
+    sceneComponents(scene).flatMap(({ component, props }): MediaUse[] => {
+      const prop = Object.hasOwn(MEDIA_COMPONENTS, component) ? "src" : LOGO_COMPONENTS.has(component) && props.logo !== undefined ? "logo" : undefined;
+      if (prop === undefined) return [];
+      const value = props[prop];
+      const src = typeof value === "string" && value.trim() !== "" ? value : undefined;
+      return [{ sceneId: scene.id, component, prop, props, src, path: src === undefined ? undefined : resolve(mediaDir, src) }];
+    }),
   );
 }
 
@@ -107,12 +115,13 @@ function imagePropErrors(props: Record<string, unknown>): string[] {
 
 /** Problems with one use's props and file type; does not touch the disk. */
 function useErrors(use: MediaUse): string[] {
-  if (use.src === undefined) return ["src is required: the path to a local file"];
-  const types = MEDIA_COMPONENTS[use.component];
+  if (use.src === undefined) return [`${use.prop} is required: the path to a local file`];
+  const types = useTypes(use);
   const ext = extname(use.src).toLowerCase();
-  const errors = use.component === "VideoClip" ? videoPropErrors(use.props) : imagePropErrors(use.props);
+  // A logo's other props are its component's own (see its prop check).
+  const errors = use.prop === "logo" ? [] : use.component === "VideoClip" ? videoPropErrors(use.props) : imagePropErrors(use.props);
   if (!Object.hasOwn(types, ext)) {
-    const kind = use.component === "VideoClip" ? "video" : "image";
+    const kind = use.prop === "logo" ? "logo" : use.component === "VideoClip" ? "video" : "image";
     errors.unshift(`unsupported ${kind} type "${ext || "(none)"}" for "${use.src}" (use ${Object.keys(types).join(", ")})`);
   }
   return errors;
@@ -170,7 +179,7 @@ export async function prepareMedia(input: MediaInput): Promise<PreparedMedia> {
     problems.push(...errors.map((e) => `${label(use)} ${e}`));
     if (errors.length > 0 || use.path === undefined) continue;
     const problem = await fileProblem(use.path);
-    if (problem !== undefined) problems.push(`${label(use)} src "${use.src}" ${problem} (looked for ${use.path})`);
+    if (problem !== undefined) problems.push(`${label(use)} ${use.prop} "${use.src}" ${problem} (looked for ${use.path})`);
   }
   if (problems.length > 0) throw new MediaError(problems);
 
@@ -301,7 +310,7 @@ export async function routeMedia(page: Page, storyboard: Storyboard, mediaDir?: 
   const files = new Map<string, { path: string; type: string }>();
   for (const use of mediaUses(storyboard, mediaDir)) {
     if (use.src === undefined || use.path === undefined) continue;
-    const type = MEDIA_COMPONENTS[use.component][extname(use.src).toLowerCase()];
+    const type = useTypes(use)[extname(use.src).toLowerCase()];
     if (type !== undefined) files.set(use.src, { path: use.path, type });
   }
 

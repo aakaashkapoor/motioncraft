@@ -100,17 +100,17 @@ export function checkThemeColors(storyboard: Storyboard, theme: Theme = resolveT
   return issues;
 }
 
-/** Errors on VideoClip and Image files that are missing or cannot be read, resolved against `mediaDir`. */
+/** Errors on VideoClip and Image files (and EndCard and TitleCard logos) that are missing or cannot be read, resolved against `mediaDir`. */
 export async function checkMediaFiles(storyboard: Storyboard, mediaDir?: string): Promise<StoryboardIssue[]> {
   const issues: StoryboardIssue[] = [];
   for (const use of mediaUses(storyboard, mediaDir)) {
     const add = (message: string) => issues.push({ check: "media", severity: "error", sceneId: use.sceneId, message: `${use.component} ${message}` });
     if (use.src === undefined || use.path === undefined) {
-      add("src is required: the path to a local file");
+      add(`${use.prop} is required: the path to a local file`);
       continue;
     }
     const problem = await fileProblem(use.path);
-    if (problem !== undefined) add(`src "${use.src}" ${problem} (looked for ${use.path})`);
+    if (problem !== undefined) add(`${use.prop} "${use.src}" ${problem} (looked for ${use.path})`);
   }
   return issues;
 }

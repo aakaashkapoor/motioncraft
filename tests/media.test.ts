@@ -5,7 +5,9 @@ import type { Page } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it, type TestContext } from "vitest";
 import { buildTimeline, lightTheme, validateStoryboard, type Storyboard } from "../src/index";
 import { BrowserNotFoundError } from "../src/render/browser";
-import { clipAudioPlan, MediaError, parseRange, prepareMedia } from "../src/render/media";
+import { checkMediaFiles } from "../src/checks/storyboard";
+import { endCardLayout } from "../src/kit/EndCard";
+import { clipAudioPlan, MediaError, mediaUses, parseRange, prepareMedia } from "../src/render/media";
 import { Mp4Writer } from "../src/render/mp4";
 import { readMp4DurationMs } from "../src/render/mp4Probe";
 import { showFrame, withRenderPage } from "../src/render/session";
@@ -323,5 +325,58 @@ describe("clipAudioPlan", () => {
       // The clip ends (at trimEnd) before the scene does.
       { sceneId: "long", src: "/abs/b.mp4", path: resolve("/abs/b.mp4"), startMs: 3000, durationMs: 1500, sourceStartMs: 0, rate: 1, muted: true },
     ]);
+  });
+});
+
+describe("logos", () => {
+  const brand = (component: string, props: Record<string, unknown>) => ({ id: component.toLowerCase(), component, props, durationMs: 1000 });
+
+  it("mediaUses finds EndCard and TitleCard logos, nested ones too, and nothing without one", () => {
+    const sb = storyboard({
+      scenes: [
+        brand("EndCard", { name: "x", logo: "brand/logo.png" }),
+        brand("TitleCard", { title: "x", logo: "logo.svg" }),
+        { id: "plain", component: "EndCard", props: { name: "x" }, durationMs: 1000 },
+        { id: "sec", component: "Section", props: { headline: "h", content: { component: "TitleCard", props: { title: "t", logo: "n.webp" } } }, durationMs: 1000 },
+      ],
+    });
+    const uses = mediaUses(sb, dir);
+    expect(uses.map((u) => [u.sceneId, u.component, u.prop, u.src])).toEqual([
+      ["endcard", "EndCard", "logo", "brand/logo.png"],
+      ["titlecard", "TitleCard", "logo", "logo.svg"],
+      ["sec", "TitleCard", "logo", "n.webp"],
+    ]);
+    expect(uses[0]!.path).toBe(resolve(dir, "brand/logo.png"));
+  });
+
+  it("checkMediaFiles (scripts/check.ts) reports a missing logo by its prop", async () => {
+    const issues = await checkMediaFiles(storyboard({ scenes: [brand("EndCard", { name: "x", logo: "gone/logo.png" })] }), dir);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]!.severity).toBe("error");
+    expect(issues[0]!.message).toMatch(/^EndCard logo "gone\/logo.png" not found/);
+    expect(issues[0]!.message).toContain(join(dir, "gone", "logo.png"));
+  });
+
+  it("prepareMedia rejects a missing logo and one that is not a PNG, JPG, SVG or WebP", async () => {
+    const sb = storyboard({ scenes: [brand("EndCard", { name: "x", logo: "missing.png" }), brand("TitleCard", { title: "x", logo: "anim.gif" })] });
+    const error = (await prepareMedia({ storyboard: sb, theme: lightTheme, durations: {}, mediaDir: dir }).catch((e: unknown) => e)) as Error;
+    expect(error).toBeInstanceOf(MediaError);
+    expect(error.message).toMatch(/scene "endcard": EndCard logo "missing.png" not found/);
+    expect(error.message).toMatch(/scene "titlecard": TitleCard unsupported logo type ".gif"/);
+    expect(error.message).not.toMatch(/\.avif/);
+  });
+
+  it("serves the logo to the page: the EndCard mark shows its pixels", { timeout: 60_000 }, async (ctx) => {
+    const RED: Rgb = [230, 40, 40];
+    await writeTestPng(join(dir, "red-logo.png"), 64, 64, () => RED);
+    const sb = storyboard({ aspect: "9:16", scenes: [{ id: "end", component: "EndCard", props: { name: "Splitly", logo: "red-logo.png" }, durationMs: 3000 }] });
+    const box = endCardLayout(lightTheme, "9:16", { name: "Splitly" });
+    // In 9:16 the mark sits centered above the name, at the top of the brand group.
+    const point = [540, Math.round(box.brand.y + box.markSize / 2)] as const;
+    const [luma] = await withRenderPage({ storyboard: sb, theme: lightTheme, durations: {}, mediaDir: dir }, async (page) => {
+      await showFrame(page, 60);
+      return lumasAt(page, await page.screenshot(), [point]);
+    }).catch(skipWithoutBrowser(ctx));
+    expect(Math.abs(luma! - (0.2126 * 230 + 0.7152 * 40 + 0.0722 * 40))).toBeLessThan(12);
   });
 });

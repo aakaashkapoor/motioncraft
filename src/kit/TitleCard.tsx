@@ -3,7 +3,9 @@
 // Long titles step down the type ramp until the card fits. Lands line by line
 // from the scene's lead: the kicker, then the title (as a whole by default, or
 // word by word for a hook; see `HeadlineText`), then the subtitle, each with a
-// short `text.in` rise; holds, then leaves upward, fast, at the end.
+// short `text.in` rise; holds, then leaves upward, fast, at the end. With a
+// `logo` (the brand's own image) a mark box sits above the text: it pops in on
+// the lead, and the text follows a beat later.
 
 import { blockCenterY, placeBlock } from "../layout/block";
 import { contentArea, textColumn } from "../layout/caption";
@@ -16,7 +18,9 @@ import { accentInk, headlineColor } from "../theme/roles";
 import { entering, useSceneTime } from "./frameContext";
 import { HeadlineText } from "./Headline";
 import { headlineTiming, headlineWords, linePose, wordLeaving, type HeadlineMotion, type MarkStyle } from "./headlineMotion";
-import { exitOpacity, fade } from "./motion";
+import { BrandMark } from "./BrandMark";
+import { logoErrors } from "./mediaSource";
+import { arrive, exitOpacity, fade } from "./motion";
 import type { KitProps } from "./types";
 
 export interface TitleCardProps extends KitProps {
@@ -31,19 +35,34 @@ export interface TitleCardProps extends KitProps {
   /** One word of the title marked by a sweep of the accent once it has landed. */
   mark?: string;
   markStyle?: MarkStyle;
+  /** The brand's own image (.png, .jpg, .jpeg, .svg or .webp), relative to the storyboard, in a mark box above the text. */
+  logo?: string;
+}
+
+/** Problems with a TitleCard's props (its own prop check); empty if fine. */
+export function titleCardErrors(props: Record<string, unknown>): string[] {
+  return logoErrors(props.logo, props.icon);
 }
 
 /** Title steps to try, largest first. */
 const TITLE_STEPS: readonly TypeRole[] = ["display", "headline", "title", "subtitle"];
 // Uppercase and widely tracked: wider than average text.
 const KICKER_CHAR_EM = 0.82;
+/** The logo's mark box is this share of the title's size across, as on the end card. */
+const MARK_EM = 0.95;
 
-type TitleText = Pick<TitleCardProps, "title" | "subtitle" | "kicker">;
+type TitleText = Pick<TitleCardProps, "title" | "subtitle" | "kicker" | "logo">;
+
+/** The side in px of the logo's mark box with the title at `step`. */
+export function titleCardMarkSize(theme: Theme, aspect: Aspect, step: TypeRole): number {
+  return Math.round(theme.type[step][aspect].size * MARK_EM);
+}
 
 /** Estimated height in px of the card's text with the title at `step`. */
 function estimateCardHeight(theme: Theme, aspect: Aspect, width: number, text: TitleText, step: TypeRole): number {
   const { spacing, type } = theme;
   let height = estimateTextHeight(text.title, width, type[step][aspect]);
+  if (text.logo !== undefined) height += titleCardMarkSize(theme, aspect, step) + spacing.md;
   if (text.kicker !== undefined) {
     height += spacing.md + estimateTextHeight(text.kicker, width, { ...type.eyebrow[aspect], charEm: KICKER_CHAR_EM });
   }
@@ -77,19 +96,25 @@ export function titleCardBox(theme: Theme, aspect: Aspect, text: TitleText, slot
   return { box: placeBlock(area, { width, height }, blockCenterY(theme, aspect, slot)), step };
 }
 
-export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle, kicker, titleMotion, emphasis, mark, markStyle }: TitleCardProps) {
-  const { box, step } = titleCardBox(theme, aspect, { title, subtitle, kicker }, slot);
+export function TitleCard(props: TitleCardProps) {
+  const errors = titleCardErrors(props as unknown as Record<string, unknown>);
+  if (errors.length > 0) throw new Error(`TitleCard: ${errors.join("; ")}`);
+  const { progress, theme, aspect, area: slot, title, subtitle, kicker, titleMotion, emphasis, mark, markStyle, logo } = props;
+  const { box, step } = titleCardBox(theme, aspect, { title, subtitle, kicker, logo }, slot);
   const scene = useSceneTime(progress);
   const time = entering(scene);
   const { leadMs, fx } = theme.motion;
   const textIn = theme.motion["text.in"];
   const opacity = Math.min(fade(fx, time.ms - leadMs), exitOpacity(theme, time, textIn.ms));
   const { colors, fonts, spacing, type } = theme;
-  // Line by line: the kicker on the lead, the title a line later, the subtitle a line after the title's last word.
-  const titleStart = leadMs + (kicker === undefined ? 0 : textIn.lineStaggerMs);
+  // Line by line: the logo pops in on the lead and the text starts two lines later;
+  // the kicker first, the title a line later, the subtitle a line after the title's last word.
+  const textStart = leadMs + (logo === undefined ? 0 : textIn.lineStaggerMs * 2);
+  const titleStart = textStart + (kicker === undefined ? 0 : textIn.lineStaggerMs);
   const titleWords = headlineTiming(theme, headlineWords(title), titleStart, titleMotion).words;
   const subtitleStart = (titleWords.at(-1) ?? titleStart) + textIn.lineStaggerMs;
   const leaving = wordLeaving(theme, 0, 1, time.leftMs);
+  const markIn = arrive(theme, time.ms, leadMs, theme.motion.pop);
   const lands = (spec: TypeSpec, start: number) => {
     const pose = linePose(theme, spec.size * spec.lineHeight, time.ms - start, leaving);
     return { opacity: pose.opacity, transform: `translateY(${pose.y}px)` };
@@ -112,6 +137,18 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
       }}
     >
       <div data-block="TitleCard" style={{ maxWidth: "100%" }}>
+        {logo !== undefined && (
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: spacing.md }}>
+            <BrandMark
+              theme={theme}
+              size={titleCardMarkSize(theme, aspect, step)}
+              logo={logo}
+              opacity={markIn.opacity * (1 - leaving)}
+              scale={markIn.move}
+              data={{ "data-title-part": "mark" }}
+            />
+          </div>
+        )}
         {kicker !== undefined && (
           <p
             style={{
@@ -122,7 +159,7 @@ export function TitleCard({ progress, theme, aspect, area: slot, title, subtitle
               textTransform: "uppercase",
               color: accentInk(theme),
               overflowWrap: "break-word",
-              ...lands(type.eyebrow[aspect], leadMs),
+              ...lands(type.eyebrow[aspect], textStart),
             }}
           >
             {kicker}

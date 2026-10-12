@@ -1,8 +1,10 @@
-// The media components and their pure helpers, re-exported together.
+// The media components (and the brand mark that draws a logo image) and their
+// pure helpers, re-exported together.
 
 export { VideoClip, type MediaFit, type VideoClipProps } from "./VideoClip";
 export { Image, kenBurns, type FocusPoint, type ImageProps, type KenBurnsOptions, type KenBurnsPan, type KenBurnsTransform, type KenBurnsZoom } from "./Image";
-export { clipMediaTime, mediaUrl, MEDIA_URL_PREFIX, SEEK_NUDGE_MS, type ClipTiming } from "./mediaSource";
+export { clipMediaTime, LOGO_COMPONENTS, LOGO_TYPES, logoErrors, mediaUrl, MEDIA_URL_PREFIX, SEEK_NUDGE_MS, type ClipTiming } from "./mediaSource";
+export { BrandMark, type BrandMarkProps } from "./BrandMark";
 
 /** Media fill whatever part of their frame is visible (see `useVisibleRect`) instead of laying out in an area. */
 export const FULL_BLEED_COMPONENTS: ReadonlySet<string> = new Set(["Image", "VideoClip"]);
