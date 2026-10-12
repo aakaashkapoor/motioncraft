@@ -1,0 +1,30 @@
+{
+  "title": "Brand font: a storyboard's own font for display and body (16:9)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "fonts": [{ "name": "Splitly Sans", "file": "media/brand-sans.woff2", "license": "OFL-1.1", "weights": [100, 900] }],
+  "themeOverrides": { "fonts": { "display": "Splitly Sans", "body": "Splitly Sans" } },
+  "scenes": [
+    {
+      "id": "title",
+      "component": "TitleCard",
+      "props": { "kicker": "Splitly", "title": "Split every bill in seconds", "subtitle": "No more awkward math at dinner" },
+      "durationMs": 4600,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "headline",
+      "component": "Headline",
+      "props": { "text": "Everyone pays their share", "motion": "words", "emphasis": "share" },
+      "durationMs": 3000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "cards",
+      "component": "CardRow",
+      "props": { "cards": [{ "icon": "file", "title": "Snap the bill" }, { "icon": "users", "title": "Tag who had what" }, { "icon": "check", "title": "Settle up" }] },
+      "durationMs": 4000
+    }
+  ]
+}

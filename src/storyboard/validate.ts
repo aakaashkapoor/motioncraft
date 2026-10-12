@@ -8,6 +8,7 @@ import {
   SLIDE_DIRECTIONS,
   TRANSITION_TYPES,
   type Aspect,
+  type BrandFont,
   type CaptionStyle,
   type Opening,
   type SafeProfile,
@@ -21,6 +22,7 @@ import {
   type StoryboardValidation,
 } from "./types";
 import { overlaysErrors } from "../overlays/errors";
+import { brandFontsErrors, fontOverrideErrors } from "./brandFonts";
 import { sceneComponents } from "./components";
 import { effectsErrors } from "./effects";
 import { shotsErrors } from "./shots";
@@ -38,7 +40,7 @@ export function isVoiceSpeed(value: unknown): value is number {
   return typeof value === "number" && value >= MIN_VOICE_SPEED && value <= MAX_VOICE_SPEED;
 }
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "scenes"]);
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "fonts", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "scenes"]);
 const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "audio", "durationMs", "transition", "shots", "effects"]);
 const AUDIO_FIELDS = new Set(["file", "words"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction", "origin"]);
@@ -246,8 +248,16 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   }
   if (!isPositiveInteger(fps)) errors.push(`fps must be a positive integer (got ${describe(fps)})`);
   if (!isNonEmptyString(theme)) errors.push("theme must be a non-empty string");
-  const { themeOverrides, accent, accentIntensity } = input;
-  if (themeOverrides !== undefined) errors.push(...themeOverridesErrors(themeOverrides));
+  const { fonts, themeOverrides, accent, accentIntensity } = input;
+  if (fonts !== undefined) errors.push(...brandFontsErrors(fonts));
+  if (themeOverrides !== undefined) {
+    const overrideErrors = themeOverridesErrors(themeOverrides);
+    errors.push(...overrideErrors);
+    if (overrideErrors.length === 0) {
+      const brandNames = Array.isArray(fonts) ? fonts.flatMap((f: unknown) => (isObject(f) && isNonEmptyString(f.name) ? [f.name] : [])) : [];
+      errors.push(...fontOverrideErrors(themeOverrides, brandNames));
+    }
+  }
   const accentProblem = accent === undefined ? undefined : colorError("accent", accent);
   if (accentProblem !== undefined) errors.push(accentProblem);
   const intensityProblem = accentIntensity === undefined ? undefined : accentIntensityError("accentIntensity", accentIntensity);
@@ -288,6 +298,7 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
 
   if (errors.length > 0) return { ok: false, errors };
   const storyboard: Storyboard = { title: title as string, aspect: aspect as Aspect, fps: fps as number, theme: theme as string, scenes };
+  if (fonts !== undefined) storyboard.fonts = fonts as BrandFont[];
   if (themeOverrides !== undefined) storyboard.themeOverrides = themeOverrides as ThemeOverrides;
   if (accent !== undefined) storyboard.accent = accent as string;
   if (accentIntensity !== undefined) storyboard.accentIntensity = accentIntensity as AccentIntensity;

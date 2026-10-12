@@ -257,16 +257,17 @@ export function mountPage(): void {
     },
   });
 
-  // Load every bundled family at every kit weight up front: a weight no frame
-  // has used yet must not be missing (or silently replaced) when one first does.
+  // Load every bundled family at every kit weight up front, and the
+  // storyboard's brand faces: a weight no frame has used yet must not be
+  // missing (or silently replaced) when one first does.
   const fontsHandle = pageGate.delayRender("bundled fonts");
   let fontsLoaded = false;
-  loadFonts(fontLoadRequests(), (font) => document.fonts.load(font)).then(
+  loadFonts(fontLoadRequests(storyboard.fonts), (font) => document.fonts.load(font)).then(
     () => {
       fontsLoaded = true;
       pageGate.continueRender(fontsHandle);
     },
-    (error: unknown) => pageGate.cancelRender(new Error(`a bundled font failed to load: ${String(error)}`)),
+    (error: unknown) => pageGate.cancelRender(new Error(`a bundled or brand font failed to load: ${String(error)}`)),
   );
 
   // Shared elements are measured on an invisible stage beside the frame: A at

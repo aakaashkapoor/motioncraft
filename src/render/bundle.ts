@@ -4,7 +4,7 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { fontFaceCss } from "./fonts";
+import { brandFontFaceCss, fontFaceCss } from "./fonts";
 import { INPUT_ELEMENT_ID, ROOT_ELEMENT_ID, type PageInput } from "./page";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -58,8 +58,8 @@ export function pageHtml(js: string, input: PageInput, css = ""): string {
   ].join("");
 }
 
-/** The complete render page for `input`, as a single HTML string. */
+/** The complete render page for `input`, as a single HTML string, with the bundled fonts and the storyboard's brand fonts. */
 export async function bundlePage(input: PageInput): Promise<string> {
-  const [js, css] = await Promise.all([pageScript(), fontFaceCss()]);
-  return pageHtml(js, input, css);
+  const [js, css, brandCss] = await Promise.all([pageScript(), fontFaceCss(), brandFontFaceCss(input.storyboard.fonts, input.mediaDir)]);
+  return pageHtml(js, input, css + brandCss);
 }
