@@ -13,9 +13,10 @@ import { mediaSrc } from "../kit/mediaSource";
 import { frameSize } from "../layout/frame";
 import { browserLabel } from "./browser";
 import type { SceneNarration } from "../narration/types";
-import { AUDIO_FRAME_SAMPLES, chunkTicks, type EncodedAudio } from "./audioEncode";
+import { AUDIO_BITRATE, AUDIO_FRAME_SAMPLES, chunkTicks, type EncodedAudio } from "./audioEncode";
 import { audioPlan, type AudioPlan } from "./audioPlan";
-import { planFrame, type EncodedChunk } from "./encode";
+import { MIN_VIDEO_BITRATE, videoBitrateFor } from "./budget";
+import { planFrame, VIDEO_BITRATE, type EncodedChunk } from "./encode";
 import { clipAudioPlan, prepareMedia } from "./media";
 import { Mp4Writer, type Mp4AudioTrack, type Mp4Track } from "./mp4";
 import type { PageInput } from "./page";
@@ -32,7 +33,11 @@ export interface VideoOptions extends Omit<PageInput, "narration"> {
   narration?: Record<string, SceneNarration>;
   /** The .mp4 file to write. */
   out: string;
+  /** Size budget in MB (1024 * 1024 bytes): the video bitrate is chosen to fit. Absent or 0: `VIDEO_BITRATE`, no budget. */
+  maxMb?: number;
   onProgress?: (progress: VideoProgress) => void;
+  /** Told before encoding when the budget can't be met at an acceptable quality. */
+  onWarning?: (message: string) => void;
 }
 
 export interface VideoResult {
@@ -45,6 +50,8 @@ export interface VideoResult {
   bytes: number;
   /** The codec string the browser encoded with, e.g. "avc1.64002A". */
   codec: string;
+  /** The video bitrate the encoder was given, in bits per second. */
+  videoBitrate: number;
   /** The codec string of the audio track ("mp4a.40.2" or "opus"); absent when the MP4 has no audio. */
   audioCodec?: string;
   /** VideoClip files (`src` as written) that were unmuted but have no audio track, so left out of the mix. */
@@ -120,6 +127,20 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
   const plan = audioPlan(timeline, theme, options.narration ?? {}, clipAudioPlan(storyboard, timeline, input.mediaDir, sourceDurationsMs));
   const { fps, totalFrames } = timeline;
   const { width, height } = frameSize(storyboard.aspect);
+  const budgeted = options.maxMb !== undefined && options.maxMb > 0;
+  const videoBitrate = budgeted
+    ? videoBitrateFor({
+        durationSeconds: totalFrames / fps,
+        maxBytes: options.maxMb! * 1024 * 1024,
+        audioBitrate: plan.sources.length === 0 ? 0 : AUDIO_BITRATE,
+      })
+    : VIDEO_BITRATE;
+  if (budgeted && videoBitrate <= MIN_VIDEO_BITRATE) {
+    options.onWarning?.(
+      `warning: ${(totalFrames / fps).toFixed(1)} s does not fit in ${options.maxMb} MB at an acceptable quality; ` +
+        `encoding at the minimum ${MIN_VIDEO_BITRATE / 1000} kbps, so the file will likely be over budget (raise --max-mb, or 0 for no budget)`,
+    );
+  }
   await mkdir(dirname(out), { recursive: true });
 
   return withRenderPage(input, async (page) => {
@@ -127,6 +148,8 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
       width,
       height,
       fps,
+      bitrate: videoBitrate,
+      constantBitrate: budgeted,
     });
     if (start.codec === null) throw new UnsupportedCodecError(browserLabel(page.context().browser()!), start.tried);
     const codec = start.codec;
@@ -188,6 +211,7 @@ export async function renderVideo(options: VideoOptions): Promise<VideoResult> {
       durationMs: (totalFrames * 1000) / fps,
       bytes: (await stat(out)).size,
       codec,
+      videoBitrate,
       ...(audioCodec === undefined ? {} : { audioCodec }),
       ...(audioSkipped.length === 0 ? {} : { audioSkipped }),
       audio: plan,
