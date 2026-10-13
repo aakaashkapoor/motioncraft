@@ -14,7 +14,7 @@ headlines, cards, diagrams and code highlights, exported as MP4.
 
 Made with motioncraft: a coding agent wrote the storyboard, and every frame is drawn in code and narrated by a local voice.
 
-WELCOME_VIDEO_URL
+https://github.com/user-attachments/assets/31121f52-5631-46c2-bf4a-354c359d6f23
 
 https://github.com/user-attachments/assets/38b67e34-dff9-48f7-a354-02cc4d657d85
 
