@@ -2,7 +2,7 @@
 // line up with the sound and the gap between sentences is the one we add. Pure.
 
 /** A sample this loud or louder (full scale is 1) is speech. */
-const SPEECH_LEVEL = 0.01;
+export const SPEECH_LEVEL = 0.01;
 const LEAD_MARGIN_MS = 30;
 const TAIL_MARGIN_MS = 60;
 
