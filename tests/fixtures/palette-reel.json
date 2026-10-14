@@ -1,0 +1,55 @@
+{
+  "title": "Palette reel, 16:9: five flat colour fields hard-cutting (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "light",
+  "palette": "reel",
+  "scenes": [
+    {
+      "id": "open",
+      "component": "TitleCard",
+      "props": { "kicker": "Motion reel", "title": "Five colours", "subtitle": "One palette, every beat" },
+      "ground": "ground",
+      "durationMs": 3500,
+      "transition": { "type": "wipe", "direction": "left" }
+    },
+    {
+      "id": "stat",
+      "component": "BigNumber",
+      "props": { "value": 5, "label": "colours shared by every scene" },
+      "ground": "p1",
+      "durationMs": 3000,
+      "transition": { "type": "iris" }
+    },
+    {
+      "id": "hook",
+      "component": "Headline",
+      "props": { "text": "Flat fields, hard cuts", "motion": "words", "emphasis": "hard cuts" },
+      "ground": "p2",
+      "durationMs": 3000,
+      "transition": { "type": "whipPan", "direction": "left" }
+    },
+    {
+      "id": "cards",
+      "component": "CardRow",
+      "props": {
+        "cards": [
+          { "icon": "sparkles", "title": "Ground", "subtitle": "Sixty percent" },
+          { "icon": "box", "title": "Support", "subtitle": "Thirty percent" },
+          { "icon": "zap", "title": "Accent", "subtitle": "Ten percent" }
+        ],
+        "highlight": 2
+      },
+      "ground": "p3",
+      "durationMs": 4000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "end",
+      "component": "Headline",
+      "props": { "text": "Cut, never fade", "motion": "words", "emphasis": "never" },
+      "ground": "p4",
+      "durationMs": 2500
+    }
+  ]
+}

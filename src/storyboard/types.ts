@@ -3,7 +3,21 @@
 
 import type { Cue } from "../kit/cues";
 import type { ColorRole } from "../theme/roles";
-import type { AccentIntensity, ThemeOverrides } from "../theme/types";
+import type { Harmony } from "../theme/color";
+import type { PalettePreset } from "../theme/palettes";
+import { PALETTE_ROLES, type AccentIntensity, type PaletteRole, type ThemeOverrides } from "../theme/types";
+
+export type { PalettePreset };
+
+/**
+ * A storyboard's palette: a curated preset by name (see `PALETTE_PRESETS`), or
+ * swatches derived from one brand color with a harmony (see `derivePalette`).
+ */
+export type PaletteSpec = PalettePreset | { from: string; harmony: Harmony };
+
+/** What a scene stands on: the theme's ground, or a palette swatch as a flat field. */
+export const SCENE_GROUNDS = ["ground", ...PALETTE_ROLES] as const;
+export type SceneGround = "ground" | PaletteRole;
 
 export const ASPECTS = ["9:16", "16:9", "4:5"] as const;
 export type Aspect = (typeof ASPECTS)[number];
@@ -156,6 +170,15 @@ export interface StoryboardScene {
   shots?: SceneShot[];
   /** Rings, highlights, shakes and pulses on the scene's elements, each at its cue. */
   effects?: SceneEffect[];
+  /**
+   * What the scene stands on. `"ground"` (the default) is the theme's ground; a
+   * palette role (`"p2"`) fills the whole frame with that swatch, and every
+   * component on it draws its text in the swatch's ink (`onP2`). The theme's
+   * ground style still draws over the field. Needs a top-level `palette` that
+   * has the role. Between two different grounds, a crossfade (fade, zoomBlur,
+   * slide) becomes a hard cut at its midpoint.
+   */
+  ground?: SceneGround;
 }
 
 export const OVERLAY_CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
@@ -219,6 +242,12 @@ export interface Storyboard {
   accent?: string;
   /** Shortcut for `themeOverrides.accentIntensity`. */
   accentIntensity?: AccentIntensity;
+  /**
+   * Curated preset or a palette derived from one brand color; see
+   * `resolveTheme`. Its p1 becomes the accent; an `accent` set alongside it
+   * becomes p1 instead, shifting the other swatches down.
+   */
+  palette?: PaletteSpec;
   /** The 9:16 safe profile. Defaults to the theme's (`shorts` in every built-in theme). */
   safe?: SafeProfile;
   /** How narration is captioned. Defaults to `standard`. */

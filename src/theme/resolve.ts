@@ -1,16 +1,18 @@
 // Turns a storyboard's theme choice into the theme its frames use: the named
-// built-in theme, with `themeOverrides` deep-merged over it, then the `accent`
-// and `accentIntensity` shortcuts, and the `safe` profile. Any color is allowed; the layer-1 checks
+// built-in theme, a palette preset's neutrals, `themeOverrides` deep-merged
+// over them, the palette's swatches, then the `accent` and `accentIntensity`
+// shortcuts, and the `safe` profile. Any color is allowed; the layer-1 checks
 // judge contrast in the rendered frames, so nothing is blocked here. Font
 // overrides name fonts; they resolve to private families (see `resolveFontStack`).
 
 import type { Storyboard } from "../storyboard/types";
-import { mixColors } from "./color";
 import { contrastRatio, roleColorIssues } from "./contrast";
+import { fieldColors } from "./field";
 import { darkTheme } from "./dark";
 import { resolveFontStack } from "./fontStack";
 import { lightTheme } from "./light";
 import { neutralTheme } from "./neutral";
+import { buildPalette, leadWith, paletteColors, paletteNeutrals } from "./palettes";
 import type { Theme, ThemeColors, ThemeFonts } from "./types";
 
 /** Themes a storyboard can name in its `theme` field. */
@@ -69,47 +71,14 @@ function fillTexts(overrides: Partial<ThemeColors> | undefined, colors: ThemeCol
 }
 
 /**
- * `fg` faded toward `bg` by up to `amount`, but only as far as it stays at
- * `min` contrast on every one of `backgrounds` (not at all if it never does).
- */
-function fadeWithin(fg: string, bg: string, amount: number, backgrounds: readonly string[], min: number): string {
-  for (let a = amount; a > 0; a -= 0.05) {
-    const color = mixColors(fg, bg, a);
-    if (backgrounds.every((b) => contrastRatio(color, b) >= min)) return color;
-  }
-  return fg;
-}
-
-/**
  * Accent as the ground: the old accent fills the frame, text takes the old
  * `accentText`, surfaces are tints of the accent away from the text, and
  * accent elements flip to the old `accentText` fill labelled in the old
- * accent. Muted text fades toward the accent only while it keeps AA.
+ * accent (with a palette, to the swatch that stands out most on it). Muted
+ * text fades toward the accent only while it keeps AA. See `fieldColors`.
  */
 function fullAccent(colors: ThemeColors): ThemeColors {
-  const { accent, accentText } = colors;
-  // Tint surfaces toward whichever neutral is furthest from the text, so cards keep their contrast.
-  const away = [colors.text, colors.ground, colors.surface].reduce((best, c) =>
-    contrastRatio(c, accentText) > contrastRatio(best, accentText) ? c : best,
-  );
-  const surface = mixColors(accent, away, 0.16);
-  const surfaceAlt = mixColors(accent, away, 0.26);
-  return {
-    ground: accent,
-    surface,
-    surfaceAlt,
-    text: accentText,
-    textMuted: fadeWithin(accentText, accent, 0.2, [accent, surface], AA),
-    textSubtle: fadeWithin(accentText, accent, 0.4, [accent], 3),
-    accent: accentText,
-    accentText: accent,
-    positive: colors.positive,
-    positiveText: colors.positiveText,
-    negative: colors.negative,
-    negativeText: colors.negativeText,
-    border: mixColors(accent, accentText, 0.3),
-    shadow: colors.shadow,
-  };
+  return fieldColors(colors, colors.accent, colors.accentText);
 }
 
 /** The theme's fonts with each overridden stack resolved against the storyboard's brand fonts. */
@@ -122,10 +91,29 @@ function overriddenFonts(fonts: ThemeFonts, overrides: Partial<ThemeFonts> | und
   return out;
 }
 
-/** The theme a storyboard renders with, or a built-in theme by name. */
-export function resolveTheme(source: string | Pick<Storyboard, "theme" | "themeOverrides" | "accent" | "accentIntensity" | "safe" | "fonts">): Theme {
+/**
+ * `colors` with the palette `spec` laid over it: its swatches (`accent`, when
+ * given, first and the rest shifted down), each with its ink, p1 as the accent
+ * and its ink as `accentText` unless the overrides set one.
+ */
+function withPalette(colors: ThemeColors, spec: NonNullable<Storyboard["palette"]>, accent: string | undefined, accentTextOverride: string | undefined): ThemeColors {
+  const swatches = paletteColors(spec, accent ?? colors.accent);
+  const palette = buildPalette(accent === undefined ? swatches : leadWith(swatches, accent), colors);
+  return { ...colors, palette, accent: palette.p1, accentText: accentTextOverride ?? palette.onP1 };
+}
+
+/**
+ * The theme a storyboard renders with, or a built-in theme by name. Order: the
+ * named theme, a palette preset's neutrals, `themeOverrides`, the palette's
+ * swatches and inks (p1 is the accent; `accent` becomes p1), the `accent`
+ * shortcut without a palette, then accent intensity and the safe profile.
+ */
+export function resolveTheme(
+  source: string | Pick<Storyboard, "theme" | "themeOverrides" | "accent" | "accentIntensity" | "safe" | "fonts" | "palette">,
+): Theme {
   if (typeof source === "string") return namedTheme(source);
-  const base = namedTheme(source.theme);
+  const named = namedTheme(source.theme);
+  const base = source.palette === undefined ? named : { ...named, colors: { ...named.colors, ...paletteNeutrals(source.palette) } };
   const overrides = source.themeOverrides ?? {};
   let theme: Theme = deepMerge(base, overrides);
   if (overrides.fonts !== undefined) {
@@ -133,7 +121,9 @@ export function resolveTheme(source: string | Pick<Storyboard, "theme" | "themeO
   }
 
   const accent = source.accent ?? overrides.colors?.accent;
-  if (accent !== undefined) {
+  if (source.palette !== undefined) {
+    theme = { ...theme, colors: withPalette(theme.colors, source.palette, accent, overrides.colors?.accentText) };
+  } else if (accent !== undefined) {
     const accentText = overrides.colors?.accentText ?? readableOn(accent, theme.colors);
     theme = { ...theme, colors: { ...theme.colors, accent, accentText } };
   }

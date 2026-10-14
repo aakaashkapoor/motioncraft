@@ -1,18 +1,22 @@
 // Layer-1 checks on the storyboard itself, before any frame is drawn (design
 // v2, section 7): every scene boundary has a chosen transition, colors in props
-// come from the theme's tokens (or the storyboard's overrides), and media files
-// exist and can be read. Warnings are advice; errors stop the render.
+// come from the theme's tokens (or the storyboard's overrides), media files
+// exist and can be read, and the palette rules hold (see palette.ts). Warnings
+// are advice; errors stop the render.
 
 import { HEX_COLOR } from "../theme/color";
 import { resolveTheme } from "../theme/resolve";
+import { paletteSwatches } from "../theme/palettes";
 import type { Theme } from "../theme/types";
 import { fileProblem, mediaUses } from "../render/media";
 import { ownValue } from "../engine/timeline";
 import type { SceneNarration } from "../narration/types";
 import { narrationTailMs } from "../render/durations";
 import type { Storyboard } from "../storyboard/types";
+import { checkFieldCuts, checkPaletteArea } from "./palette";
+import { COLOR_KEY, CSS_COLOR_FUNCTION, normalizeHex, propStrings } from "./propColors";
 
-export const STORYBOARD_CHECK_NAMES = ["transition", "theme-color", "media", "narration-fit"] as const;
+export const STORYBOARD_CHECK_NAMES = ["transition", "theme-color", "media", "narration-fit", "palette-area", "field-cut"] as const;
 export type StoryboardCheckName = (typeof STORYBOARD_CHECK_NAMES)[number];
 
 export type Severity = "error" | "warn";
@@ -41,31 +45,12 @@ export function checkTransitions(storyboard: Storyboard, theme: Theme = resolveT
   );
 }
 
-/** Prop keys that hold a color. */
-const COLOR_KEY = /(colou?r|background|fill|stroke|tint)$/i;
-/** CSS color syntax other than hex, which can never match a hex token. */
-const CSS_COLOR_FUNCTION = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/i;
-
-/** `#abc` → `#aabbcc`, lower case. */
-function normalizeHex(color: string): string {
-  const hex = color.trim().toLowerCase().slice(1);
-  return `#${hex.length === 3 ? [...hex].map((c) => c + c).join("") : hex}`;
-}
-
 /** Hex colors a storyboard may use: the resolved theme's, plus any it set itself. */
 function allowedColors(storyboard: Storyboard, theme: Theme): Set<string> {
-  const colors = [...Object.values(theme.colors), ...Object.values(storyboard.themeOverrides?.colors ?? {})];
+  const palette = theme.colors.palette === undefined ? [] : Object.values(theme.colors.palette);
+  const colors = [...Object.values(theme.colors), ...palette, ...Object.values(storyboard.themeOverrides?.colors ?? {})];
   if (storyboard.accent !== undefined) colors.push(storyboard.accent);
   return new Set(colors.filter((c): c is string => typeof c === "string" && HEX_COLOR.test(c)).map(normalizeHex));
-}
-
-/** Every string in `value` with its path, e.g. `messages[0].avatar.color`. */
-function strings(value: unknown, path: string, key: string, found: Array<{ path: string; key: string; value: string }>): void {
-  if (typeof value === "string") found.push({ path, key, value });
-  else if (Array.isArray(value)) value.forEach((item, i) => strings(item, `${path}[${i}]`, key, found));
-  else if (typeof value === "object" && value !== null) {
-    for (const [k, child] of Object.entries(value)) strings(child, path === "" ? k : `${path}.${k}`, k, found);
-  }
 }
 
 /**
@@ -76,12 +61,14 @@ function strings(value: unknown, path: string, key: string, found: Array<{ path:
  */
 export function checkThemeColors(storyboard: Storyboard, theme: Theme = resolveTheme(storyboard)): StoryboardIssue[] {
   const allowed = allowedColors(storyboard, theme);
-  const roles = new Set(Object.keys(theme.colors));
+  const roles = new Set(Object.keys(theme.colors).filter((key) => key !== "palette"));
+  const { palette } = theme.colors;
+  // Components take no palette role names, so a swatch goes in by its hex.
+  const paletteHint =
+    palette === undefined ? "" : `; a palette swatch goes in by its hex (${paletteSwatches(palette).map((s) => `${s.role} ${s.color}`).join(", ")})`;
   const issues: StoryboardIssue[] = [];
   for (const scene of storyboard.scenes) {
-    const found: Array<{ path: string; key: string; value: string }> = [];
-    strings(scene.props, "", "", found);
-    for (const { path, key, value } of found) {
+    for (const { path, key, value } of propStrings(scene.props)) {
       const trimmed = value.trim();
       const isHex = HEX_COLOR.test(trimmed);
       const bad = CSS_COLOR_FUNCTION.test(trimmed) || (COLOR_KEY.test(key) && (isHex ? !allowed.has(normalizeHex(trimmed)) : !roles.has(trimmed)));
@@ -93,7 +80,8 @@ export function checkThemeColors(storyboard: Storyboard, theme: Theme = resolveT
         message:
           `props.${path} ${JSON.stringify(value)} is not one of the theme's colors; ` +
           `use a role name (${[...roles].join(", ")}) where the prop takes one, leave it out for the theme default, ` +
-          `or set the color in the storyboard ("accent" or "themeOverrides.colors")`,
+          `or set the color in the storyboard ("accent" or "themeOverrides.colors")` +
+          paletteHint,
       });
     }
   }
@@ -155,6 +143,8 @@ export async function checkStoryboard(storyboard: Storyboard, options: CheckStor
     ...(await checkMediaFiles(storyboard, options.mediaDir)),
     ...checkTransitions(storyboard, theme),
     ...checkThemeColors(storyboard, theme),
+    ...checkPaletteArea(storyboard, theme),
+    ...checkFieldCuts(storyboard, theme),
     ...(options.narration === undefined ? [] : checkNarrationFit(storyboard, options.narration, theme)),
   ];
   return [...issues.filter((i) => i.severity === "error"), ...issues.filter((i) => i.severity === "warn")];

@@ -12,7 +12,7 @@ import { readTarget } from "../camera/measure";
 import { cameraAt, type CameraMode, type CameraTargets, type SceneTargets, type ShotTargetBox } from "../camera/shots";
 import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
 import type { FrameMeasurement } from "../checks/types";
-import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type SceneDurations, type Timeline } from "../engine/timeline";
+import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type FrameInfo, type SceneDurations, type Timeline } from "../engine/timeline";
 import { Caption } from "../kit";
 import { sceneComponent } from "../kit/internal";
 import type { PageNarration } from "../narration/types";
@@ -24,12 +24,15 @@ import { frameSize } from "../layout/frame";
 import { Overlays } from "../overlays/Overlays";
 import { sceneAreaUnderOverlays } from "../overlays/sceneHeaders";
 import { WIDE_SHOT, opensSettled, type Storyboard, type StoryboardScene } from "../storyboard/types";
+import { sceneTheme } from "../theme/field";
 import type { Theme } from "../theme/types";
-import { transitionOverlay, transitionStyle } from "../transitions";
+import { transitionOverlay } from "../transitions";
 import { morphEndpoints, morphProgress, sharedIds, type BoundaryMeasurement, type SharedMeasurements } from "../transitions/shared";
 import { mixAndEncodeAudio, type EncodedAudio } from "./audioEncode";
 import type { AudioPlan } from "./audioPlan";
 import { createPageEncoder, type PageEncoder } from "./encode";
+import { cutsAtMidpoint, sceneGround } from "./fieldCut";
+import { fieldTransitionStyle } from "./fieldWipe";
 import { fontLoadRequests } from "./fontFaces";
 import { domImages, loadFonts, pageGate, waitUntilReady } from "./ready";
 import { SHARED_SCENE_ATTRIBUTE, SharedMorph } from "./SharedMorph";
@@ -91,6 +94,10 @@ interface SceneLayerProps {
   narration?: PageInput["narration"];
   /** Draw the scene's effects (default). Off on the measuring stage, so boxes are measured at rest. */
   effects?: boolean;
+  /** Paint the scene's own opaque field (its ground colour and ground style) beneath it: on during a transition between scenes on different grounds. */
+  field?: boolean;
+  /** Milliseconds into the video, for the field's moving ground style. */
+  ms?: number;
 }
 
 /** A scene's narration words on its clock, for word cues: the voice's words, or an even estimate without cached audio. */
@@ -100,11 +107,13 @@ function wordsOf(theme: Theme, scene: StoryboardScene, sceneFrames: number, fps:
 
 /**
  * One scene's component, in its camera's world, and its caption, which stays
- * fixed. During a transition, wrapped in its presentation's style, with the
- * presentation's overlay (iris's ring) drawn above it.
+ * fixed, all in the scene's field theme (see `sceneTheme`). With `field`, on
+ * its own opaque field. During a transition, wrapped in its presentation's
+ * style, with the presentation's overlay (iris's ring) drawn above it.
  */
-function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false, targets, effectTargets, camera, narration, effects = true }: SceneLayerProps) {
+function SceneLayer({ storyboard, theme: frameTheme, fps, scene: active, hideShared = false, targets, effectTargets, camera, narration, effects = true, field = false, ms = 0 }: SceneLayerProps) {
   const scene = storyboard.scenes[active.sceneIndex]!;
+  const theme = sceneTheme(frameTheme, scene);
   const Component = sceneComponent(scene.component);
   if (Component === undefined) {
     throw new Error(`scene "${scene.id}": unknown component "${scene.component}"`);
@@ -126,7 +135,7 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
   // Word cues resolve against these: the voice's words, or an even estimate without cached audio.
   const words = wordsOf(theme, scene, active.sceneFrames, fps, narration);
   const drawEffects = effects && camera !== "wide" && scene.effects !== undefined && scene.effects.length > 0;
-  const content = (
+  const scenery = (
     <SceneClockContext.Provider value={{ fps, frame: active.localFrame, frames: active.sceneFrames, settled: opensSettled(storyboard, active.sceneIndex) }}>
       <SceneWordsContext.Provider value={words}>
         <CameraWorld view={view} aspect={aspect} {...(drawEffects ? { effects: scene.id } : {})}>
@@ -141,8 +150,18 @@ function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false,
       )}
     </SceneClockContext.Provider>
   );
+  // The field is opaque and full-frame and the text sits inside it, so the contrast check reads the field beneath the text.
+  const content = field ? (
+    <div data-field={scene.ground ?? "ground"} style={{ position: "absolute", inset: 0, backgroundColor: theme.colors.ground }}>
+      <Ground theme={theme} aspect={aspect} ms={ms} />
+      {scenery}
+    </div>
+  ) : (
+    scenery
+  );
   if (active.transition === undefined) return content;
-  const style = transitionStyle(active.transition, frameSize(aspect));
+  // Between two fields a wipe has a hard edge, so the swatches never blend.
+  const style = fieldTransitionStyle(active.transition, frameSize(aspect), field);
   const overlay = transitionOverlay(active.transition, frameSize(aspect), theme.colors.accent);
   const marker = hideShared ? { [SHARED_SCENE_ATTRIBUTE]: "" } : {};
   return (
@@ -165,31 +184,73 @@ function morphAt(info: ReturnType<typeof frameAt>, shared: SharedMeasurements | 
   return ids.length === 0 ? undefined : { boundary, measurement, ids };
 }
 
+/** Whether `info` is inside a transition between two fields that cuts at its midpoint (see `cutsAtMidpoint`). */
+function cutsHere(storyboard: Storyboard, theme: Theme, info: FrameInfo): boolean {
+  return info.pair !== undefined && cutsAtMidpoint(storyboard, info.sceneIndex - 1, theme);
+}
+
+/**
+ * The scenes drawn at `info`: both during a transition, except across a
+ * field-to-field crossfade (`cut`), which shows the outgoing scene alone
+ * before its midpoint and the incoming one from there, neither styled by the
+ * transition. The incoming scene's clock still runs from the transition's
+ * start, so a cut skips the first half of its entrance.
+ */
+function scenesDrawn(info: FrameInfo, cut: boolean): ActiveScene[] {
+  if (!cut) return scenesOnScreen(info);
+  const [outgoing, incoming] = info.pair!;
+  // The transition state is dropped: the shown scene is drawn as if no transition ran.
+  const { transition: _discarded, ...shown } = outgoing.transition!.transitionProgress < 0.5 ? outgoing : incoming;
+  return [shown];
+}
+
+/** The scene that reads as on screen: the one drawn, or during a transition the outgoing one until its midpoint, then the incoming one. */
+function shownScene(drawn: readonly ActiveScene[]): ActiveScene {
+  const [first, second] = drawn as [ActiveScene, ActiveScene?];
+  if (second === undefined) return first;
+  return first.transition!.transitionProgress < 0.5 ? first : second;
+}
+
 /**
  * Exactly what is on screen at `frame`: the ground, then each scene's
  * component and caption, then the overlays above them all. During a transition both scenes are stacked, the
  * incoming one on top, over one shared ground; elements the two scenes share
- * (see `shared`) are drawn once, morphing, above both.
+ * (see `shared`) are drawn once, morphing, above both. The ground is the
+ * shown scene's (its palette field, see `sceneTheme`). During a transition
+ * between scenes on different grounds, each scene paints its own field
+ * instead, and a crossfade between them cuts at its midpoint (see
+ * `cutsAtMidpoint`).
  */
 export function Frame({ storyboard, theme, timeline, frame, shared, targets, effectTargets, camera = "live", narration }: FrameProps) {
   const info = frameAt(timeline, frame);
   const size = frameSize(storyboard.aspect);
-  const morph = morphAt(info, shared);
+  const cut = cutsHere(storyboard, theme, info);
+  const drawn = scenesDrawn(info, cut);
+  const morph = cut ? undefined : morphAt(info, shared);
   const transition = morph === undefined ? undefined : timeline.transitions[morph.boundary]!;
-  const layer = { storyboard, theme, fps: timeline.fps, targets, effectTargets, camera, narration };
+  const ms = (frame * 1000) / timeline.fps;
+  const grounds = drawn.map((scene) => sceneGround(storyboard.scenes[scene.sceneIndex]!));
+  // Two scenes on different grounds: each brings its own field, so wipes and irises reveal one over the other.
+  const field = new Set(grounds).size > 1;
+  const layer = { storyboard, theme, fps: timeline.fps, targets, effectTargets, camera, narration, field, ms };
+  // The ground, and the overlays above everything, take the shown scene's theme.
+  const shown = storyboard.scenes[shownScene(drawn).sceneIndex]!;
+  const onScreen = sceneTheme(theme, shown);
+  const rootField = !field && sceneGround(shown) !== "ground" ? { "data-frame-field": sceneGround(shown) } : {};
 
   return (
     <div
+      {...rootField}
       style={{
         position: "relative",
         width: size.width,
         height: size.height,
         overflow: "hidden",
-        backgroundColor: theme.colors.ground,
+        backgroundColor: onScreen.colors.ground,
       }}
     >
-      <Ground theme={theme} aspect={storyboard.aspect} ms={(frame * 1000) / timeline.fps} />
-      {scenesOnScreen(info).map((scene) => (
+      {!field && <Ground theme={onScreen} aspect={storyboard.aspect} ms={ms} />}
+      {drawn.map((scene) => (
         <SceneLayer key={scene.sceneId} {...layer} scene={scene} hideShared={morph !== undefined} />
       ))}
       {morph !== undefined && (
@@ -199,11 +260,11 @@ export function Frame({ storyboard, theme, timeline, frame, shared, targets, eff
           t={morphProgress(info.transition!.transitionProgress, transition!.frames, timeline.fps)}
           endpoints={morphEndpoints(timeline, morph.boundary)}
           size={size}
-          renderScene={(scene) => <SceneLayer {...layer} camera="live" scene={scene} />}
+          renderScene={(scene) => <SceneLayer {...layer} camera="live" scene={scene} field={false} />}
         />
       )}
       {storyboard.overlays !== undefined && (
-        <Overlays overlays={storyboard.overlays} sceneIds={storyboard.scenes.map((scene) => scene.id)} theme={theme} aspect={storyboard.aspect} timeline={timeline} frame={frame} />
+        <Overlays overlays={storyboard.overlays} sceneIds={storyboard.scenes.map((scene) => scene.id)} theme={onScreen} aspect={storyboard.aspect} timeline={timeline} frame={frame} />
       )}
     </div>
   );
@@ -332,7 +393,8 @@ export function mountPage(): void {
 
   const sharedFor = (frame: number): SharedMeasurements => {
     const info = frameAt(timeline, frame);
-    if (info.pair === undefined) return measured;
+    // A field-to-field crossfade cuts at its midpoint: nothing morphs across it.
+    if (info.pair === undefined || cutsAtMidpoint(storyboard, info.sceneIndex - 1, theme)) return measured;
     const boundary = info.sceneIndex - 1;
     if (measured.has(boundary)) return measured;
     const [from, to] = morphEndpoints(timeline, boundary);

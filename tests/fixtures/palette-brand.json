@@ -1,0 +1,54 @@
+{
+  "title": "Brand palette, 9:16: navy split harmony with a gold accent (must pass layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "palette": { "from": "#14213d", "harmony": "split" },
+  "accent": "#fca311",
+  "scenes": [
+    {
+      "id": "open",
+      "component": "TitleCard",
+      "props": { "kicker": "Quarterly update", "title": "Navy and gold", "subtitle": "Our colours, every beat" },
+      "ground": "p2",
+      "durationMs": 4000,
+      "transition": { "type": "wipe", "direction": "up" }
+    },
+    {
+      "id": "stat",
+      "component": "BigNumber",
+      "props": { "value": 48, "suffix": "%", "label": "more repeat customers" },
+      "ground": "p1",
+      "durationMs": 3500,
+      "transition": { "type": "iris" }
+    },
+    {
+      "id": "how",
+      "component": "Section",
+      "props": {
+        "eyebrow": "What changed",
+        "headline": "Three fixes",
+        "content": {
+          "component": "CardRow",
+          "props": {
+            "cards": [
+              { "icon": "zap", "title": "Faster checkout" },
+              { "icon": "mail", "title": "Better receipts" },
+              { "icon": "star", "title": "Loyalty points" }
+            ],
+            "highlight": 0
+          }
+        }
+      },
+      "durationMs": 5000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "end",
+      "component": "Headline",
+      "props": { "text": "Thank you", "motion": "words" },
+      "ground": "p2",
+      "durationMs": 2500
+    }
+  ]
+}
