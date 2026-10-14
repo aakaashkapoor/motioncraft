@@ -1,0 +1,108 @@
+{
+  "title": "motioncraft goes 3D",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "captionStyle": "standard",
+  "voice": "af_heart",
+  "voiceSpeed": 1.1,
+  "pronounce": {
+    "motioncraft": "motion craft",
+    "Motioncraft": "Motion craft",
+    "3D": "three D"
+  },
+  "scenes": [
+    {
+      "id": "title",
+      "component": "ExtrudedTitle",
+      "props": {
+        "text": "motioncraft",
+        "finish": "glossy",
+        "subtitle": "Now in 3D",
+        "accentLetters": [
+          0
+        ]
+      },
+      "narration": "Motioncraft now renders in real 3D. Lit, beveled letters, drawn entirely in code.",
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "code",
+      "component": "CodeSlab3D",
+      "props": {
+        "code": "const video = await render({\n  prompt: \"A launch video\",\n  aspect: \"16:9\",\n});",
+        "language": "ts",
+        "highlightLines": [
+          2
+        ],
+        "title": "render.ts"
+      },
+      "narration": "Your code lands on a glossy slab that turns through space, then settles so every line reads.",
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "stack",
+      "component": "LayerStack3D",
+      "props": {
+        "layers": [
+          {
+            "label": "Storyboard",
+            "note": "What the agent writes",
+            "icon": "code"
+          },
+          {
+            "label": "3D stage",
+            "note": "On the scene clock",
+            "icon": "box"
+          },
+          {
+            "label": "Checks",
+            "note": "Every frame",
+            "icon": "check"
+          },
+          {
+            "label": "MP4",
+            "note": "Ready to post",
+            "icon": "laptop"
+          }
+        ],
+        "highlight": 1
+      },
+      "narration": "Architecture diagrams explode apart, layer by layer, with a label beside every plate, so a system makes sense at a glance.",
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "orbit",
+      "component": "OrbitCard3D",
+      "props": {
+        "icon": "check",
+        "title": "Checked every frame",
+        "subtitle": "Even in 3D"
+      },
+      "narration": "Feature cards orbit a sphere of light, then land right in front of you. And the layout checks still see everything, even in 3D.",
+      "transition": {
+        "type": "fade"
+      }
+    },
+    {
+      "id": "end",
+      "component": "ExtrudedTitle",
+      "props": {
+        "text": "SHIP IT",
+        "finish": "glossy",
+        "subtitle": "github.com/aakaashkapoor/motioncraft",
+        "accentLetters": [
+          5,
+          6
+        ]
+      },
+      "narration": "No cloud renderer, no browser download. It's open source, and free forever. Go ship it."
+    }
+  ]
+}

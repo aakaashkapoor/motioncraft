@@ -261,7 +261,7 @@ export function extrudedTitleLayout(theme: Theme, aspect: Aspect, text: string, 
 }
 
 /** How far the camera stands off the word's axis, as angles from the word's front: above and a little to the left. */
-const VIEW_ABOVE_DEG = 14;
+const VIEW_ABOVE_DEG = 8;
 const VIEW_LEFT_DEG = 6;
 
 /**
