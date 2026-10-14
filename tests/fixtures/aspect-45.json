@@ -376,6 +376,13 @@
       "transition": { "type": "fade" }
     },
     {
+      "id": "code-slab-3d",
+      "component": "CodeSlab3D",
+      "props": { "code": "const total = items\n  .map((i) => i.price)\n  .reduce((a, b) => a + b);", "highlightLines": [3], "title": "total.ts" },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
       "id": "end-card",
       "component": "EndCard",
       "props": { "name": "Splitly", "logo": "media/logo.svg", "line": "Split your next bill", "accent": "Free forever", "cta": { "label": "Get the app", "note": "Link in bio" } },

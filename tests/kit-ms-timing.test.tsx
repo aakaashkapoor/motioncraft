@@ -107,6 +107,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
   LineChart: { title: "Monthly signups", data: [{ label: "Jan", value: 120 }, { label: "Feb", value: 180 }, { label: "Mar", value: 150 }, { label: "Apr", value: 310, emphasis: true }, { label: "May", value: 260 }, { label: "Jun", value: 340 }] },
   OrbitCard3D: { icon: "check", title: "Checked every frame", subtitle: "Layout, contrast and timing" },
   LayerStack3D: { layers: [{ label: "UI", note: "React in the browser", icon: "laptop" }, { label: "API", note: "Auth and routing", icon: "code" }, { label: "Queue", icon: "clock" }, { label: "Database", note: "Postgres", icon: "box" }], highlight: 1 },
+  CodeSlab3D: { code: "function area(r: number) {\n  return Math.PI * r * r;\n}", highlightLines: [2], title: "area.ts" },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 

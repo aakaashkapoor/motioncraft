@@ -1,0 +1,26 @@
+{
+  "title": "CodeSlab3D kit component: highlighted code on a lit 3D slab (9:16)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "function",
+      "component": "CodeSlab3D",
+      "props": {
+        "code": "function area(r: number) {\n  if (r < 0) return 0;\n  const pi = Math.PI;\n  const sq = r * r;\n  return pi * sq;\n}",
+        "language": "ts",
+        "highlightLines": [5],
+        "title": "area.ts"
+      },
+      "durationMs": 8000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "shell",
+      "component": "CodeSlab3D",
+      "props": { "code": "npm install motioncraft\nnpx motioncraft init\nnpx motioncraft render", "language": "sh" },
+      "durationMs": 4000
+    }
+  ]
+}

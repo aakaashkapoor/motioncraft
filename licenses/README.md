@@ -76,7 +76,7 @@ derivative.
 
 | Source | Commit | License | Author | Ported items |
 | ------ | ------ | ------- | ------ | ------------ |
-| HyperFrames | `2905162d925fc87fb8242e24ed0bbf025d307ea1` | Apache-2.0 | HeyGen and contributors — https://github.com/heygen-com/hyperframes | `chart-story`, `kinetic-type-swap`, `scramble-reveal`, `before-after-wipe`, `vox-annotate`, `svg-stroke-trace`, `whiteboard-ink`, `native-notification-pop`, `caption-pill-karaoke`, `iris-reveal`, `whip-pan-cut`, `orbit-card`, `exploded-stack` |
+| HyperFrames | `2905162d925fc87fb8242e24ed0bbf025d307ea1` | Apache-2.0 | HeyGen and contributors — https://github.com/heygen-com/hyperframes | `chart-story`, `kinetic-type-swap`, `scramble-reveal`, `before-after-wipe`, `vox-annotate`, `svg-stroke-trace`, `whiteboard-ink`, `native-notification-pop`, `caption-pill-karaoke`, `iris-reveal`, `whip-pan-cut`, `orbit-card`, `exploded-stack`, `code-3d-extrude` (a block) |
 
 The designs and timings were adapted into motioncraft's own React code; no HyperFrames code, GSAP or other runtime is bundled.
 

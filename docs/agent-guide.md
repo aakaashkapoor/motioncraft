@@ -1384,6 +1384,31 @@ by one) and `lineNumbers` (default true).
 }
 ```
 
+#### `CodeSlab3D`
+
+The hero shot for developer videos: syntax-highlighted `code` (1-14 lines) on
+a lit, beveled 3D slab that rises from below and behind, turns through space
+and settles face-on and readable by about 1.6 s, then drifts very slowly
+through the hold. `language` (default `ts`), `highlightLines` (1-based; each
+gets an accent band that sweeps in once the slab settles) and `title` (a
+filename tab on the slab). The code stays at the mono type step while lines
+are short: about 26 characters in 9:16 and 4:5, 50 in 16:9; longer lines shrink
+it. One snippet per scene, no typing or scrolling: for code that types in or
+dims around a highlight, use `CodeWindow`.
+
+```json
+{
+  "id": "slab",
+  "component": "CodeSlab3D",
+  "props": {
+    "title": "area.ts",
+    "code": "function area(r: number) {\n  if (r < 0) return 0;\n  return Math.PI * r * r;\n}",
+    "highlightLines": [3]
+  },
+  "narration": "The whole feature is three lines of code."
+}
+```
+
 #### `ChatWindow`
 
 A team chat: a `channel`, `messages` that arrive one by one (`author`, `time`,

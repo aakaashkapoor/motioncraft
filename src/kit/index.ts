@@ -36,6 +36,7 @@ import { BarChart } from "./BarChart";
 import { LineChart } from "./LineChart";
 import { OrbitCard3D } from "./OrbitCard3D";
 import { LayerStack3D } from "./LayerStack3D";
+import { CodeSlab3D } from "./CodeSlab3D";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -92,4 +93,5 @@ export const kit: Record<string, KitComponent> = {
   LineChart: asKitComponent(LineChart),
   OrbitCard3D: asKitComponent(OrbitCard3D),
   LayerStack3D: asKitComponent(LayerStack3D),
+  CodeSlab3D: asKitComponent(CodeSlab3D),
 };

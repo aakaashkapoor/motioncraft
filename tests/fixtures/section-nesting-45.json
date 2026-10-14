@@ -628,6 +628,20 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "code-slab-3d",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A code slab in the slot",
+        "content": {
+          "component": "CodeSlab3D",
+          "props": { "code": "npm install motioncraft\nnpx motioncraft render", "language": "sh", "highlightLines": [2] }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }
