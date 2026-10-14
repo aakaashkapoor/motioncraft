@@ -13,6 +13,8 @@ export const MONO_FAMILY = "mc-mono";
 export const GEIST_FAMILY = "mc-geist";
 /** Geist Mono, the mono that goes with Geist. */
 export const GEIST_MONO_FAMILY = "mc-geist-mono";
+/** Playfair Display, the display serif (upright and italic) GiantType draws with; a kit face, not a theme font. */
+export const SERIF_FAMILY = "mc-serif";
 
 export interface BundledFont {
   family: string;
@@ -22,6 +24,8 @@ export interface BundledFont {
   file: string;
   /** The variable weight axis, [min, max]. */
   weights: readonly [number, number];
+  /** The face's CSS font-style. Default `normal`. */
+  style?: "normal" | "italic";
 }
 
 export const BUNDLED_FONTS: readonly BundledFont[] = [
@@ -31,16 +35,28 @@ export const BUNDLED_FONTS: readonly BundledFont[] = [
   { family: GEIST_MONO_FAMILY, name: "Geist Mono", file: "GeistMono-Variable.woff2", weights: [100, 900] },
 ];
 
+/**
+ * Faces only kit components draw with (GiantType's serif): embedded and loaded
+ * like the bundled fonts, but not offered to theme font stacks.
+ */
+export const KIT_FACES: readonly BundledFont[] = [
+  { family: SERIF_FAMILY, name: "Playfair Display", file: "PlayfairDisplay-Variable.woff2", weights: [400, 900] },
+  { family: SERIF_FAMILY, name: "Playfair Display", file: "PlayfairDisplay-Italic-Variable.woff2", weights: [400, 900], style: "italic" },
+];
+
+/** Every face the render page embeds: the bundled fonts, then the kit's own faces. */
+export const EMBEDDED_FONTS: readonly BundledFont[] = [...BUNDLED_FONTS, ...KIT_FACES];
+
 /** Every weight the kit draws with: the theme's named weights and the ramp's (mono is 450). */
 export const KIT_WEIGHTS = [400, 450, 500, 600, 700, 800] as const;
 
 /**
  * CSS font requests the readiness gate loads before the first frame: every
- * bundled family at every kit weight, then the storyboard's brand faces. Each
+ * bundled face at every kit weight, then the storyboard's brand faces. Each
  * must resolve to a face.
  */
 export function fontLoadRequests(brand?: readonly BrandFont[]): string[] {
-  return [...BUNDLED_FONTS.flatMap(({ family }) => KIT_WEIGHTS.map((weight) => `${weight} 16px "${family}"`)), ...brandFontLoadRequests(brand)];
+  return [...EMBEDDED_FONTS.flatMap(({ family, style }) => KIT_WEIGHTS.map((weight) => `${style === "italic" ? "italic " : ""}${weight} 16px "${family}"`)), ...brandFontLoadRequests(brand)];
 }
 
 /** Prefix of a brand font's private family. */

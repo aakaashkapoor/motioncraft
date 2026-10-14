@@ -914,6 +914,39 @@ sentence use `TitleCard` or `Headline`.
 }
 ```
 
+#### `GiantType`
+
+One huge word that fills the frame edge to edge: the poster-scale title of a
+motion reel, far bigger than a `Headline`. `text` is one word or two short
+words, 1-12 characters (letters, digits and `. , ! ? ' & - :`). The word's ink
+spans about 91% of the content width in 16:9 and 4:5 and of the safe text
+column in 9:16 (840 px in `shorts`, about 71% of the frame; in a `Section`, of
+the slot), set from the fonts' measured metrics so it never wraps; a longer
+word is smaller, and in 9:16 it stays above the platform's button rail. It is drawn in the scene's ink, so it reads on every
+palette field.
+
+`style` is `heavy` (default: the display face at its heaviest, tight),
+`italic` (heavy, leaning 11°) or `serif` (Playfair Display). `entrance` is
+`rise` (default: letters rise through a mask, 30 ms apart), `tilt` (letters
+arrive rotated on alternating sides and settle flat), `scale` (the word
+scales down from 1.15 out of a blur) or `type` (letters appear one by one
+behind a hard cursor); all are settled by about 1.3 s. `rule: true` draws a
+thin accent rule under the word, left to right; `kicker` (up to 32
+characters) is a small mono uppercase line under it, and `tag` (up to 24) a
+small italic serif line on the right. `behind` takes another component as
+`{ "component": ..., "props": ... }` and draws it **in front of** the word,
+overlapping the type. One word per scene, with lots of empty space around it:
+for a sentence use `Headline` or `TitleCard`.
+
+```json
+{
+  "id": "brand",
+  "component": "GiantType",
+  "props": { "text": "motioncraft", "entrance": "tilt", "rule": true, "kicker": "Prompt in, video out", "tag": "Showreel 2026" },
+  "narration": "This is motioncraft."
+}
+```
+
 #### `EndCard`
 
 The calm closing card from the owner's reference: a logo mark (`icon`, default

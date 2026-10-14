@@ -10,7 +10,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_BRAND_WEIGHTS, type BrandFont } from "../storyboard/types";
-import { brandFamily, BUNDLED_FONTS } from "./fontFaces";
+import { brandFamily, EMBEDDED_FONTS } from "./fontFaces";
 
 export * from "./fontFaces";
 
@@ -18,13 +18,13 @@ export const FONTS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..
 
 let css: Promise<string> | undefined;
 
-/** @font-face rules for every bundled font, read once per process. */
+/** @font-face rules for every embedded face (bundled fonts and kit faces), read once per process. */
 export function fontFaceCss(): Promise<string> {
   css ??= Promise.all(
-    BUNDLED_FONTS.map(async ({ family, file, weights }) => {
+    EMBEDDED_FONTS.map(async ({ family, file, weights, style = "normal" }) => {
       const data = (await readFile(join(FONTS_DIR, file))).toString("base64");
       // `block`: text waits for the font instead of flashing a fallback.
-      return `@font-face{font-family:"${family}";font-style:normal;font-weight:${weights[0]} ${weights[1]};font-display:block;src:url(data:font/woff2;base64,${data}) format("woff2")}`;
+      return `@font-face{font-family:"${family}";font-style:${style};font-weight:${weights[0]} ${weights[1]};font-display:block;src:url(data:font/woff2;base64,${data}) format("woff2")}`;
     }),
   ).then((rules) => rules.join(""));
   return css;

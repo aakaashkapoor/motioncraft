@@ -147,6 +147,8 @@ export { layerStack3DErrors, layerStackFrame, layerStackLayout, stackCamera, typ
 export { CodeSlab3D, type CodeSlab3DProps } from "./kit/CodeSlab3D";
 export { bandSweeps, codeSlab3DErrors, codeSlabLayout, slabCamera, slabPose, type CodeSlabLayout, type SlabPose } from "./kit/codeSlab3dPlan";
 export { ExtrudedTitle, type ExtrudedTitleProps } from "./kit/ExtrudedTitle";
+export { GiantType, type GiantTypeProps } from "./kit/GiantType";
+export { GIANT_ENTRANCES, GIANT_STYLES, giantTypeEntrance, giantTypeErrors, giantTypeLayout, type GiantEntrance, type GiantStyle, type GiantTypeLayout } from "./kit/giantTypePlan";
 export { extrudedTitleErrors, extrudedTitleLayout, letterPose, titleCamera, titleLetters, wordPose, type ExtrudedFinish, type ExtrudedTitleLayout, type LetterPose, type TitleLetter, type WordPose } from "./kit/extrudedTitlePlan";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
 export { MotionDelay, NOMINAL_SCENE_MS, OPENING_SETTLE_MS, entering, SceneClockContext, SceneWordsContext, useMotionDelay, useSceneMs, useSceneTime, useSceneWords, type SceneClock, type SceneTime } from "./kit/frameContext";
