@@ -607,6 +607,27 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "layer-stack-3d",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A layer stack in the slot",
+        "content": {
+          "component": "LayerStack3D",
+          "props": {
+            "layers": [
+              { "label": "UI", "note": "What people tap", "icon": "laptop" },
+              { "label": "API", "note": "Auth and routing", "icon": "code" },
+              { "label": "Database", "note": "Every record", "icon": "box" }
+            ],
+            "highlight": 1
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

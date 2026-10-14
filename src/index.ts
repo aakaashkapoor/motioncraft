@@ -142,6 +142,8 @@ export { BarChart, barChartErrors, barChartLayout, barChartMax, barChartOrientat
 export { LineChart, lineAreaPath, lineChartErrors, lineChartLayout, lineChartPoints, lineChartValues, lineDrawn, lineReachMs, type LineChartLayout, type LineChartProps, type LinePoint, type LineValueBox } from "./kit/LineChart";
 export { OrbitCard3D, type OrbitCard3DProps } from "./kit/OrbitCard3D";
 export { orbitCard3DErrors, orbitCardLayout, orbitPose, spherePoints, type OrbitCardLayout, type OrbitPose } from "./kit/orbitCard3dPlan";
+export { LayerStack3D, type LayerStack3DProps } from "./kit/LayerStack3D";
+export { layerStack3DErrors, layerStackFrame, layerStackLayout, stackCamera, type LayerStackLayout, type StackFrame, type StackLayer } from "./kit/layerStack3dPlan";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
 export { MotionDelay, NOMINAL_SCENE_MS, OPENING_SETTLE_MS, entering, SceneClockContext, SceneWordsContext, useMotionDelay, useSceneMs, useSceneTime, useSceneWords, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { cueErrors, resolveCue, useCueMs, type Cue } from "./kit/cues";

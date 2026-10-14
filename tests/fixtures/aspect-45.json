@@ -362,6 +362,20 @@
       "transition": { "type": "fade" }
     },
     {
+      "id": "layer-stack-3d",
+      "component": "LayerStack3D",
+      "props": {
+        "layers": [
+          { "label": "App", "note": "Split in one tap", "icon": "laptop" },
+          { "label": "Payments", "note": "Everyone pays", "icon": "lock" },
+          { "label": "Ledger", "note": "Every share", "icon": "box" }
+        ],
+        "highlight": 1
+      },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
       "id": "end-card",
       "component": "EndCard",
       "props": { "name": "Splitly", "logo": "media/logo.svg", "line": "Split your next bill", "accent": "Free forever", "cta": { "label": "Get the app", "note": "Link in bio" } },
