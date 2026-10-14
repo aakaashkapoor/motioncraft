@@ -4,8 +4,6 @@
   "fps": 30,
   "theme": "dark",
   "captionStyle": "standard",
-  "voice": "af_heart",
-  "voiceSpeed": 1.1,
   "pronounce": {
     "motioncraft": "motion craft",
     "Motioncraft": "Motion craft",

@@ -3,7 +3,6 @@
   "aspect": "9:16",
   "fps": 30,
   "theme": "light",
-  "voice": "af_heart",
   "scenes": [
     {
       "id": "hook",
