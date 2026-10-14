@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseNarrateArgs } from "../src/render/args";
 import { VOICE_FILES } from "../src/narration/assets";
-import { STOCK_VOICES } from "../src/narration/voices";
+import { CHATTERBOX_VOICES, isChatterboxVoice, KOKORO_VOICES, STOCK_VOICES } from "../src/narration/voices";
 import { validateStoryboard } from "../src/index";
 
 describe("parseNarrateArgs", () => {
@@ -36,11 +36,17 @@ describe("storyboard voice", () => {
     for (const voice of STOCK_VOICES) expect(validateStoryboard(board(voice)).ok).toBe(true);
     const result = validateStoryboard(board("af_nope"));
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.errors.join()).toMatch(/voice must be one of af_heart, af_bella, am_michael/);
+    expect(!result.ok && result.errors.join()).toMatch(/voice must be one of chatterbox, af_heart, af_bella, am_michael/);
   });
 
-  it("has a pinned voice file for each stock voice", () => {
-    expect(Object.keys(VOICE_FILES).sort()).toEqual([...STOCK_VOICES].sort());
+  it("has a pinned voice file for each Kokoro voice", () => {
+    expect(Object.keys(VOICE_FILES).sort()).toEqual([...KOKORO_VOICES].sort());
+  });
+
+  it("offers the Chatterbox voices and the Kokoro voices, and tells them apart", () => {
+    expect([...STOCK_VOICES]).toEqual([...CHATTERBOX_VOICES, ...KOKORO_VOICES]);
+    expect(isChatterboxVoice("chatterbox")).toBe(true);
+    expect(isChatterboxVoice("af_heart")).toBe(false);
   });
 
   it("rejects an empty or non-string voice", () => {
