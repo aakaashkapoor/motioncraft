@@ -3,7 +3,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION } from "../src/narration/assets";
+import { CHATTERBOX_REVISION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION } from "../src/narration/assets";
 import { NARRATION_CACHE_VERSION, loadCachedNarration, missingNarrationNotice, narrateStoryboard } from "../src/narration/narrate";
 import type { Synthesizer } from "../src/narration/kokoro";
 import { decodeWav } from "../src/narration/wav";
@@ -62,7 +62,7 @@ describe("narrateStoryboard", () => {
     // 900 ms + 250 ms gap + 800 ms
     expect(scene.audioMs).toBe(1950);
     const key = createHash("sha1")
-      .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, "af_heart", "Hi there. Bye now."].join("\0"))
+      .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, CHATTERBOX_REVISION, "chatterbox", "Hi there. Bye now."].join("\0"))
       .digest("hex");
     expect(scene.wavPath).toBe(join(outDir, `${key}.wav`));
 
@@ -94,7 +94,7 @@ describe("narrateStoryboard", () => {
     expect((await readdir(outDir)).sort()).toHaveLength(2);
   });
 
-  it("uses the option voice, else the storyboard voice, else af_heart", async () => {
+  it("uses the option voice, else the storyboard voice, else chatterbox", async () => {
     const a = fakeSynth();
     await narrateStoryboard(board({ voice: "af_bella" }), { synthesizer: a, outDir, voice: "am_michael" });
     expect(new Set(a.calls.map((c) => c.voice))).toEqual(new Set(["am_michael"]));
@@ -105,7 +105,7 @@ describe("narrateStoryboard", () => {
 
     const c = fakeSynth();
     await narrateStoryboard(board(), { synthesizer: c, outDir });
-    expect(new Set(c.calls.map((x) => x.voice))).toEqual(new Set(["af_heart"]));
+    expect(new Set(c.calls.map((x) => x.voice))).toEqual(new Set(["chatterbox"]));
   });
 
   it("speaks at the option speed, else the storyboard voiceSpeed, else 1", async () => {
@@ -220,7 +220,7 @@ describe("narrateStoryboard", () => {
   it("keys a scene that uses a built-in term by it, and one that uses none as before", async () => {
     const keyOf = (text: string, extra: string[] = []) =>
       createHash("sha1")
-        .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, "af_heart", text, ...extra].join("\0"))
+        .update([NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, CHATTERBOX_REVISION, "chatterbox", text, ...extra].join("\0"))
         .digest("hex");
     const plain = await narrateStoryboard(board({}, "Hi there."), { synthesizer: fakeSynth(), outDir });
     expect(plain["a"]!.wavPath).toBe(join(outDir, `${keyOf("Hi there.")}.wav`));
@@ -390,7 +390,7 @@ describe("word times from the synthesizer", () => {
   });
 
   it("is a new cache version, so estimated times are never reused", () => {
-    expect(NARRATION_CACHE_VERSION).toBe(6);
+    expect(NARRATION_CACHE_VERSION).toBe(7);
   });
 });
 

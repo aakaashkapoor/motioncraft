@@ -254,9 +254,9 @@ export interface Storyboard {
   captionStyle?: CaptionStyle;
   /** How the first scene opens. Defaults to `settled`. */
   opening?: Opening;
-  /** The narration voice (a Kokoro voice name). Defaults to "af_heart". */
+  /** The narration voice: "chatterbox" (the default) or a Kokoro voice name ("af_heart", "af_bella", "am_michael"). */
   voice?: string;
-  /** How fast the voice speaks, 0.8-1.4. Defaults to 1. */
+  /** How fast a Kokoro voice speaks, 0.8-1.4. Defaults to 1. Chatterbox keeps its own pace. */
   voiceSpeed?: number;
   /**
    * How written words are spoken: `{ "JSON": "Jaysawn" }` says "Jaysawn" where

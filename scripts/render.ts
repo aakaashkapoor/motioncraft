@@ -12,7 +12,7 @@ import { validateStoryboard } from "../src/storyboard/validate";
 import { formatIssue } from "../src/checks";
 import { checkSceneAudio } from "../src/checks/sceneAudio";
 import { parseRenderArgs } from "../src/render/args";
-import { kokoroSynthesizer } from "../src/narration/kokoro";
+import { voiceSynthesizer } from "../src/narration/synthesizer";
 import { narrateStoryboard, narrationDir } from "../src/narration/narrate";
 import { planRender } from "../src/render/renderPlan";
 import { resolveTheme } from "../src/render/themes";
@@ -78,7 +78,7 @@ async function main(argv: string[]): Promise<void> {
     narrate: args.narration
       ? (board) =>
           narrateStoryboard(board, {
-            synthesizer: kokoroSynthesizer(),
+            synthesizer: voiceSynthesizer(),
             outDir: narrationDir(args.storyboard),
             mediaDir,
             onProgress: narrationProgress(),

@@ -1,8 +1,8 @@
-// Speaks a storyboard's narration locally (Kokoro) into <storyboard dir>/.motioncraft/narration/.
+// Speaks a storyboard's narration locally (Chatterbox, or a Kokoro voice) into <storyboard dir>/.motioncraft/narration/.
 //   npx tsx scripts/narrate.ts <storyboard.json> [--offline]
 
 import { readFile } from "node:fs/promises";
-import { kokoroSynthesizer } from "../src/narration/kokoro";
+import { voiceSynthesizer } from "../src/narration/synthesizer";
 import { narrateStoryboard, narrationDir } from "../src/narration/narrate";
 import { parseNarrateArgs } from "../src/render/args";
 import { validateStoryboard } from "../src/storyboard/validate";
@@ -17,7 +17,7 @@ async function main(argv: string[]): Promise<void> {
 
   const outDir = narrationDir(args.storyboard);
   const narrations = await narrateStoryboard(validation.storyboard, {
-    synthesizer: kokoroSynthesizer({ offline: args.offline }),
+    synthesizer: voiceSynthesizer({ offline: args.offline }),
     outDir,
     speed: args.speed,
   });

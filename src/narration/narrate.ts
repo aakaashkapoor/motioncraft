@@ -7,7 +7,7 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { TimedWord } from "../kit/captionWords";
 import type { Storyboard } from "../storyboard/types";
-import { KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION } from "./assets";
+import { CHATTERBOX_REVISION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION } from "./assets";
 import type { Speech, Synthesizer } from "./kokoro";
 import type { CachedNarration, SceneNarration } from "./types";
 import { loadAudioNarration } from "./sceneAudio";
@@ -20,8 +20,8 @@ import { encodeWav } from "./wav";
 import { alignWords } from "./wordTimes";
 
 /** Bump to discard every cached narration when how it is made changes. */
-export const NARRATION_CACHE_VERSION = 6;
-export const DEFAULT_VOICE = "af_heart";
+export const NARRATION_CACHE_VERSION = 7;
+export const DEFAULT_VOICE = "chatterbox";
 export const DEFAULT_SPEED = 1;
 /** Silence between two sentences of a scene. */
 export const SENTENCE_GAP_MS = 250;
@@ -173,7 +173,7 @@ function sceneFiles(
   const pronounce = pronounceMap(storyboard);
   for (const scene of storyboard.scenes) {
     if (scene.narration === undefined || scene.audio !== undefined || splitSentences(scene.narration).length === 0) continue;
-    const parts = [NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, chosen, scene.narration];
+    const parts = [NARRATION_CACHE_VERSION, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MISAKI_REVISION, CHATTERBOX_REVISION, chosen, scene.narration];
     // Only the pronunciations this scene uses, so a scene without any keeps its key.
     const said = pronunciationsIn(scene.narration, pronounce);
     if (said.length > 0) parts.push(JSON.stringify(said));
