@@ -73,8 +73,10 @@ from the theming guide alone.
   Nothing extra is downloaded.
 - Encoding uses the browser's built-in WebCodecs encoder plus a small MP4 writer.
   No ffmpeg.
-- Text-to-speech: a small open model run locally, downloaded on first use,
-  version-pinned and hash-checked.
+- Text-to-speech: small open models run locally, downloaded on first use,
+  version-pinned and hash-checked. Chatterbox-Turbo (MIT, Resemble AI) is the
+  default voice; Kokoro-82M (Apache-2.0) offers more voices and times
+  Chatterbox's words, which Chatterbox does not report.
 
 ## Licenses
 

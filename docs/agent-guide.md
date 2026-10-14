@@ -327,9 +327,14 @@ proportion to its length. `captionStyle` picks the look:
 Narration is spoken by default, by a voice that runs entirely on your machine.
 The storyboard's `voice` picks it:
 
-- `"af_heart"` (the default), `"af_bella"` and `"am_michael"` are the stock voices.
-- The first narration downloads a pinned, hash-checked model once to
-  `~/.cache/motioncraft`; after that nothing touches the network.
+- `"chatterbox"` (the default) is the most natural and expressive voice
+  (Chatterbox-Turbo). It speaks at about a third of real time on a CPU, so the
+  first narration of a 60 s video takes a few minutes; cached lines are free.
+- `"af_heart"`, `"af_bella"` and `"am_michael"` are Kokoro voices: flatter, but
+  about real time, and they honour `voiceSpeed`.
+- The first narration downloads pinned, hash-checked models once to
+  `~/.cache/motioncraft` (about 600 MB for Chatterbox, 100 MB for Kokoro, which
+  also times Chatterbox's words); after that nothing touches the network.
 - Spoken audio is cached beside the storyboard in `.motioncraft/narration/`,
   so an unchanged line is never spoken twice.
 - A narrated scene without `durationMs` follows its audio: a short lead, the
@@ -348,7 +353,8 @@ The storyboard's `voice` picks it:
 { "voice": "af_bella" }
 ```
 
-`voiceSpeed` sets how fast the voice talks, from 0.8 to 1.4 (default 1). A
+`voiceSpeed` sets how fast a Kokoro voice talks, from 0.8 to 1.4 (default 1);
+Chatterbox keeps its own pace and ignores it. A
 faster voice is shorter audio, so narrated scenes without `durationMs` get
 shorter. Set it in the storyboard: `scripts/narrate.ts --speed` only tries a
 speed, because check, stills and render read the narration made at the
