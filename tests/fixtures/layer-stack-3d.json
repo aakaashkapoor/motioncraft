@@ -1,0 +1,36 @@
+{
+  "title": "LayerStack3D kit component: isometric layers explode apart (9:16)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "web-app",
+      "component": "LayerStack3D",
+      "props": {
+        "layers": [
+          { "label": "UI", "note": "What people tap", "icon": "laptop" },
+          { "label": "API", "note": "Auth and routing", "icon": "code" },
+          { "label": "Queue", "note": "Jobs run later", "icon": "clock" },
+          { "label": "Database", "note": "Every record", "icon": "box" }
+        ],
+        "highlight": 1
+      },
+      "durationMs": 6000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "pipeline",
+      "component": "LayerStack3D",
+      "props": {
+        "layers": [
+          { "label": "Prompt", "note": "Say what you want", "icon": "chat" },
+          { "label": "Plan", "note": "Scenes and timing", "icon": "file" },
+          { "label": "Render", "note": "On your machine", "icon": "play" }
+        ],
+        "collapse": true
+      },
+      "durationMs": 6000
+    }
+  ]
+}

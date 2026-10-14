@@ -980,6 +980,37 @@ lights up, one node at a time, for as long as the scene holds.
 }
 ```
 
+#### `LayerStack3D`
+
+An architecture or system diagram in 3D: 2-6 layers (`layers`, the top
+layer first) drawn as isometric plates that arrive as one stack, separate
+top first and hold apart, a label beside each plate. A layer has a `label`
+(1-24 characters), an optional `note` (up to 40) and an optional `icon`
+painted on its plate. `highlight` is a layer's index, drawn in the accent;
+`collapse: true` rejoins the plates in the last 700 ms before the exit.
+Apart and labelled by about 1.5 s. Labels sit right of the stack in 16:9
+and below-right of each plate in 9:16 and 4:5; keep notes short in a
+`Section` slot (four layers with notes fit there). For steps in order, use
+`FlowDiagram` or `StepList`.
+
+```json
+{
+  "id": "stack",
+  "component": "LayerStack3D",
+  "props": {
+    "layers": [
+      { "label": "UI", "note": "What people tap", "icon": "laptop" },
+      { "label": "API", "note": "Auth and routing", "icon": "code" },
+      { "label": "Queue", "note": "Jobs run later", "icon": "clock" },
+      { "label": "Database", "note": "Every record", "icon": "box" }
+    ],
+    "highlight": 1
+  },
+  "durationMs": 6000,
+  "narration": "Requests come in through the API."
+}
+```
+
 #### `Annotate`
 
 A sentence with one phrase marked by hand and a short note pointing at it, for
