@@ -210,12 +210,13 @@ that pokes out of the safe area.
 
 A storyboard is one JSON document. Top-level fields: `title`, `aspect`
 (`"9:16"`, the primary format, `"16:9"` or `"4:5"`; see "Output"), `fps`
-(default 30), `theme` (default `"light"`), the theme fields and brand `fonts`
-in section 3, `safe`, `captionStyle`, `voice`, `voiceSpeed`, `pronounce` and
+(default 30), `theme` (default `"light"`), the theme fields (`accent`,
+`accentIntensity`, `palette`, `themeOverrides`) and brand `fonts` in section 3, `safe`, `captionStyle`, `voice`, `voiceSpeed`, `pronounce` and
 `overlays` (below), `opening` (below), and `scenes`. Each scene has an `id`
 (unique), a `component` (a kit name from section 5), `props`, and optionally
 `narration`, `audio` (your own recording, below), `durationMs`, `transition`,
-camera `shots` and `effects` (section 1).
+camera `shots` and `effects` (section 1), and `ground` (a palette colour field,
+see "Colour" in section 3).
 
 `opening` is `"settled"` (the default) or `"build"`. The first frame of a video
 is its thumbnail on GitHub, Slack, X and most players until someone presses
@@ -597,6 +598,83 @@ Deeper good and bad colors on the light theme:
 { "themeOverrides": { "colors": { "positive": "#0f7a3d", "negative": "#b42318" } } }
 ```
 
+### Colour
+
+The default is one accent on a neutral theme. Keep it unless the user asks
+for "bold", "colourful", "like a showreel", "brand colours", or names two or
+more colours: then set a top-level `palette`, a few colours every scene
+shares, and stand scenes on them with `ground`.
+
+- `reel`: orange `#ff5a1f` (p1), lime `#c6f432` (p2), indigo `#5b5bf0` (p3)
+  and cream `#f1ece2` (p4) on near-black `#0e0e10`. The motion-reel look.
+- `editorial`: red (p1), ink (p2) and a deep cream (p3) on paper.
+- `pastel`: coral, mint, lavender and butter on a warm light ground.
+- `mono`: one blue at three lightnesses on a blue-black ground.
+- `brand`: derived from `accent` with the `split` harmony, over the theme's
+  own neutrals.
+
+The presets bring their own neutrals (ground, surfaces, text), so the base
+`theme` hardly matters; keep its ground style `solid` (the light theme's), since
+a mesh or grid draws over every field. For a brand, derive the palette from its
+main colour: `{ "from": "#14213d", "harmony": "split" }`. Each harmony turns the
+colour's hue and keeps every swatch near its lightness and saturation:
+
+- `split`: two swatches either side of the opposite hue (+150 and +210
+  degrees). Contrast without clashing; the safe default.
+- `analogous`: the neighbours, 30 degrees either way. Calm, one family.
+- `triad`: thirds of the wheel (+120, +240). Loud and playful.
+- `complement`: the opposite hue alone, two swatches. Maximum tension.
+- `mono`: the same hue lighter and darker. Quiet and on brand.
+
+p1 is the accent. An `accent` set beside the palette becomes p1 instead and
+the other swatches shift down (four at most; the last drops off). Every swatch
+gets a readable ink for text set on it, picked for you.
+
+A scene's `"ground": "p2"` makes it a colour field: the frame is that swatch,
+its text the swatch's ink, cards tints of it, and its accent another swatch
+that reads on it (or the ink). `"ground"` (the default) is the theme's
+ground (a preset's own near-black, paper or light ground). Change the field
+from scene to scene, and join two different fields with `cut`, `wipe` (drawn
+with a hard edge between fields), `iris` or `whipPan`: a `fade`, `zoomBlur` or
+`slide` between fields is drawn as a hard cut at its midpoint (the `field-cut`
+check).
+Follow 60-30-10: the ground covers most of a scene, one supporting colour about
+a third and the accent the rest, so at most three palette colours per scene
+(the `palette-area` check).
+
+```json
+{
+  "title": "Five colours",
+  "aspect": "16:9",
+  "theme": "light",
+  "palette": "reel",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "Headline",
+      "props": { "text": "Flat fields, hard cuts", "motion": "words", "emphasis": "hard cuts" },
+      "ground": "p2",
+      "durationMs": 3000,
+      "transition": { "type": "wipe", "direction": "left" }
+    },
+    {
+      "id": "stat",
+      "component": "BigNumber",
+      "props": { "value": 5, "label": "colours in every scene" },
+      "ground": "p1",
+      "durationMs": 3000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "end",
+      "component": "TitleCard",
+      "props": { "title": "Cut, never fade", "subtitle": "One palette, every beat" },
+      "durationMs": 3500
+    }
+  ]
+}
+```
+
 ### Brand fonts
 
 To set the video in the brand's own font, declare its file in the top-level
@@ -670,7 +748,8 @@ takes a color, pass a role name such as `"accent"`, or leave it out.
 | "make it orange" | `"accent": "#ff6a00"` |
 | "lots of orange" | `"accent": "#ff6a00"`, `"accentIntensity": "bold"` |
 | "an orange background" | `"accent": "#ff6a00"`, `"accentIntensity": "full"` |
-| "our brand colors are navy and gold" | `"themeOverrides": { "colors": { "ground": "#14213d", ... } }` and `"accent": "#fca311"`, then let the contrast check confirm the text reads |
+| "make it colourful" / "bold" / "like a showreel" | `"palette": "reel"`, and a different `"ground"` (`"p1"`..`"p4"`, `"ground"`) on each scene, joined by `cut`, `wipe`, `iris` or `whipPan` |
+| "our brand colors are navy and gold" | `"palette": { "from": "#14213d", "harmony": "split" }` and `"accent": "#fca311"`: gold becomes p1 (the accent) and navy shifts to p2, so `"ground": "p2"` is a navy field |
 | "snappier" | `"themeOverrides": { "motion": { "transitionMs": 400, "enter": { "ms": 450 }, "fx": { "ms": 200 } } }` |
 | "rounder" / "sharper" | `"themeOverrides": { "radius": { "md": 40 } }` / `{ "radius": { "md": 8 } }` |
 | "use Geist" | `"themeOverrides": { "fonts": { "display": "mc-geist, sans-serif", "body": "mc-geist, sans-serif", "mono": "mc-geist-mono, monospace" } }` |
@@ -699,7 +778,13 @@ Geist instead of Source Sans 3, with heavier headlines:
 }
 ```
 
-Brand colors on a light base:
+"Our brand colors are navy and gold":
+
+```json
+{ "palette": { "from": "#14213d", "harmony": "split" }, "accent": "#fca311" }
+```
+
+Brand colors on a light base, without a palette:
 
 ```json
 {
@@ -723,7 +808,15 @@ checks.
 - **Storyboard checks.**
   - `transition` (warn): a boundary has no chosen transition.
   - `theme-color` (warn): a color in props is not a theme token or a color the
-    storyboard set (`accent`, `themeOverrides.colors`).
+    storyboard set (`accent`, `themeOverrides.colors`), or a `palette` swatch
+    (by its hex; components take no `p1`..`p4` names).
+  - `palette-area` (warn): more than three palette roles carry area in one
+    scene (its ground, its accent and the swatches its color props use); keep
+    to a ground, one supporting colour and the accent (60-30-10). The scene's
+    accent always counts as one of the three.
+  - `field-cut` (warn): a `fade`, `zoomBlur` or `slide` between scenes on
+    different `ground`s, which is drawn as a hard cut at its midpoint. Use
+    `cut`, or `wipe`, `iris` or `whipPan` to hide the change.
   - `media` (error): a `VideoClip` or `Image` file, a `TitleCard` or `EndCard`
     `logo`, or a scene's `audio` file or words file is missing or unreadable.
     Paths resolve from the storyboard's folder. Frames are not checked until

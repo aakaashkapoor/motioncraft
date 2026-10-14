@@ -75,22 +75,30 @@ function isTransparent(css: string): boolean {
 }
 
 /**
+ * The tint of a moving ground drawn directly on `node` (the frame, or a
+ * scene's colour field), if it has one.
+ */
+function groundTintOf(node: Element): string | undefined {
+  return Array.from(node.children).find((child) => child.hasAttribute(GROUND_TINT_ATTRIBUTE))?.getAttribute(GROUND_TINT_ATTRIBUTE) ?? undefined;
+}
+
+/**
  * Background colors under `el` at the center of `rect`, topmost first: whatever
  * is painted there, including siblings drawn beneath it, and a moving ground's
- * tint just above the frame's own ground. Falls back to the element's
+ * tint just above the frame's or a field's own ground. Falls back to the element's
  * ancestors when the point is off screen.
  */
-function backgroundsUnder(el: Element, rect: Rect, origin: DOMRect, chain: readonly Element[], root: Element): string[] {
+function backgroundsUnder(el: Element, rect: Rect, origin: DOMRect, chain: readonly Element[]): string[] {
   const x = origin.left + rect.x + rect.width / 2;
   const y = origin.top + rect.y + rect.height / 2;
   const stack = document.elementsFromPoint(x, y);
   const index = stack.indexOf(el);
   const layers = index >= 0 ? stack.slice(index) : [...chain];
-  const tint = root.querySelector(`[${GROUND_TINT_ATTRIBUTE}]`)?.getAttribute(GROUND_TINT_ATTRIBUTE);
   return layers
     .flatMap((node) => {
       const color = getComputedStyle(node).backgroundColor;
-      return node === root && tint ? [tint, color] : [color];
+      const tint = groundTintOf(node);
+      return tint ? [tint, color] : [color];
     })
     .filter((css) => !isTransparent(css));
 }
@@ -138,7 +146,7 @@ function measureText(el: Element, root: Element, origin: DOMRect): MeasuredText 
   // A whole of pieces is only as visible as its faintest piece.
   const opacity = pieces ? Math.min(...nodes.map((node) => effectiveOpacity(lineage(node.parentElement!, root)))) : effectiveOpacity(chain);
   const outline = outlineUnder(el);
-  const backgrounds = backgroundsUnder(el, rect, origin, chain, root);
+  const backgrounds = backgroundsUnder(el, rect, origin, chain);
   return {
     text: nodes.map((node) => node.data).join(pieces ? "" : " ").replace(/\s+/g, " ").trim(),
     rect,

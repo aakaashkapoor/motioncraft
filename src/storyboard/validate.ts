@@ -5,15 +5,18 @@ import {
   DEFAULT_THEME,
   OPENINGS,
   SAFE_PROFILES,
+  SCENE_GROUNDS,
   SLIDE_DIRECTIONS,
   TRANSITION_TYPES,
   type Aspect,
   type BrandFont,
   type CaptionStyle,
   type Opening,
+  type PaletteSpec,
   type SafeProfile,
   type SceneAudio,
   type SceneEffect,
+  type SceneGround,
   type SceneShot,
   type StoryboardOverlay,
   type SceneTransition,
@@ -26,10 +29,12 @@ import { brandFontsErrors, fontOverrideErrors } from "./brandFonts";
 import { sceneComponents } from "./components";
 import { effectsErrors } from "./effects";
 import { shotsErrors } from "./shots";
-import { accentIntensityError, colorError, themeOverridesErrors } from "./themeOverrides";
+import { accentIntensityError, colorError, paletteError, themeOverridesErrors } from "./themeOverrides";
 import { cueErrors } from "../kit/cues";
 import { headlineLinesErrors } from "../kit/headlineLines";
 import { STOCK_VOICES } from "../narration/voices";
+import { paletteSwatches } from "../theme/palettes";
+import { resolveTheme } from "../theme/resolve";
 import type { AccentIntensity, ThemeOverrides } from "../theme/types";
 
 export const MIN_VOICE_SPEED = 0.8;
@@ -40,8 +45,8 @@ export function isVoiceSpeed(value: unknown): value is number {
   return typeof value === "number" && value >= MIN_VOICE_SPEED && value <= MAX_VOICE_SPEED;
 }
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "fonts", "themeOverrides", "accent", "accentIntensity", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "scenes"]);
-const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "audio", "durationMs", "transition", "shots", "effects"]);
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "fonts", "themeOverrides", "accent", "accentIntensity", "palette", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "scenes"]);
+const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "audio", "durationMs", "transition", "shots", "effects", "ground"]);
 const AUDIO_FIELDS = new Set(["file", "words"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction", "origin"]);
 const ORIGIN_FIELDS = new Set(["x", "y"]);
@@ -137,7 +142,7 @@ function linesErrors(scene: { component: unknown; props: Record<string, unknown>
 /** Validates a scene, pushing errors prefixed with `label`. Returns the scene if valid. */
 function validateScene(raw: Record<string, unknown>, label: string, errors: string[]): StoryboardScene | undefined {
   const sceneErrors: string[] = unknownFields(raw, SCENE_FIELDS);
-  const { component, props, narration, audio, durationMs, transition, shots, effects } = raw;
+  const { component, props, narration, audio, durationMs, transition, shots, effects, ground } = raw;
 
   if (!isNonEmptyString(component)) sceneErrors.push("component is required and must be a non-empty string");
   if (!isObject(props)) sceneErrors.push("props is required and must be an object");
@@ -158,6 +163,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   if (transition !== undefined) sceneErrors.push(...transitionErrors(transition));
   if (shots !== undefined && isObject(props)) sceneErrors.push(...shotsErrors(shots, { component, props, durationMs }));
   if (effects !== undefined && isObject(props)) sceneErrors.push(...effectsErrors(effects, { component, props, narration, durationMs }));
+  if (ground !== undefined && !SCENE_GROUNDS.includes(ground as never)) sceneErrors.push(`ground must be ${oneOf(SCENE_GROUNDS)} (got ${describe(ground)})`);
 
   errors.push(...sceneErrors.map((e) => `${label}: ${e}`));
   if (sceneErrors.length > 0) return undefined;
@@ -169,6 +175,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   if (transition !== undefined) scene.transition = transition as SceneTransition;
   if (shots !== undefined) scene.shots = shots as SceneShot[];
   if (effects !== undefined) scene.effects = effects as SceneEffect[];
+  if (ground !== undefined) scene.ground = ground as SceneGround;
   return scene;
 }
 
@@ -233,6 +240,41 @@ function pronounceErrors(raw: unknown): string[] {
 }
 
 /**
+ * The palette roles a storyboard's theme fields resolve to (an `accent` set
+ * beside the palette can add a swatch), or the error resolving them threw.
+ */
+function paletteRoles(input: Record<string, unknown>): { roles: string[] } | { error: string } {
+  try {
+    const palette = resolveTheme(input as unknown as Parameters<typeof resolveTheme>[0]).colors.palette;
+    return { roles: palette === undefined ? [] : paletteSwatches(palette).map((s) => s.role) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Problems with the scenes' palette grounds: each needs a top-level `palette`
+ * that has the role. Only scenes whose `ground` is itself valid are checked,
+ * and the roles only when the theme fields validated (`themeValid`): otherwise
+ * their own errors already say what is wrong.
+ */
+function sceneGroundErrors(input: Record<string, unknown>, themeValid: boolean): string[] {
+  if (!Array.isArray(input.scenes)) return [];
+  const used = input.scenes.flatMap((scene: unknown, i) =>
+    isObject(scene) && typeof scene.ground === "string" && scene.ground !== "ground" && SCENE_GROUNDS.includes(scene.ground as never)
+      ? [{ label: isNonEmptyString(scene.id) ? `scenes[${i}] (${JSON.stringify(scene.id)})` : `scenes[${i}]`, ground: scene.ground }]
+      : [],
+  );
+  if (used.length === 0) return [];
+  if (input.palette === undefined) return used.map(({ label, ground }) => `${label}: ground "${ground}" needs a top-level "palette"`);
+  if (!themeValid) return [];
+  const resolved = paletteRoles({ ...input, theme: input.theme ?? DEFAULT_THEME });
+  if ("error" in resolved) return [`palette: the theme does not resolve, so scene grounds cannot be checked: ${resolved.error}`];
+  const { roles } = resolved;
+  return used.filter(({ ground }) => !roles.includes(ground)).map(({ label, ground }) => `${label}: ground "${ground}" is not in the palette (it has ${roles.join(", ")})`);
+}
+
+/**
  * Validates a storyboard document and applies defaults (`fps` 30, `theme` "light").
  * Collects every problem rather than stopping at the first.
  */
@@ -248,6 +290,7 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   }
   if (!isPositiveInteger(fps)) errors.push(`fps must be a positive integer (got ${describe(fps)})`);
   if (!isNonEmptyString(theme)) errors.push("theme must be a non-empty string");
+  const themeErrorsFrom = errors.length;
   const { fonts, themeOverrides, accent, accentIntensity } = input;
   if (fonts !== undefined) errors.push(...brandFontsErrors(fonts));
   if (themeOverrides !== undefined) {
@@ -262,6 +305,11 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (accentProblem !== undefined) errors.push(accentProblem);
   const intensityProblem = accentIntensity === undefined ? undefined : accentIntensityError("accentIntensity", accentIntensity);
   if (intensityProblem !== undefined) errors.push(intensityProblem);
+  const { palette } = input;
+  const paletteProblem = palette === undefined ? undefined : paletteError("palette", palette);
+  if (paletteProblem !== undefined) errors.push(paletteProblem);
+  // Whether the theme fields resolve, so scene grounds can be checked against the palette.
+  const themeValid = errors.length === themeErrorsFrom && isNonEmptyString(theme);
   const { safe } = input;
   if (safe !== undefined && !SAFE_PROFILES.includes(safe as SafeProfile)) {
     errors.push(`safe must be ${oneOf(SAFE_PROFILES)} (got ${describe(safe)})`);
@@ -290,6 +338,7 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (pronounce !== undefined) errors.push(...pronounceErrors(pronounce));
 
   const scenes = validateScenes(input.scenes, errors);
+  errors.push(...sceneGroundErrors(input, themeValid));
   const { overlays } = input;
   if (overlays !== undefined) {
     const ids = Array.isArray(input.scenes) ? input.scenes.map((scene: unknown) => (isObject(scene) ? scene.id : undefined)).filter((id): id is string => typeof id === "string") : [];
@@ -302,6 +351,7 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (themeOverrides !== undefined) storyboard.themeOverrides = themeOverrides as ThemeOverrides;
   if (accent !== undefined) storyboard.accent = accent as string;
   if (accentIntensity !== undefined) storyboard.accentIntensity = accentIntensity as AccentIntensity;
+  if (palette !== undefined) storyboard.palette = palette as PaletteSpec;
   if (safe !== undefined) storyboard.safe = safe as SafeProfile;
   if (captionStyle !== undefined) storyboard.captionStyle = captionStyle as CaptionStyle;
   if (opening !== undefined) storyboard.opening = opening as Opening;

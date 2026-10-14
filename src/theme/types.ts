@@ -39,9 +39,42 @@ export interface ThemeColors {
   border: string;
   /** Color of the card shadow (see `ThemeShadow`). */
   shadow: string;
+  /**
+   * Two to four swatches besides the neutrals, shared by every scene (a
+   * storyboard's `palette`). p1 is the accent. Undefined without a palette.
+   */
+  palette?: ThemePalette;
 }
 
-export type ThemeColorKey = keyof ThemeColors;
+/** A theme's color keys that hold one color (every key but `palette`). */
+export type ThemeColorKey = Exclude<keyof ThemeColors, "palette">;
+
+export const PALETTE_ROLES = ["p1", "p2", "p3", "p4"] as const;
+/** A palette swatch by position: p1 (the accent) to p4. */
+export type PaletteRole = (typeof PALETTE_ROLES)[number];
+
+/**
+ * A palette's swatches as hex colors, each with its ink: `onPn` is the text
+ * color that reads (WCAG AA) on a fill of swatch `pn`, the theme's `text` or
+ * its `ground`, whichever reads better. If neither reaches AA (the presets are
+ * tuned so this never happens), the better one is pushed toward black or white
+ * until it does (see `inkOn`).
+ */
+export interface ThemePalette {
+  /** The first swatch, also the theme's accent. */
+  p1: string;
+  p2: string;
+  p3?: string;
+  p4?: string;
+  /** Text and icons drawn on p1. */
+  onP1: string;
+  /** Text and icons drawn on p2. */
+  onP2: string;
+  /** Text and icons drawn on p3. */
+  onP3?: string;
+  /** Text and icons drawn on p4. */
+  onP4?: string;
+}
 
 export const GROUND_STYLES = ["solid", "vignette", "grid", "noise", "mesh"] as const;
 /**
@@ -476,5 +509,8 @@ export interface Theme {
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
 
-/** Any subset of a theme's tokens, deep-merged over a named theme. The safe profile has its own storyboard field. */
-export type ThemeOverrides = DeepPartial<Omit<Theme, "name" | "safe">>;
+/**
+ * Any subset of a theme's tokens, deep-merged over a named theme. The safe
+ * profile and the palette have their own storyboard fields (`safe`, `palette`).
+ */
+export type ThemeOverrides = DeepPartial<Omit<Theme, "name" | "safe" | "colors">> & { colors?: Partial<Record<ThemeColorKey, string>> };

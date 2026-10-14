@@ -2,7 +2,8 @@
 // shape of a full theme), `accent` and `accentIntensity`. Colors must be hex so
 // the theme can derive and check them; which colors is up to the storyboard.
 
-import { HEX_COLOR } from "../theme/color";
+import { HARMONIES, HEX_COLOR } from "../theme/color";
+import { PALETTE_PRESETS } from "../theme/palettes";
 import { SHOT_FILL } from "./shots";
 import { lightTheme } from "../theme/light";
 import { ACCENT_INTENSITIES, CAPTION_HIGHLIGHTS, CURVE_NAMES, GROUND_STYLES } from "../theme/types";
@@ -27,6 +28,24 @@ export function colorError(label: string, value: unknown): string | undefined {
   return typeof value === "string" && HEX_COLOR.test(value)
     ? undefined
     : `${label} must be a hex color like "#ff6a00" (got ${describe(value)})`;
+}
+
+/**
+ * The problems with a `palette` value, joined, or undefined if it is a preset
+ * name or exactly `{ "from": <hex color>, "harmony": <harmony> }`.
+ */
+export function paletteError(label: string, value: unknown): string | undefined {
+  if (PALETTE_PRESETS.includes(value as never)) return undefined;
+  if (!isObject(value)) {
+    return `${label} must be ${oneOf(PALETTE_PRESETS)}, or { "from": "#rrggbb", "harmony": ... } (got ${describe(value)})`;
+  }
+  const problems = Object.keys(value)
+    .filter((key) => key !== "from" && key !== "harmony")
+    .map((key) => `${label}: unknown field "${key}"`);
+  const from = colorError(`${label}.from`, value.from);
+  if (from !== undefined) problems.push(from);
+  if (!HARMONIES.includes(value.harmony as never)) problems.push(`${label}.harmony must be ${oneOf(HARMONIES)} (got ${describe(value.harmony)})`);
+  return problems.length === 0 ? undefined : problems.join("; ");
 }
 
 export function accentIntensityError(label: string, value: unknown): string | undefined {
