@@ -108,6 +108,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
   OrbitCard3D: { icon: "check", title: "Checked every frame", subtitle: "Layout, contrast and timing" },
   LayerStack3D: { layers: [{ label: "UI", note: "React in the browser", icon: "laptop" }, { label: "API", note: "Auth and routing", icon: "code" }, { label: "Queue", icon: "clock" }, { label: "Database", note: "Postgres", icon: "box" }], highlight: 1 },
   CodeSlab3D: { code: "function area(r: number) {\n  return Math.PI * r * r;\n}", highlightLines: [2], title: "area.ts" },
+  ExtrudedTitle: { text: "motioncraft", subtitle: "Prompt in, video out", accentLetters: [0] },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 

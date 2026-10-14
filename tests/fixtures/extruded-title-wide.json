@@ -1,0 +1,21 @@
+{
+  "title": "ExtrudedTitle kit component: beveled 3D letters flip up (16:9)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "scenes": [
+    {
+      "id": "brand",
+      "component": "ExtrudedTitle",
+      "props": { "text": "motioncraft", "finish": "glossy", "subtitle": "Prompt in, video out", "accentLetters": [0] },
+      "durationMs": 5000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "ship",
+      "component": "ExtrudedTitle",
+      "props": { "text": "SHIP IT", "finish": "chrome" },
+      "durationMs": 4000
+    }
+  ]
+}

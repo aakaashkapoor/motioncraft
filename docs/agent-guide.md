@@ -794,6 +794,27 @@ pops in first, then the lines follow.
 }
 ```
 
+#### `ExtrudedTitle`
+
+The 3D opener or end-card title: a word in beveled 3D letters that flip up one
+by one, swing so the studio light runs across the bevels, and settle face-on
+and readable by about 1.6 s. `text` is one line of 1-24 characters (basic
+Latin letters, digits and punctuation); it fills the width in 9:16 and 4:5 and
+about 70% of it in 16:9, and a long word gets smaller rather than wrapping.
+`finish` is `glossy` (default), `matte` or `chrome`; `accentLetters` (indices
+into `text`) draws those letters in the accent; `subtitle` is a flat line that
+fades in under the word once it settles. One word per scene: for a headline
+sentence use `TitleCard` or `Headline`.
+
+```json
+{
+  "id": "open",
+  "component": "ExtrudedTitle",
+  "props": { "text": "motioncraft", "subtitle": "Prompt in, video out", "accentLetters": [0] },
+  "narration": "This is motioncraft."
+}
+```
+
 #### `EndCard`
 
 The calm closing card from the owner's reference: a logo mark (`icon`, default
