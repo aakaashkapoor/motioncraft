@@ -1,6 +1,12 @@
 // A Chatterbox voice: what the speech encoder makes of a reference recording,
 // saved so speaking never needs the encoder (or its 350 MB of weights). Stored
-// as JSON with each tensor's dims and its little-endian bytes in base64. Pure.
+// as JSON with each tensor's dims and its little-endian bytes in base64.
+
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** The default voice, made by `scripts/chatterbox-voice.ts`. */
+export const CHATTERBOX_VOICE_PATH = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "assets", "voices", "chatterbox.json");
 
 export interface FloatTensor {
   dims: number[];
