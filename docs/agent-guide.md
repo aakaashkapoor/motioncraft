@@ -1579,6 +1579,25 @@ one every 900 ms. Full width in 9:16 and 4:5, a column at the right in 16:9.
 }
 ```
 
+#### `OrbitCard3D`
+
+One feature card in 3D, for a premium feature-highlight beat: the card orbits
+a softly lit sphere of dots, the camera drifting with it, and lands in front,
+face-on and readable by about 1.8 s, its round window framing the turning
+sphere. `title` (1-32 characters), an optional `subtitle` (up to 60) and
+`icon`, and `dots`, the sphere's point count (400-4000, default 1600). The
+primary width in 9:16 and 4:5, about 45% of the content width in 16:9. One
+card only: for several, use `CardRow`.
+
+```json
+{
+  "id": "checked",
+  "component": "OrbitCard3D",
+  "props": { "icon": "check", "title": "Checked every frame", "subtitle": "Layout, contrast and timing" },
+  "narration": "Every frame is checked before it ships."
+}
+```
+
 ### Media
 
 Real footage and images, from local files. `src` is relative to the

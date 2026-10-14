@@ -105,6 +105,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
   DonutChart: { title: "Market share", data: [{ label: "Acme", value: 42, emphasis: true }, { label: "Globex", value: 27 }, { label: "Initech", value: 19 }, { label: "Other", value: 12 }], suffix: "%" },
   BarChart: { title: "Revenue", data: [{ label: "Q1", value: 480 }, { label: "Q2", value: 720 }, { label: "Q3", value: 1250, emphasis: true }, { label: "Q4", value: 960 }], prefix: "$" },
   LineChart: { title: "Monthly signups", data: [{ label: "Jan", value: 120 }, { label: "Feb", value: 180 }, { label: "Mar", value: 150 }, { label: "Apr", value: 310, emphasis: true }, { label: "May", value: 260 }, { label: "Jun", value: 340 }] },
+  OrbitCard3D: { icon: "check", title: "Checked every frame", subtitle: "Layout, contrast and timing" },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 

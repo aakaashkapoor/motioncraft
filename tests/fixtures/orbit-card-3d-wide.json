@@ -1,0 +1,21 @@
+{
+  "title": "OrbitCard3D kit component: a feature card orbiting a dot sphere (16:9)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "scenes": [
+    {
+      "id": "feature",
+      "component": "OrbitCard3D",
+      "props": { "icon": "check", "title": "Checked every frame", "subtitle": "Layout, contrast and timing" },
+      "durationMs": 4000,
+      "transition": { "type": "fade" }
+    },
+    {
+      "id": "title-only",
+      "component": "OrbitCard3D",
+      "props": { "title": "Renders on your machine", "dots": 2400 },
+      "durationMs": 4000
+    }
+  ]
+}

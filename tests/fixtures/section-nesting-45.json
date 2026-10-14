@@ -593,6 +593,20 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "orbit-card-3d",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A card that orbits in the slot",
+        "content": {
+          "component": "OrbitCard3D",
+          "props": { "icon": "check", "title": "Checked every frame", "subtitle": "Layout, contrast and timing" }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

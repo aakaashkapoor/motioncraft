@@ -34,6 +34,7 @@ import { WordSwap } from "./WordSwap";
 import { DonutChart } from "./DonutChart";
 import { BarChart } from "./BarChart";
 import { LineChart } from "./LineChart";
+import { OrbitCard3D } from "./OrbitCard3D";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -88,4 +89,5 @@ export const kit: Record<string, KitComponent> = {
   DonutChart: asKitComponent(DonutChart),
   BarChart: asKitComponent(BarChart),
   LineChart: asKitComponent(LineChart),
+  OrbitCard3D: asKitComponent(OrbitCard3D),
 };
