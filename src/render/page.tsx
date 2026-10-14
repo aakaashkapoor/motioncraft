@@ -34,7 +34,8 @@ import { createPageEncoder, type PageEncoder } from "./encode";
 import { cutsAtMidpoint, sceneGround } from "./fieldCut";
 import { fieldTransitionStyle } from "./fieldWipe";
 import { fontLoadRequests } from "./fontFaces";
-import { domImages, loadFonts, pageGate, waitUntilReady } from "./ready";
+import { domImages, loadFonts, pageGate, READY_TIMEOUT_MS, waitUntilReady } from "./ready";
+import { startPlayer } from "./player";
 import { SHARED_SCENE_ATTRIBUTE, SharedMorph } from "./SharedMorph";
 import { readSharedBoxes } from "./sharedMeasure";
 
@@ -48,6 +49,8 @@ export interface PageInput {
   mediaDir?: string;
   /** Measured word times per scene id, on the scene's audio clock (0 = start of its audio). Captions use them instead of even spacing. */
   narration?: PageNarration;
+  /** An exported web page (scripts/page.ts): scale to the window and answer `motioncraft:*` messages (see `startPlayer`). A render leaves it unset. */
+  player?: boolean;
 }
 
 export const INPUT_ELEMENT_ID = "motioncraft-input";
@@ -312,7 +315,7 @@ export function mountPage(): void {
   const container = document.getElementById(ROOT_ELEMENT_ID);
   if (!json || !container) throw new Error("motioncraft page: missing input or root element");
 
-  const { storyboard, theme, durations, narration } = JSON.parse(json) as PageInput;
+  const { storyboard, theme, durations, narration, player } = JSON.parse(json) as PageInput;
   const timeline = buildTimeline(storyboard, durations as SceneDurations, theme);
   // React reports render errors here instead of throwing from flushSync.
   let renderError: unknown;
@@ -458,4 +461,15 @@ export function mountPage(): void {
     encoder: createPageEncoder(),
     mixAndEncodeAudio,
   };
+  if (player !== true) return;
+  const api = window.motioncraft;
+  startPlayer({
+    container,
+    size: frameSize(storyboard.aspect),
+    ground: sceneTheme(theme, storyboard.scenes[0]!).colors.ground,
+    fps: timeline.fps,
+    totalFrames: timeline.totalFrames,
+    renderFrame,
+    waitUntilReady: () => api.waitUntilReady(READY_TIMEOUT_MS),
+  });
 }
