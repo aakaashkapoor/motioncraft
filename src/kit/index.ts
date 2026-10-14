@@ -38,6 +38,7 @@ import { OrbitCard3D } from "./OrbitCard3D";
 import { LayerStack3D } from "./LayerStack3D";
 import { CodeSlab3D } from "./CodeSlab3D";
 import { ExtrudedTitle } from "./ExtrudedTitle";
+import { GiantType } from "./GiantType";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -96,4 +97,5 @@ export const kit: Record<string, KitComponent> = {
   LayerStack3D: asKitComponent(LayerStack3D),
   CodeSlab3D: asKitComponent(CodeSlab3D),
   ExtrudedTitle: asKitComponent(ExtrudedTitle),
+  GiantType: asKitComponent(GiantType),
 };

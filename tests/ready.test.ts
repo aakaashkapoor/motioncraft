@@ -4,13 +4,16 @@ import { BrowserNotFoundError, launchBrowser } from "../src/render/browser";
 import { bundlePage } from "../src/render/bundle";
 import {
   BUNDLED_FONTS,
+  EMBEDDED_FONTS,
   fontFaceCss,
   fontLoadRequests,
   GEIST_FAMILY,
   GEIST_MONO_FAMILY,
+  KIT_FACES,
   KIT_WEIGHTS,
   MONO_FAMILY,
   SANS_FAMILY,
+  SERIF_FAMILY,
 } from "../src/render/fonts";
 import { createReadyGate, loadFonts, RenderNotReadyError, waitUntilReady, type ReadySources } from "../src/render/ready";
 import { showFrame, withRenderPage } from "../src/render/session";
@@ -139,13 +142,21 @@ describe("bundled fonts", () => {
     ]);
   });
 
+  it("embeds Playfair Display upright and italic as the kit's own serif, not a theme font", () => {
+    expect(KIT_FACES.map(({ family, name, file, style }) => [family, name, file, style ?? "normal"])).toEqual([
+      [SERIF_FAMILY, "Playfair Display", "PlayfairDisplay-Variable.woff2", "normal"],
+      [SERIF_FAMILY, "Playfair Display", "PlayfairDisplay-Italic-Variable.woff2", "italic"],
+    ]);
+    expect(EMBEDDED_FONTS).toEqual([...BUNDLED_FONTS, ...KIT_FACES]);
+  });
+
   it("covers every weight the kit uses with one variable face per family, so no weight is swapped", () => {
     const used = new Set<number>(Object.values(lightTheme.weights));
     for (const theme of [lightTheme, darkTheme, neutralTheme]) {
       for (const role of TYPE_ROLES) for (const aspect of ASPECTS) used.add(theme.type[role][aspect].weight);
     }
     expect([...used].sort((a, b) => a - b)).toEqual([...KIT_WEIGHTS]);
-    for (const { family, weights } of BUNDLED_FONTS) {
+    for (const { family, weights } of EMBEDDED_FONTS) {
       for (const weight of KIT_WEIGHTS) {
         expect(weight, family).toBeGreaterThanOrEqual(weights[0]);
         expect(weight, family).toBeLessThanOrEqual(weights[1]);
@@ -155,8 +166,8 @@ describe("bundled fonts", () => {
 
   it("declares each face's weight range, so CSS matching uses the variable axis", async () => {
     const css = await fontFaceCss();
-    for (const { family, weights } of BUNDLED_FONTS) {
-      expect(css).toContain(`font-family:"${family}";font-style:normal;font-weight:${weights[0]} ${weights[1]};`);
+    for (const { family, weights, style = "normal" } of EMBEDDED_FONTS) {
+      expect(css).toContain(`font-family:"${family}";font-style:${style};font-weight:${weights[0]} ${weights[1]};`);
     }
   });
 
@@ -169,16 +180,18 @@ describe("bundled fonts", () => {
 
   it("asks the readiness gate to load every family at every kit weight", () => {
     const requests = fontLoadRequests();
-    expect(requests).toHaveLength(BUNDLED_FONTS.length * KIT_WEIGHTS.length);
+    expect(requests).toHaveLength(EMBEDDED_FONTS.length * KIT_WEIGHTS.length);
     expect(requests).toContain(`700 16px "${SANS_FAMILY}"`);
     expect(requests).toContain(`450 16px "${MONO_FAMILY}"`);
     expect(requests).toContain(`800 16px "${GEIST_FAMILY}"`);
+    expect(requests).toContain(`800 16px "${SERIF_FAMILY}"`);
+    expect(requests).toContain(`italic 400 16px "${SERIF_FAMILY}"`);
   });
 
   it("embeds every face as a woff2 data URL, so nothing is fetched", async () => {
     const css = await fontFaceCss();
-    expect(css.match(/@font-face/g)).toHaveLength(BUNDLED_FONTS.length);
-    expect(css.match(/url\(data:font\/woff2;base64,d09GMg/g)).toHaveLength(BUNDLED_FONTS.length);
+    expect(css.match(/@font-face/g)).toHaveLength(EMBEDDED_FONTS.length);
+    expect(css.match(/url\(data:font\/woff2;base64,d09GMg/g)).toHaveLength(EMBEDDED_FONTS.length);
     expect(css).not.toMatch(/https?:/);
   });
 });
@@ -242,10 +255,10 @@ describe("render page (integration)", () => {
             mono: mono.flatMap((family) => [400, 600].map((w) => versus(family, "serif", w))),
           };
         },
-        { sans: [SANS_FAMILY, GEIST_FAMILY], mono: [MONO_FAMILY, GEIST_MONO_FAMILY] },
+        { sans: [SANS_FAMILY, GEIST_FAMILY, SERIF_FAMILY], mono: [MONO_FAMILY, GEIST_MONO_FAMILY] },
       );
       expect(requests).toEqual([]);
-      expect(result.loaded.sort()).toEqual(BUNDLED_FONTS.map((f) => `${f.family} ${f.weights[0]} ${f.weights[1]}`).sort());
+      expect(result.loaded.sort()).toEqual(EMBEDDED_FONTS.map((f) => `${f.family} ${f.weights[0]} ${f.weights[1]}`).sort());
       for (const [bundled, fallback] of [...result.sans, ...result.mono]) {
         expect(Math.abs(bundled! - fallback!)).toBeGreaterThan(5);
       }
@@ -290,7 +303,7 @@ describe("render page (integration)", () => {
               mono: mono.map((family) => weights.map((w) => ink(family, w))),
             };
           },
-          { sans: [SANS_FAMILY, GEIST_FAMILY], mono: [MONO_FAMILY, GEIST_MONO_FAMILY], weights: [400, 500, 600, 700, 800] },
+          { sans: [SANS_FAMILY, GEIST_FAMILY, SERIF_FAMILY], mono: [MONO_FAMILY, GEIST_MONO_FAMILY], weights: [400, 500, 600, 700, 800] },
         );
       }),
     );

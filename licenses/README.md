@@ -47,13 +47,15 @@ license and author. Everything here must allow commercial use and modification
 ### Fonts (`assets/fonts/`)
 
 Embedded in the render page under private family names (`mc-sans`, `mc-mono`,
-`mc-geist`, `mc-geist-mono`; see `src/render/fontFaces.ts`). Every file is a
+`mc-geist`, `mc-geist-mono`, and `mc-serif` for the kit's own display serif;
+see `src/render/fontFaces.ts`). Every file is a
 variable font (one `wght` axis), so each weight the kit uses is drawn as
 itself. Source Sans 3 and Source Code Pro are the defaults; Geist and Geist
 Mono are an alternative a theme can choose. Full license texts:
 [`SourceSans3-OFL.txt`](SourceSans3-OFL.txt),
 [`SourceCodePro-OFL.txt`](SourceCodePro-OFL.txt),
-[`Geist-OFL.txt`](Geist-OFL.txt).
+[`Geist-OFL.txt`](Geist-OFL.txt),
+[`PlayfairDisplay-OFL.txt`](PlayfairDisplay-OFL.txt).
 
 | File | Font | License | Copyright | Source |
 | ---- | ---- | ------- | --------- | ------ |
@@ -61,11 +63,17 @@ Mono are an alternative a theme can choose. Full license texts:
 | SourceCodeVF-Upright.ttf.woff2 (`wght` 200-900) | Source Code Pro 1.026 (VF) | SIL OFL 1.1 | © 2023 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source' | release 2.042R-u/1.062R-i/1.026R-vf, `WOFF2/VF/` — https://github.com/adobe-fonts/source-code-pro |
 | Geist-Variable.woff2 (`wght` 100-900) | Geist 1.800 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | `fonts/Geist/webfonts/Geist[wght].woff2` on `main` (downloaded 2026-10-09), renamed — https://github.com/vercel/geist-font |
 | GeistMono-Variable.woff2 (`wght` 100-900) | Geist Mono 1.700 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | `fonts/GeistMono/webfonts/GeistMono[wght].woff2` on `main` (downloaded 2026-10-09), renamed — https://github.com/vercel/geist-font |
+| PlayfairDisplay-Variable.woff2 (`wght` 400-900) and PlayfairDisplay-Italic-Variable.woff2 (`wght` 400-900; GiantType's display serif and its italic tag) | Playfair Display 1.203 | SIL OFL 1.1 | © 2017 The Playfair Display Project Authors (https://github.com/clauseggers/Playfair-Display), with Reserved Font Name "Playfair Display" | `ofl/playfairdisplay/PlayfairDisplay[wght].ttf` (SHA-256 `c40f2293766a503bc70cce9e512ef844a4ccb7cbcde792fe2ea31d191917d8d6`) and `PlayfairDisplay-Italic[wght].ttf` (SHA-256 `a5e26dc5e2e77fb2803a0bf02fd4f81ee136ec8dea863ccdb0c59a263b21378b`) at google/fonts commit `8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5` (downloaded 2026-10-14) — https://github.com/google/fonts/tree/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/playfairdisplay. Wrapped as WOFF2 with fontTools 4.60.2 (`flavor = "woff2"`, outlines, tables and names unchanged); woff2 SHA-256 `ad751abfd55f86a82e0f848b1bb520228a800842c5046f6074c64f0a13a70fda` (upright), `deefe275041de36ae7ddadbd8f70e2318484e5185b852aac655705b2676d2140` (italic) |
 | Geist-Bold.ttf (`wght` 700, static; source of the 3D-text typeface, not embedded in the page) | Geist 1.800 (same version as Geist-Variable.woff2) | SIL OFL 1.1 | Copyright 2024 The Geist Project Authors (the repository's `OFL.txt` at that commit: the same OFL 1.1 text as [`Geist-OFL.txt`](Geist-OFL.txt) apart from this newer copyright line and the openfontlicense.org URL; no Reserved Font Name) | `fonts/Geist/ttf/Geist-Bold.ttf` at commit `10dc7658f13c38a474cde201bb09a4617267545b` (downloaded 2026-10-14), unmodified — https://raw.githubusercontent.com/vercel/geist-font/10dc7658f13c38a474cde201bb09a4617267545b/fonts/Geist/ttf/Geist-Bold.ttf; SHA-256 `3f21f02b827228c3f0c5fb230d027b5a1a263013618e8052bc1b3c5692812c88` |
 | Geist-Bold.typeface.json (3D text) | Geist 1.800, Bold | SIL OFL 1.1 | as Geist-Bold.ttf (no Reserved Font Name) | Derived from Geist-Bold.ttf above by `scripts/build-typeface.ts`: its outlines for printable ASCII plus common punctuation and currency converted to three.js typeface JSON. Loaded by `src/kit/three/fonts3d.ts`; not a web font. |
 
 The WOFF2 and TTF font files are unmodified (the variable Geist files are
-only renamed, to keep brackets out of file names). `Geist-Bold.typeface.json` is a Modified
+only renamed, to keep brackets out of file names). The Playfair Display files
+are the upstream TTFs losslessly re-wrapped as WOFF2, the same font data in a
+web container, keeping the font's name; they are distributed under the OFL
+with its Reserved Font Name. `src/kit/giantTypeMetrics.json` holds letter
+widths, ink extents and kerning measured from the bundled fonts by
+`scripts/build-giant-metrics.ts`: numbers about the fonts, not font software. `Geist-Bold.typeface.json` is a Modified
 Version under the OFL: it is distributed under the same license
 ([`Geist-OFL.txt`](Geist-OFL.txt)) and is never sold on its own. Geist
 declares no Reserved Font Name, so the derivative may keep the name. For the

@@ -1,0 +1,64 @@
+{
+  "title": "GiantType, 16:9: poster-scale words on the reel palette (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "palette": "reel",
+  "scenes": [
+    {
+      "id": "bold",
+      "component": "GiantType",
+      "props": {
+        "text": "BOLD",
+        "style": "italic"
+      },
+      "ground": "ground",
+      "durationMs": 3000,
+      "transition": {
+        "type": "cut"
+      }
+    },
+    {
+      "id": "brand",
+      "component": "GiantType",
+      "props": {
+        "text": "motioncraft",
+        "entrance": "tilt",
+        "rule": true,
+        "kicker": "Prompt in, video out",
+        "tag": "Showreel 2026"
+      },
+      "ground": "ground",
+      "durationMs": 3500,
+      "transition": {
+        "type": "cut"
+      }
+    },
+    {
+      "id": "craft",
+      "component": "GiantType",
+      "props": {
+        "text": "CRAFT",
+        "style": "serif",
+        "entrance": "scale"
+      },
+      "ground": "p1",
+      "durationMs": 3000,
+      "transition": {
+        "type": "cut"
+      }
+    },
+    {
+      "id": "dimension",
+      "component": "GiantType",
+      "props": {
+        "text": "DIMENSION",
+        "entrance": "type",
+        "rule": true,
+        "kicker": "Depth, not decoration"
+      },
+      "ground": "p2",
+      "durationMs": 3000
+    }
+  ]
+}

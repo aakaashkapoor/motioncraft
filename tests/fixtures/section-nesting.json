@@ -656,6 +656,20 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "giant-type",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A giant word in the slot",
+        "content": {
+          "component": "GiantType",
+          "props": { "text": "BOLD", "style": "italic", "rule": true, "kicker": "Poster scale" }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }
