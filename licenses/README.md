@@ -12,6 +12,7 @@ license and author. Everything here must allow commercial use and modification
 | react-dom | 19.3.0  | MIT     | Meta Platforms, Inc. â€” https://github.com/facebook/react |
 | scheduler | 0.28.0  | MIT     | Meta Platforms, Inc. â€” https://github.com/facebook/react (dependency of react-dom) |
 | prismjs   | 1.30.0  | MIT     | Lea Verou and contributors — https://github.com/PrismJS/prism (syntax highlighting for `CodeWindow`) |
+| three     | 0.186.1 | MIT     | three.js authors (mrdoob and contributors) — https://github.com/mrdoob/three.js (WebGL 3D for components built on `src/kit/three/`) |
 
 ## Tooling (development, rendering driver)
 
@@ -22,7 +23,9 @@ license and author. Everything here must allow commercial use and modification
 | tsx               | 4.23.15 | MIT        | Hiroki Osame â€” https://github.com/privatenumber/tsx      |
 | typescript        | 7.0.2   | Apache-2.0 | Microsoft Corp. â€” https://github.com/microsoft/TypeScript |
 | vitest            | 5.0.3   | MIT        | Anthony Fu and contributors â€” https://github.com/vitest-dev/vitest |
-| @types/node, @types/react, @types/react-dom | see package.json | MIT | DefinitelyTyped â€” https://github.com/DefinitelyTyped/DefinitelyTyped |
+| opentype.js       | 2.0.0   | MIT        | Frederik De Bleser and contributors — https://github.com/opentypejs/opentype.js (reads fonts in the typeface build script; not bundled) |
+| @types/node, @types/react, @types/react-dom, @types/prismjs, @types/three, @types/opentype.js | see package.json | MIT | DefinitelyTyped â€” https://github.com/DefinitelyTyped/DefinitelyTyped |
+| @types/three's dependencies (type-only, never bundled): @tweenjs/tween.js, fflate, meshoptimizer, @types/stats.js, @types/webxr; @dimforge/rapier3d-compat | see package-lock.json | MIT; Apache-2.0 (rapier3d-compat) | installed by @types/three |
 
 ## Video encoding and MP4 muxing
 
@@ -58,10 +61,16 @@ Mono are an alternative a theme can choose. Full license texts:
 | SourceCodeVF-Upright.ttf.woff2 (`wght` 200-900) | Source Code Pro 1.026 (VF) | SIL OFL 1.1 | © 2023 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source' | release 2.042R-u/1.062R-i/1.026R-vf, `WOFF2/VF/` — https://github.com/adobe-fonts/source-code-pro |
 | Geist-Variable.woff2 (`wght` 100-900) | Geist 1.800 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | `fonts/Geist/webfonts/Geist[wght].woff2` on `main` (downloaded 2026-10-09), renamed — https://github.com/vercel/geist-font |
 | GeistMono-Variable.woff2 (`wght` 100-900) | Geist Mono 1.700 | SIL OFL 1.1 | © 2023 Vercel, in collaboration with basement.studio | `fonts/GeistMono/webfonts/GeistMono[wght].woff2` on `main` (downloaded 2026-10-09), renamed — https://github.com/vercel/geist-font |
+| Geist-Bold.ttf (`wght` 700, static; source of the 3D-text typeface, not embedded in the page) | Geist 1.800 (same version as Geist-Variable.woff2) | SIL OFL 1.1 | Copyright 2024 The Geist Project Authors (the repository's `OFL.txt` at that commit: the same OFL 1.1 text as [`Geist-OFL.txt`](Geist-OFL.txt) apart from this newer copyright line and the openfontlicense.org URL; no Reserved Font Name) | `fonts/Geist/ttf/Geist-Bold.ttf` at commit `10dc7658f13c38a474cde201bb09a4617267545b` (downloaded 2026-10-14), unmodified — https://raw.githubusercontent.com/vercel/geist-font/10dc7658f13c38a474cde201bb09a4617267545b/fonts/Geist/ttf/Geist-Bold.ttf; SHA-256 `3f21f02b827228c3f0c5fb230d027b5a1a263013618e8052bc1b3c5692812c88` |
+| Geist-Bold.typeface.json (3D text) | Geist 1.800, Bold | SIL OFL 1.1 | as Geist-Bold.ttf (no Reserved Font Name) | Derived from Geist-Bold.ttf above by `scripts/build-typeface.ts`: its outlines for printable ASCII plus common punctuation and currency converted to three.js typeface JSON. Loaded by `src/kit/three/fonts3d.ts`; not a web font. |
 
-The font files are unmodified (the Geist files are only renamed, to keep
-brackets out of file names). motioncraft does not use the Reserved Font
-Names for any derivative.
+The WOFF2 and TTF font files are unmodified (the variable Geist files are
+only renamed, to keep brackets out of file names). `Geist-Bold.typeface.json` is a Modified
+Version under the OFL: it is distributed under the same license
+([`Geist-OFL.txt`](Geist-OFL.txt)) and is never sold on its own. Geist
+declares no Reserved Font Name, so the derivative may keep the name. For the
+Source fonts, motioncraft does not use the Reserved Font Names for any
+derivative.
 
 ## Ported motion designs
 
