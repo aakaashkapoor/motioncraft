@@ -642,6 +642,20 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "extruded-title",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A 3D title in the slot",
+        "content": {
+          "component": "ExtrudedTitle",
+          "props": { "text": "motioncraft", "subtitle": "Prompt in, video out" }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

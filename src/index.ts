@@ -146,6 +146,8 @@ export { LayerStack3D, type LayerStack3DProps } from "./kit/LayerStack3D";
 export { layerStack3DErrors, layerStackFrame, layerStackLayout, stackCamera, type LayerStackLayout, type StackFrame, type StackLayer } from "./kit/layerStack3dPlan";
 export { CodeSlab3D, type CodeSlab3DProps } from "./kit/CodeSlab3D";
 export { bandSweeps, codeSlab3DErrors, codeSlabLayout, slabCamera, slabPose, type CodeSlabLayout, type SlabPose } from "./kit/codeSlab3dPlan";
+export { ExtrudedTitle, type ExtrudedTitleProps } from "./kit/ExtrudedTitle";
+export { extrudedTitleErrors, extrudedTitleLayout, letterPose, titleCamera, titleLetters, wordPose, type ExtrudedFinish, type ExtrudedTitleLayout, type LetterPose, type TitleLetter, type WordPose } from "./kit/extrudedTitlePlan";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
 export { MotionDelay, NOMINAL_SCENE_MS, OPENING_SETTLE_MS, entering, SceneClockContext, SceneWordsContext, useMotionDelay, useSceneMs, useSceneTime, useSceneWords, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { cueErrors, resolveCue, useCueMs, type Cue } from "./kit/cues";
