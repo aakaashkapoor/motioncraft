@@ -1,0 +1,14 @@
+{
+  "title": "ThreeStage: a lit 3D box and 3D text label (ThreeDemo) (16:9)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "scenes": [
+    {
+      "id": "three-demo",
+      "component": "ThreeDemo",
+      "props": { "label": "motioncraft" },
+      "durationMs": 3000
+    }
+  ]
+}

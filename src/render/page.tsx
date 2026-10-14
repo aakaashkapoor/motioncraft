@@ -13,7 +13,8 @@ import { cameraAt, type CameraMode, type CameraTargets, type SceneTargets, type 
 import { CAPTION_ATTRIBUTE, measureFrame } from "../checks/measure";
 import type { FrameMeasurement } from "../checks/types";
 import { buildTimeline, frameAt, scenesOnScreen, type ActiveScene, type SceneDurations, type Timeline } from "../engine/timeline";
-import { Caption, kit } from "../kit";
+import { Caption } from "../kit";
+import { sceneComponent } from "../kit/internal";
 import type { PageNarration } from "../narration/types";
 import { SceneClockContext, SceneWordsContext } from "../kit/frameContext";
 import { resolveCue } from "../kit/cues";
@@ -104,7 +105,7 @@ function wordsOf(theme: Theme, scene: StoryboardScene, sceneFrames: number, fps:
  */
 function SceneLayer({ storyboard, theme, fps, scene: active, hideShared = false, targets, effectTargets, camera, narration, effects = true }: SceneLayerProps) {
   const scene = storyboard.scenes[active.sceneIndex]!;
-  const Component = Object.hasOwn(kit, scene.component) ? kit[scene.component] : undefined;
+  const Component = sceneComponent(scene.component);
   if (Component === undefined) {
     throw new Error(`scene "${scene.id}": unknown component "${scene.component}"`);
   }

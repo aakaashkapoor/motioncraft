@@ -10,6 +10,25 @@ const CHANNEL_NAMES: Record<(typeof CHANNELS)[number], string> = {
   msedge: "Microsoft Edge",
 };
 
+/**
+ * Chromium flags for every render.
+ * - No font hinting and an sRGB color profile: same pixels on every machine.
+ * - `--enable-unsafe-swiftshader`: on a machine without a usable GPU, current
+ *   Chrome refuses WebGL's software fallback (SwiftShader) unless this is set,
+ *   and 3D scenes (`src/kit/three/`) would get no WebGL context. It only
+ *   allows the fallback; a machine with a GPU still uses the GPU.
+ */
+export const BROWSER_ARGS: readonly string[] = [
+  "--font-render-hinting=none",
+  "--force-color-profile=srgb",
+  "--enable-unsafe-swiftshader",
+];
+
+export interface LaunchOptions {
+  /** Flags added after `BROWSER_ARGS`, e.g. to force SwiftShader in a benchmark (scripts/bench-three.ts). */
+  extraArgs?: readonly string[];
+}
+
 const labels = new WeakMap<Browser, string>();
 
 /** The browser's product name and version, e.g. "Google Chrome 154.0.8037.99", for messages. */
@@ -28,15 +47,14 @@ export class BrowserNotFoundError extends Error {
   }
 }
 
-export async function launchBrowser(): Promise<Browser> {
+export async function launchBrowser({ extraArgs = [] }: LaunchOptions = {}): Promise<Browser> {
   const causes: string[] = [];
   for (const channel of CHANNELS) {
     try {
       const browser = await chromium.launch({
         channel,
         headless: true,
-        // Same pixels on every machine: no font hinting, no display color profile.
-        args: ["--font-render-hinting=none", "--force-color-profile=srgb"],
+        args: [...BROWSER_ARGS, ...extraArgs],
       });
       labels.set(browser, CHANNEL_NAMES[channel]);
       return browser;

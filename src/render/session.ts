@@ -3,18 +3,19 @@
 
 import type { Page } from "playwright-core";
 import { kit } from "../kit";
+import { sceneComponent } from "../kit/internal";
 import type { SceneNarration } from "../narration/types";
 import { frameSize } from "../layout/frame";
-import { launchBrowser } from "./browser";
+import { launchBrowser, type LaunchOptions } from "./browser";
 import { bundlePage } from "./bundle";
 import { routeMedia, routeNarration } from "./media";
 import type { PageInput } from "./page";
 import { READY_TIMEOUT_MS, RenderNotReadyError } from "./ready";
 
-/** Throws if a scene names a component the kit does not have. */
+/** Throws if a scene names a component neither the kit nor `internalKit` has. */
 export function checkComponents(input: PageInput): void {
   for (const scene of input.storyboard.scenes) {
-    if (!Object.hasOwn(kit, scene.component)) {
+    if (sceneComponent(scene.component) === undefined) {
       throw new Error(`scene "${scene.id}": unknown component "${scene.component}" (kit has: ${Object.keys(kit).join(", ")})`);
     }
   }
@@ -31,15 +32,17 @@ const PAGE_URL = "https://motioncraft.localhost/render.html";
 /**
  * Loads the render page at the frame's size, runs `use`, then closes the
  * browser. `narration` (with the WAV paths, which the page never sees) is
- * served to the page when the render mixes audio.
+ * served to the page when the render mixes audio. `launch` adds browser flags
+ * (only the benchmark, scripts/bench-three.ts, uses it).
  */
 export async function withRenderPage<T>(
   input: PageInput,
   use: (page: Page) => Promise<T>,
   narration?: Readonly<Record<string, SceneNarration>>,
+  launch?: LaunchOptions,
 ): Promise<T> {
   const html = await bundlePage(input);
-  const browser = await launchBrowser();
+  const browser = await launchBrowser(launch);
   try {
     const page = await browser.newPage({ viewport: frameSize(input.storyboard.aspect), deviceScaleFactor: 1 });
     const pageErrors: Error[] = [];

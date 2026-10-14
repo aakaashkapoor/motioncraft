@@ -1,0 +1,14 @@
+{
+  "title": "ThreeDemo shifted right, out of the safe area (9:16)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "light",
+  "scenes": [
+    {
+      "id": "three-unsafe",
+      "component": "ThreeDemo",
+      "props": { "label": "motioncraft", "shift": { "x": 0.4, "y": 0 } },
+      "durationMs": 3000
+    }
+  ]
+}

@@ -39,8 +39,9 @@ engine. Source is pinned to commit `2905162d925fc87fb8242e24ed0bbf025d307ea1`:
 
 1. **Port the design, not the code.** Read the pinned source and port the
    layout, choreography, timings and easing. Rewrite it as a React kit component
-   on the scene clock. Never add GSAP, anime.js, three.js or any HyperFrames
-   package as a dependency, and never load scripts from a CDN.
+   on the scene clock. Never add GSAP, anime.js or any HyperFrames package as a
+   dependency, and never load scripts from a CDN. three.js (the pinned `three`
+   package) is allowed, but only for 3D components built on `src/kit/three/`.
 2. **Map GSAP eases to our engine:** `power1` = quad, `power2` = cubic,
    `power3` = quart, `power4` = quint, `expo` = `expoIn`/`expoOut`,
    `back.out` = `easeOutBack`, `sine` = sine; `.in`/`.out`/`.inOut` as named.
