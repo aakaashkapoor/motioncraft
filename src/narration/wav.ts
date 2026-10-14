@@ -1,4 +1,4 @@
-// 16-bit PCM mono WAV files. Pure.
+// Mono WAV files: written as 16-bit PCM, read as 16-bit PCM or 32-bit float. Pure.
 
 const HEADER_BYTES = 44;
 
@@ -35,6 +35,7 @@ export function decodeWav(bytes: Uint8Array): { samples: Float32Array; sampleRat
   if (bytes.length < 12 || tag(0) !== "RIFF" || tag(8) !== "WAVE") throw new Error("not a WAV file");
 
   let sampleRate = 0;
+  let float = false;
   let offset = 12;
   while (offset + 8 <= bytes.length) {
     const size = view.getUint32(offset + 4, true);
@@ -43,13 +44,19 @@ export function decodeWav(bytes: Uint8Array): { samples: Float32Array; sampleRat
       const format = view.getUint16(body, true);
       const channels = view.getUint16(body + 2, true);
       const bits = view.getUint16(body + 14, true);
-      if (format !== 1 || channels !== 1 || bits !== 16) throw new Error("only 16-bit PCM mono WAV is supported");
+      float = format === 3 && bits === 32;
+      if (channels !== 1 || !(float || (format === 1 && bits === 16))) {
+        throw new Error("only 16-bit PCM or 32-bit float mono WAV is supported");
+      }
       sampleRate = view.getUint32(body + 4, true);
     } else if (tag(offset) === "data") {
       if (sampleRate === 0) throw new Error("WAV data before its fmt chunk");
-      const count = Math.floor(Math.min(size, bytes.length - body) / 2);
+      const width = float ? 4 : 2;
+      const count = Math.floor(Math.min(size, bytes.length - body) / width);
       const samples = new Float32Array(count);
-      for (let i = 0; i < count; i++) samples[i] = view.getInt16(body + i * 2, true) / 32768;
+      for (let i = 0; i < count; i++) {
+        samples[i] = float ? view.getFloat32(body + i * 4, true) : view.getInt16(body + i * 2, true) / 32768;
+      }
       return { samples, sampleRate };
     }
     offset = body + size + (size % 2);

@@ -172,6 +172,38 @@ describe("wav", () => {
   it("rejects bytes that are not a WAV", () => {
     expect(() => decodeWav(new Uint8Array(20))).toThrow(/WAV/);
   });
+
+  /** A mono WAV with the given format code, sample width and raw sample bytes. */
+  function wavOf(format: number, bits: number, data: Uint8Array): Uint8Array {
+    const bytes = new Uint8Array(44 + data.length);
+    const view = new DataView(bytes.buffer);
+    const tag = (offset: number, text: string) => [...text].forEach((c, i) => (bytes[offset + i] = c.charCodeAt(0)));
+    tag(0, "RIFF");
+    view.setUint32(4, 36 + data.length, true);
+    tag(8, "WAVE");
+    tag(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, format, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, 24000, true);
+    view.setUint32(28, 24000 * (bits / 8), true);
+    view.setUint16(32, bits / 8, true);
+    view.setUint16(34, bits, true);
+    tag(36, "data");
+    view.setUint32(40, data.length, true);
+    bytes.set(data, 44);
+    return bytes;
+  }
+
+  it("reads 32-bit float samples exactly", () => {
+    const decoded = decodeWav(wavOf(3, 32, new Uint8Array(Float32Array.of(0.5, -0.25, 0.123).buffer)));
+    expect(decoded.sampleRate).toBe(24000);
+    expect([...decoded.samples]).toEqual([0.5, -0.25, Math.fround(0.123)]);
+  });
+
+  it("rejects other sample formats", () => {
+    expect(() => decodeWav(wavOf(1, 8, new Uint8Array(4)))).toThrow(/16-bit PCM or 32-bit float/);
+  });
 });
 
 describe("splitSentences", () => {
