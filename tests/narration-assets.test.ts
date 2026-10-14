@@ -1,9 +1,22 @@
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureFile, GOLD_FILE, KOKORO_REVISION, KOKORO_TIMESTAMPED_REVISION, MODEL_FILE, SILVER_FILE, VOICE_FILES, type PinnedFile } from "../src/narration/assets";
+import {
+  CHATTERBOX_FILES,
+  CHATTERBOX_REVISION,
+  ensureFile,
+  GOLD_FILE,
+  KOKORO_REVISION,
+  KOKORO_TIMESTAMPED_REVISION,
+  MODEL_FILE,
+  SILVER_FILE,
+  REFERENCE_VOICE_FILE,
+  SPEECH_ENCODER_FILES,
+  VOICE_FILES,
+  type PinnedFile,
+} from "../src/narration/assets";
 
 const bytes = new TextEncoder().encode("pinned file contents");
 const file: PinnedFile = {
@@ -94,5 +107,34 @@ describe("the pinned files", () => {
     expect(GOLD_FILE.url).toMatch(/raw\.githubusercontent\.com\/hexgrad\/misaki\/fba1236595f2d2bf21d414ba6e57d25256afada3\/misaki\/data\/us_gold\.json$/);
     expect(SILVER_FILE.bytes).toBe(3099517);
     expect(Object.keys(VOICE_FILES)).toEqual(["af_heart", "af_bella", "am_michael"]);
+  });
+});
+
+describe("the Chatterbox files", () => {
+  it("are pinned to one revision of the official ONNX export", () => {
+    for (const pinned of [...Object.values(CHATTERBOX_FILES), ...SPEECH_ENCODER_FILES]) {
+      expect(pinned.url).toContain(`/ResembleAI/chatterbox-turbo-ONNX/resolve/${CHATTERBOX_REVISION}/`);
+      expect(pinned.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(pinned.bytes).toBeGreaterThan(0);
+    }
+  });
+
+  it("keep each graph beside its weights, under the name the graph loads them by", () => {
+    const pairs = [
+      [CHATTERBOX_FILES.languageModel, CHATTERBOX_FILES.languageModelData],
+      [CHATTERBOX_FILES.embedTokens, CHATTERBOX_FILES.embedTokensData],
+      [CHATTERBOX_FILES.decoder, CHATTERBOX_FILES.decoderData],
+      [SPEECH_ENCODER_FILES[0]!, SPEECH_ENCODER_FILES[1]!],
+    ] as const;
+    for (const [graph, weights] of pairs) {
+      expect(dirname(weights.path)).toBe(dirname(graph.path));
+      expect(basename(weights.path)).toBe(`${basename(graph.path)}_data`);
+    }
+    expect(basename(CHATTERBOX_FILES.languageModel.path)).toBe("language_model_q4.onnx");
+  });
+
+  it("pin the reference recording of the default voice", () => {
+    expect(REFERENCE_VOICE_FILE.url).toMatch(/onnx-community\/chatterbox-ONNX\/resolve\/[0-9a-f]{40}\/default_voice\.wav$/);
+    expect(REFERENCE_VOICE_FILE.sha256).toBe("3ebc531cdaba358a327099c1c4f0448026719957bcf4d8e9868767f227e02f4e");
   });
 });

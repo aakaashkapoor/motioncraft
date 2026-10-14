@@ -1,4 +1,4 @@
-// The pinned files the local voice needs (model, tokenizer, voices and
+// The pinned files the local voices need (models, tokenizers, voices and
 // pronunciation dictionaries) and a fetcher that downloads each once into a
 // cache, checking its size and SHA-256. This is the only network use in
 // motioncraft, and `offline` turns it off.
@@ -70,6 +70,61 @@ export const SILVER_FILE = dictionaryFile(
   3099517,
   "de8f67be911bb6c659187b4a65fd966b6a30e56350e0f790d763210b053ac475",
 );
+
+/** ResembleAI/chatterbox-turbo-ONNX (MIT, Resemble AI). */
+export const CHATTERBOX_REVISION = "d21799bd0354adb85e348b8a0442a8405110a2cf";
+/** onnx-community/chatterbox-ONNX (MIT): only its reference recording, `default_voice.wav`. */
+export const CHATTERBOX_VOICE_REVISION = "3cab09af388d3f02bba43443fce88c1f4525ac43";
+
+function chatterboxFile(name: string, bytes: number, sha256: string): PinnedFile {
+  return {
+    url: `https://huggingface.co/ResembleAI/chatterbox-turbo-ONNX/resolve/${CHATTERBOX_REVISION}/${name}`,
+    sha256,
+    bytes,
+    path: join("chatterbox-turbo", CHATTERBOX_REVISION, ...name.split("/")),
+  };
+}
+
+/**
+ * What speaking with Chatterbox needs. Each `.onnx` graph loads its weights
+ * from the `.onnx_data` file beside it, by name. The language model is the
+ * 4-bit one: on CPU the 8-bit one is about twenty times slower.
+ */
+export const CHATTERBOX_FILES = {
+  tokenizer: chatterboxFile("tokenizer.json", 3562272, "3f04e34bea22f9144d1a19151154095bc9ce0430bf421304f5797e716288a906"),
+  languageModel: chatterboxFile("onnx/language_model_q4.onnx", 274572, "b39d03d3f8b943b9e60c6fce3fb41191dbc1df4589f913291db1e214eef669b1"),
+  languageModelData: chatterboxFile(
+    "onnx/language_model_q4.onnx_data",
+    204456572,
+    "2c029dc0acf48752473d8c74c72b5ceaaad76b9886fe106eaf2022142d5b5d5e",
+  ),
+  embedTokens: chatterboxFile("onnx/embed_tokens_quantized.onnx", 2887, "0efe1bc01c2c48a98425a74444fd9887924d887f922c2722a6ec961ebb9e1db6"),
+  embedTokensData: chatterboxFile(
+    "onnx/embed_tokens_quantized.onnx_data",
+    67297376,
+    "9025d04c124899823124b1d7bb7069b1f535fb8a6c2d88f97520eb6fecced986",
+  ),
+  decoder: chatterboxFile("onnx/conditional_decoder_quantized.onnx", 2202035, "2af3b150196d9d559cd3c91e03da80eb27a466032369dc2b57ea729cddad3ebb"),
+  decoderData: chatterboxFile(
+    "onnx/conditional_decoder_quantized.onnx_data",
+    326548688,
+    "4918ca09e05e41d2b4aa1ace6201d1cd911ffc58a42801002bab177d495cfe0a",
+  ),
+} as const;
+
+/** Only `scripts/chatterbox-voice.ts` needs these: they turn a recording into a voice file. */
+export const SPEECH_ENCODER_FILES: readonly PinnedFile[] = [
+  chatterboxFile("onnx/speech_encoder_quantized.onnx", 1205728, "5b6f15870a43cf97892df86fc550a0ef4763522d527cde72b2a4316f80a34de4"),
+  chatterboxFile("onnx/speech_encoder_quantized.onnx_data", 354676576, "d59861fb55e806fbeee731da9d4f8ff819fb5735de5d15e262d902594ee4dbb6"),
+];
+
+/** The recording the default Chatterbox voice is made from (24 kHz mono, 32-bit float, 7.44 s). */
+export const REFERENCE_VOICE_FILE: PinnedFile = {
+  url: `https://huggingface.co/onnx-community/chatterbox-ONNX/resolve/${CHATTERBOX_VOICE_REVISION}/default_voice.wav`,
+  sha256: "3ebc531cdaba358a327099c1c4f0448026719957bcf4d8e9868767f227e02f4e",
+  bytes: 714320,
+  path: join("chatterbox-voice", CHATTERBOX_VOICE_REVISION, "default_voice.wav"),
+};
 
 const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
 
