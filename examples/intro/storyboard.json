@@ -1,0 +1,387 @@
+{
+  "title": "Introducing motioncraft",
+  "aspect": "16:9",
+  "fps": 30,
+  "captionStyle": "standard",
+  "pronounce": {
+    "motioncraft": "motion craft",
+    "Motioncraft": "Motion craft"
+  },
+  "theme": "dark",
+  "palette": "reel",
+  "scenes": [
+    {
+      "id": "hook",
+      "component": "GiantType",
+      "props": {
+        "text": "motioncraft",
+        "entrance": "rise",
+        "rule": true,
+        "kicker": "Prompt in, video out",
+        "tag": "open source"
+      },
+      "narration": "Welcome to motioncraft. Videos from a prompt, with every frame drawn in code.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "prompt",
+      "component": "PromptCard",
+      "props": {
+        "text": "A launch video for my app",
+        "shareId": "prompt"
+      },
+      "narration": "You start by describing the video you want, in a single prompt.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "plan",
+      "component": "Handoff",
+      "props": {
+        "from": {
+          "component": "PromptCard",
+          "props": {
+            "text": "A launch video for my app",
+            "shareId": "prompt",
+            "typed": false
+          }
+        },
+        "to": {
+          "component": "TerminalWindow",
+          "props": {
+            "title": "render",
+            "shareId": "term",
+            "lines": [
+              {
+                "prompt": true,
+                "text": "npm run render"
+              },
+              {
+                "text": "launch.mp4 ready"
+              }
+            ]
+          }
+        },
+        "label": "render"
+      },
+      "narration": "Your coding agent takes it from there. It writes the storyboard, then runs one command to render it.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "render",
+      "component": "Notification",
+      "props": {
+        "notifications": [
+          {
+            "app": "motioncraft",
+            "title": "Render finished",
+            "body": "launch.mp4 is ready to post",
+            "icon": "check",
+            "time": "now"
+          }
+        ],
+        "atMs": [
+          900
+        ],
+        "content": {
+          "component": "TerminalWindow",
+          "props": {
+            "title": "render",
+            "shareId": "term",
+            "typed": false,
+            "lines": [
+              {
+                "prompt": true,
+                "text": "npm run render"
+              },
+              {
+                "text": "launch.mp4 ready"
+              }
+            ]
+          }
+        }
+      },
+      "narration": "It checks every frame along the way, and when it's done, it hands you back a finished file, ready to post.",
+      "transition": {
+        "type": "iris"
+      }
+    },
+    {
+      "id": "code",
+      "component": "CodeSlab3D",
+      "props": {
+        "title": "render.ts",
+        "language": "ts",
+        "code": "const video = await render({\n  storyboard,\n  checks: \"every frame\",\n});\nawait video.save(\"launch.mp4\");",
+        "highlightLines": [
+          3
+        ]
+      },
+      "narration": "It can show your code the way it deserves, highlighted line by line on a lit slab.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "chart",
+      "component": "BarChart",
+      "props": {
+        "title": "Signups by month",
+        "data": [
+          {
+            "label": "Jan",
+            "value": 480
+          },
+          {
+            "label": "Feb",
+            "value": 720
+          },
+          {
+            "label": "Mar",
+            "value": 1250,
+            "emphasis": true
+          },
+          {
+            "label": "Apr",
+            "value": 960
+          },
+          {
+            "label": "May",
+            "value": 1100
+          }
+        ]
+      },
+      "narration": "Hand it your numbers, and the charts draw themselves, with the one that matters highlighted.",
+      "transition": {
+        "type": "slide"
+      }
+    },
+    {
+      "id": "stack",
+      "component": "LayerStack3D",
+      "props": {
+        "layers": [
+          {
+            "label": "App",
+            "note": "What people tap",
+            "icon": "laptop"
+          },
+          {
+            "label": "API",
+            "note": "Auth and routing",
+            "icon": "code"
+          },
+          {
+            "label": "Database",
+            "note": "Every record",
+            "icon": "box"
+          }
+        ],
+        "highlight": 1
+      },
+      "narration": "It can explain how a system fits together, one layer at a time, with a note on every layer.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "dashboard",
+      "component": "BentoGrid",
+      "props": {
+        "cards": [
+          {
+            "kind": "stat",
+            "value": "+212%",
+            "label": "Signups this quarter",
+            "trend": [
+              3,
+              4,
+              3.5,
+              6,
+              5.5,
+              9
+            ]
+          },
+          {
+            "kind": "ring",
+            "percent": 86,
+            "label": "Retention"
+          },
+          {
+            "kind": "bars",
+            "values": [
+              4,
+              7,
+              5,
+              9,
+              6
+            ],
+            "label": "Weekly"
+          },
+          {
+            "kind": "title",
+            "text": "Shipped",
+            "toggle": true
+          }
+        ]
+      },
+      "narration": "Or turn a quarter of results into a dashboard that builds itself.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      }
+    },
+    {
+      "id": "count",
+      "component": "Countdown",
+      "props": {
+        "from": 3,
+        "to": 1
+      },
+      "ground": "p1",
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      },
+      "narration": "And when you want it loud,"
+    },
+    {
+      "id": "bold",
+      "component": "GiantType",
+      "props": {
+        "text": "BOLD",
+        "style": "italic",
+        "entrance": "tilt",
+        "kicker": "Palettes and giant type"
+      },
+      "ground": "p3",
+      "narration": "it goes bold, with flat colour and giant type,",
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      }
+    },
+    {
+      "id": "tunnel",
+      "component": "Backdrop3D",
+      "props": {
+        "variant": "tunnel",
+        "seed": 3
+      },
+      "ground": "p2",
+      "narration": "and real 3D, whenever you ask for it.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      }
+    },
+    {
+      "id": "orbit",
+      "component": "OrbitCard3D",
+      "props": {
+        "title": "Checked every frame",
+        "subtitle": "Layout, contrast and timing",
+        "icon": "check"
+      },
+      "narration": "And every frame is checked, before you ever see it.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "compare",
+      "component": "BeforeAfter",
+      "props": {
+        "before": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Keyframe by hand",
+              "Export, again"
+            ]
+          }
+        },
+        "after": {
+          "component": "StepList",
+          "props": {
+            "items": [
+              "Write one prompt",
+              "Render"
+            ],
+            "highlight": 1
+          }
+        },
+        "beforeLabel": "By hand",
+        "afterLabel": "With motioncraft"
+      },
+      "narration": "No more keyframing by hand, and exporting again and again. Now it's one prompt, and one render.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "formats",
+      "component": "CardRow",
+      "props": {
+        "cards": [
+          {
+            "icon": "play",
+            "title": "Shorts",
+            "subtitle": "9:16"
+          },
+          {
+            "icon": "laptop",
+            "title": "Widescreen",
+            "subtitle": "16:9"
+          },
+          {
+            "icon": "file",
+            "title": "Feed posts",
+            "subtitle": "4:5"
+          }
+        ],
+        "highlight": 2
+      },
+      "narration": "Make shorts, widescreen videos and feed posts, all from the same storyboard.",
+      "transition": {
+        "type": "fade",
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "end",
+      "component": "EndCard",
+      "props": {
+        "name": "motioncraft",
+        "line": "Prompt in, video out",
+        "accent": "Open source, free forever",
+        "cta": {
+          "label": "Star it on GitHub",
+          "note": "github.com/aakaashkapoor/motioncraft"
+        },
+        "card": {
+          "component": "PromptCard",
+          "props": {
+            "text": "A launch video for my app",
+            "shareId": "prompt-end",
+            "typed": false
+          }
+        }
+      },
+      "narration": "Motioncraft. Prompt in, video out. It's open source, and free forever.",
+      "durationMs": 7000
+    }
+  ]
+}
