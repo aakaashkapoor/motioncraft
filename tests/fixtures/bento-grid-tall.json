@@ -1,0 +1,39 @@
+{
+  "title": "BentoGrid, 9:16: a dashboard of stat cards on the reel palette (must pass layer-1 checks)",
+  "aspect": "9:16",
+  "fps": 30,
+  "theme": "dark",
+  "palette": "reel",
+  "scenes": [
+    {
+      "id": "reference",
+      "component": "BentoGrid",
+      "props": {
+        "cards": [
+          { "kind": "stat", "value": "+212%", "label": "Reach this month", "trend": [3, 4, 3.5, 6, 5.5, 9] },
+          { "kind": "title", "text": "Motion that ships", "toggle": true },
+          { "kind": "ring", "percent": 7, "label": "Rendered" },
+          { "kind": "quote", "text": "Keyframes are a language.", "track": true }
+        ]
+      },
+      "ground": "p4",
+      "durationMs": 5000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "indigo",
+      "component": "BentoGrid",
+      "props": {
+        "cards": [
+          { "kind": "stat", "value": "1,280", "label": "Videos rendered", "trend": [2, 3, 5, 4, 7, 8, 11], "fill": "p4" },
+          { "kind": "bars", "values": [3, 5, 4, 8, 6], "label": "Weekly" },
+          { "kind": "ring", "percent": 64, "label": "On brand", "fill": "p1" },
+          { "kind": "title", "text": "Every frame is code", "fill": "text" },
+          { "kind": "quote", "text": "Motion is meaning.", "fill": "surface" }
+        ]
+      },
+      "ground": "p3",
+      "durationMs": 5000
+    }
+  ]
+}

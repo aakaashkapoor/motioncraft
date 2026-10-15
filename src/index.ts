@@ -149,6 +149,8 @@ export { bandSweeps, codeSlab3DErrors, codeSlabLayout, slabCamera, slabPose, typ
 export { ExtrudedTitle, type ExtrudedTitleProps } from "./kit/ExtrudedTitle";
 export { GiantType, type GiantTypeProps } from "./kit/GiantType";
 export { GIANT_ENTRANCES, GIANT_STYLES, giantTypeEntrance, giantTypeErrors, giantTypeLayout, type GiantEntrance, type GiantStyle, type GiantTypeLayout } from "./kit/giantTypePlan";
+export { BentoGrid, type BentoGridProps } from "./kit/BentoGrid";
+export { BENTO_FILLS, BENTO_KINDS, BENTO_MAX_CARDS, BENTO_MIN_CARDS, bentoFill, bentoGridErrors, bentoGridLayout, bentoShape, bentoTiming, type BentoCard, type BentoFillRole, type BentoGridLayout, type BentoKind, type BentoShape } from "./kit/bentoGridPlan";
 export { extrudedTitleErrors, extrudedTitleLayout, letterPose, titleCamera, titleLetters, wordPose, type ExtrudedFinish, type ExtrudedTitleLayout, type LetterPose, type TitleLetter, type WordPose } from "./kit/extrudedTitlePlan";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
 export { MotionDelay, NOMINAL_SCENE_MS, OPENING_SETTLE_MS, entering, SceneClockContext, SceneWordsContext, useMotionDelay, useSceneMs, useSceneTime, useSceneWords, type SceneClock, type SceneTime } from "./kit/frameContext";

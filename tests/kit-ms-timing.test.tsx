@@ -110,6 +110,15 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
   CodeSlab3D: { code: "function area(r: number) {\n  return Math.PI * r * r;\n}", highlightLines: [2], title: "area.ts" },
   ExtrudedTitle: { text: "motioncraft", subtitle: "Prompt in, video out", accentLetters: [0] },
   GiantType: { text: "motioncraft", entrance: "tilt", rule: true, kicker: "Prompt in, video out", tag: "Showreel 2026" },
+  BentoGrid: {
+    cards: [
+      { kind: "stat", value: "+212%", label: "Reach this month", trend: [3, 4, 3.5, 6, 5.5, 9] },
+      { kind: "title", text: "Motion that ships", toggle: true },
+      { kind: "ring", percent: 7, label: "Rendered" },
+      { kind: "bars", values: [4, 7, 5, 9, 6] },
+      { kind: "quote", text: "Keyframes are a language.", track: true },
+    ],
+  },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 

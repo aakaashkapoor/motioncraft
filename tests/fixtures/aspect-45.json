@@ -397,6 +397,21 @@
       "transition": { "type": "fade" }
     },
     {
+      "id": "bento-grid",
+      "component": "BentoGrid",
+      "props": {
+        "cards": [
+          { "kind": "stat", "value": "+212%", "label": "Reach this month", "trend": [3, 4, 3.5, 6, 5.5, 9] },
+          { "kind": "title", "text": "Motion that ships", "toggle": true },
+          { "kind": "ring", "percent": 7, "label": "Rendered" },
+          { "kind": "bars", "values": [4, 7, 5, 9, 6], "label": "Weekly" },
+          { "kind": "quote", "text": "Keyframes are a language.", "track": true }
+        ]
+      },
+      "durationMs": 5000,
+      "transition": { "type": "fade" }
+    },
+    {
       "id": "end-card",
       "component": "EndCard",
       "props": { "name": "Splitly", "logo": "media/logo.svg", "line": "Split your next bill", "accent": "Free forever", "cta": { "label": "Get the app", "note": "Link in bio" } },
