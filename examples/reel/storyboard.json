@@ -1,0 +1,25 @@
+{
+  "title": "motioncraft reel",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "palette": "reel",
+  "frame": { "style": "viewfinder", "label": "motioncraft / reel 2026" },
+  "scenes": [
+    { "id": "count", "component": "Countdown", "props": { "from": 3, "to": 1, "stepMs": 600 }, "ground": "p1", "durationMs": 1800, "frameLabel": "Count in", "transition": { "type": "cut" } },
+    { "id": "bold", "component": "GiantType", "props": { "text": "BOLD", "style": "italic", "entrance": "rise" }, "durationMs": 1800, "frameLabel": "Type", "transition": { "type": "cut" } },
+    { "id": "depth", "component": "GiantType", "props": { "text": "DEPTH", "entrance": "rise", "behind": { "component": "Backdrop3D", "props": { "variant": "helix", "seed": 2 } } }, "ground": "p3", "durationMs": 2200, "frameLabel": "Depth", "transition": { "type": "cut" } },
+    { "id": "tunnel", "component": "Backdrop3D", "props": { "variant": "tunnel", "intensity": "busy", "seed": 3 }, "ground": "p2", "durationMs": 1800, "frameLabel": "Fly in", "transition": { "type": "cut" } },
+    { "id": "craft", "component": "GiantType", "props": { "text": "CRAFT", "style": "serif", "entrance": "tilt", "tag": "frame by frame" }, "ground": "p4", "durationMs": 2600, "frameLabel": "Craft", "transition": { "type": "cut" } },
+    { "id": "blobs", "component": "Backdrop3D", "props": { "variant": "blobs", "seed": 5 }, "durationMs": 1800, "frameLabel": "Form", "transition": { "type": "cut" } },
+    { "id": "numbers", "component": "BentoGrid", "props": { "cards": [
+      { "kind": "stat", "value": "1,280", "label": "Videos rendered", "trend": [2, 3, 2.5, 5, 4.5, 8] },
+      { "kind": "title", "text": "Ships", "toggle": true },
+      { "kind": "ring", "percent": 100, "label": "Checked" },
+      { "kind": "bars", "values": [4, 7, 5, 9, 6], "label": "Weekly" },
+      { "kind": "quote", "text": "Motion is meaning.", "track": true }
+    ] }, "durationMs": 4000, "frameLabel": "Numbers", "transition": { "type": "cut" } },
+    { "id": "city", "component": "Backdrop3D", "props": { "variant": "city", "seed": 4 }, "durationMs": 1800, "frameLabel": "Scale", "transition": { "type": "cut" } },
+    { "id": "brand", "component": "GiantType", "props": { "text": "motioncraft", "entrance": "tilt", "rule": true, "kicker": "Prompt in, video out", "tag": "Showreel 2026" }, "ground": "p1", "durationMs": 3400, "frameLabel": "motioncraft" }
+  ]
+}
