@@ -366,16 +366,25 @@ describe("tunnel", () => {
     expect(tunnelRings(layout, 4000)).toEqual(tunnelRings(layout, 4000));
   });
 
-  it("builds one instanced ring mesh in the ink, with the accent on one instance", () => {
+  it("builds instanced rings in the ink and one thicker ring in the accent, where the accent slot's ring is", () => {
     const theme = fieldTheme(reel, "p2");
-    const built = buildTunnelScene(theme, tunnelLayout(1, "calm"), { width: 1920, height: 1080 });
-    poseTunnel(built.state, 3000);
-    const { rings } = built.state;
+    const layout = tunnelLayout(1, "calm");
+    const built = buildTunnelScene(theme, layout, { width: 1920, height: 1080 });
+    const { rings, accent } = built.state;
     expect(rings).toBeInstanceOf(THREE.InstancedMesh);
-    const c = new THREE.Color();
-    const hexes = Array.from({ length: rings.count }, (_, i) => `#${rings.getColorAt(i, c).getHexString()}`);
-    const accent = `#${new THREE.Color(theme.colors.accent).getHexString()}`;
-    expect(hexes.filter((h) => h === accent)).toHaveLength(1);
-    expect(new Set(hexes).size).toBe(2);
+    expect(rings.count).toBe(layout.count);
+    const hex = (m: THREE.Material) => `#${(m as THREE.MeshBasicMaterial).color.getHexString()}`;
+    expect(hex(rings.material as THREE.Material)).toBe(`#${new THREE.Color(theme.colors.text).getHexString()}`);
+    expect(hex(accent.material as THREE.Material)).toBe(`#${new THREE.Color(theme.colors.accent).getHexString()}`);
+    const tube = (g: THREE.BufferGeometry) => (g as THREE.TorusGeometry).parameters.tube;
+    expect(tube(accent.geometry)).toBeGreaterThan(tube(rings.geometry));
+    for (const ms of [3000, 9000]) {
+      poseTunnel(built.state, ms);
+      const ring = tunnelRings(layout, ms).rings.find((r) => r.accent)!;
+      expect(new THREE.Vector3().setFromMatrixPosition(accent.matrix).z).toBeCloseTo(ring.z, 6);
+      const m = new THREE.Matrix4();
+      rings.getMatrixAt(ring.slot, m);
+      expect(new THREE.Vector3().setFromMatrixScale(m).length()).toBe(0);
+    }
   });
 });

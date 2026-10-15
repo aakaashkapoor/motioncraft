@@ -14,10 +14,11 @@ import type { Theme } from "../theme/types";
 import { BACKDROP_SETTLE_MS, backdropColors, backdropRise, stagedRise, TUNNEL_SPECS, type BackdropIntensity } from "./backdrop3dPlan";
 import type { ThreeStageSize } from "./three/ThreeStage";
 
-/** The ring's tube radius. */
+/** The ring's tube radius, and the accent ring's (thicker, so the one accent reads). */
 const TUBE = 0.022;
+const ACCENT_TUBE = 0.04;
 /** How far the path winds sideways and up (ring radii), and over how many ring radii of depth it turns once. */
-const BEND = 0.32;
+const BEND = 0.22;
 const BEND_LENGTH_MIN = 9;
 const BEND_LENGTH_MAX = 14;
 /** Each ring's own lean, radians at most, seeded. */
@@ -124,7 +125,9 @@ export function tunnelRings(layout: TunnelLayout, ms: number): TunnelView {
 
 export interface TunnelState {
   layout: TunnelLayout;
+  /** The ink rings, one instance per slot (the accent's slot left empty), and the accent ring. */
   rings: THREE.InstancedMesh;
+  accent: THREE.Mesh;
   camera: THREE.PerspectiveCamera;
 }
 
@@ -138,14 +141,15 @@ export function buildTunnelScene(theme: Theme, layout: TunnelLayout, size: Three
   const tan = Math.tan(THREE.MathUtils.degToRad(NARROW_FOV / 2));
   const fov = THREE.MathUtils.radToDeg(2 * Math.atan(aspect >= 1 ? tan : tan / aspect));
   const camera = new THREE.PerspectiveCamera(fov, aspect, 0.02, depth + 2);
-  const rings = new THREE.InstancedMesh(new THREE.TorusGeometry(1, TUBE, 8, 160), new THREE.MeshBasicMaterial({ toneMapped: false }), layout.count);
+  const rings = new THREE.InstancedMesh(new THREE.TorusGeometry(1, TUBE, 8, 160), new THREE.MeshBasicMaterial({ color: new THREE.Color(colors.ink), toneMapped: false }), layout.count);
   rings.name = "tunnel rings";
   rings.frustumCulled = false;
-  const ink = new THREE.Color(colors.ink);
-  const accent = new THREE.Color(colors.accent);
-  for (let slot = 0; slot < layout.count; slot++) rings.setColorAt(slot, slot === layout.accentSlot ? accent : ink);
-  scene.add(rings);
-  const state = { layout, rings, camera };
+  const accent = new THREE.Mesh(new THREE.TorusGeometry(1, ACCENT_TUBE, 10, 160), new THREE.MeshBasicMaterial({ color: new THREE.Color(colors.accent), toneMapped: false }));
+  accent.name = "tunnel accent ring";
+  accent.frustumCulled = false;
+  accent.matrixAutoUpdate = false;
+  scene.add(rings, accent);
+  const state = { layout, rings, accent, camera };
   poseTunnel(state, 0);
   return { scene, camera, state };
 }
@@ -154,12 +158,19 @@ const scratch = { m: new THREE.Matrix4(), p: new THREE.Vector3(), q: new THREE.Q
 
 /** Flies the camera and places every ring for `ms` on the scene clock. */
 export function poseTunnel(state: TunnelState, ms: number): void {
-  const { layout, rings, camera } = state;
+  const { layout, rings, accent, camera } = state;
   const view = tunnelRings(layout, ms);
   const { m, p, q, e, s } = scratch;
   for (const ring of view.rings) {
     q.setFromEuler(e.set(ring.leanX, ring.leanY, 0));
-    rings.setMatrixAt(ring.slot, m.compose(p.set(ring.x, ring.y, ring.z), q, s.set(ring.scale, ring.scale, ring.scale)));
+    m.compose(p.set(ring.x, ring.y, ring.z), q, s.set(ring.scale, ring.scale, ring.scale));
+    if (ring.accent) {
+      accent.matrix.copy(m);
+      accent.matrixWorld.copy(m);
+      // Its slot in the ink rings draws nothing.
+      m.makeScale(0, 0, 0);
+    }
+    rings.setMatrixAt(ring.slot, m);
   }
   rings.instanceMatrix.needsUpdate = true;
   const { x, y, z, roll, look } = view.camera;
