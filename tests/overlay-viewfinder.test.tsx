@@ -5,9 +5,12 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, type TestContext } from "vitest";
 import { ASPECTS, SAFE_PROFILES, captionBand, lightTheme, safeZones, validateStoryboard, type SafeProfile, type Storyboard, type Theme } from "../src/index";
 import { checkViewfinderOverlap } from "../src/checks/overlays";
+import { BrowserNotFoundError } from "../src/render/browser";
+import { estimateDurations } from "../src/render/durations";
+import { showFrame, withRenderPage } from "../src/render/session";
 import { buildTimeline } from "../src/engine/timeline";
 import { viewfinderLayout } from "../src/overlays/viewfinderLayout";
 import { VIEWFINDER_ATTRIBUTE } from "../src/overlays/Viewfinder";
@@ -221,3 +224,44 @@ describe("viewfinder fixtures", () => {
   }
 });
 
+
+describe("viewfinder check on a GiantType word", { timeout: 120_000 }, () => {
+  const LABEL = "MOTIONCRAFT / REEL 2026";
+  const storyboard = {
+    title: "t",
+    aspect: "16:9",
+    fps: 30,
+    theme: "dark",
+    palette: "reel",
+    frame: { style: "viewfinder", label: "motioncraft / reel 2026" },
+    scenes: [{ id: "bold", component: "GiantType", props: { text: "BOLD", style: "italic", entrance: "rise" }, durationMs: 1800 }],
+  } as unknown as Storyboard;
+
+  /** The viewfinder messages for the word, lifted `lift` px up the frame. */
+  const messages = async (lift: number, ctx: TestContext) => {
+    const theme = resolveTheme(storyboard);
+    const input = { storyboard, theme, durations: estimateDurations(storyboard) };
+    const measurement = await withRenderPage(input, async (page) => {
+      await showFrame(page, 40);
+      await page.evaluate((dy) => {
+        const word = document.querySelector("[data-gianttype-word]")!;
+        (word.parentElement as HTMLElement).style.transform = `translateY(${-dy}px)`;
+      }, lift);
+      return page.evaluate(() => window.motioncraft!.measureFrame());
+    }).catch((error: unknown) => {
+      if (error instanceof BrowserNotFoundError) ctx.skip(`no Chrome or Edge installed: ${error.message}`);
+      throw error;
+    });
+    return checkViewfinderOverlap(measurement, [LABEL]);
+  };
+
+  it("is quiet for a short word: its ink, not its line box, is measured", async (ctx) => {
+    expect(await messages(0, ctx)).toEqual([]);
+  });
+
+  it("still warns when the word's ink reaches a viewfinder row", async (ctx) => {
+    const found = await messages(300, ctx);
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.join()).toContain(`viewfinder text "${LABEL}" is covered by text "BOLD"`);
+  });
+});
