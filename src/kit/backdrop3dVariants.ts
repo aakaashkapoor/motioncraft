@@ -6,6 +6,7 @@ import type * as THREE from "three";
 import type { Theme } from "../theme/types";
 import type { BackdropIntensity, BackdropVariant } from "./backdrop3dPlan";
 import { blobLayout, buildBlobsScene, poseBlobs } from "./backdrop3dBlobs";
+import { buildCityScene, cityLayout, poseCity } from "./backdrop3dCity";
 import { buildHelixScene, helixLayout, poseHelix } from "./backdrop3dHelix";
 import { buildTunnelScene, poseTunnel, tunnelLayout } from "./backdrop3dTunnel";
 import type { ThreeStageSize } from "./three/ThreeStage";
@@ -33,5 +34,6 @@ export const BACKDROP_BUILDERS: Partial<Record<BackdropVariant, BackdropBuilder>
     pose: poseBlobs,
     environment: "studio",
   }),
+  city: builder({ build: (theme, seed, intensity, size) => buildCityScene(theme, cityLayout(seed, intensity), size), pose: poseCity }),
   tunnel: builder({ build: (theme, seed, intensity, size) => buildTunnelScene(theme, tunnelLayout(seed, intensity), size), pose: poseTunnel }),
 };

@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 import { bundleBrowserEntry, withOfflinePage } from "./browserPage";
 
 const ENTRY = join(import.meta.dirname, "backdrop3d.entry.tsx");
-/** The variants built so far. */
-const VARIANTS = ["helix", "blobs", "tunnel"];
+/** Every variant. */
+const VARIANTS = ["helix", "blobs", "city", "tunnel"];
 
 function draw(page: Page, variant: string, seed: number, frame: number): Promise<string> {
   return page.evaluate(

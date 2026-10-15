@@ -16,6 +16,7 @@ import {
   backdropRise,
 } from "../src/kit/backdrop3dPlan";
 import { blobLayout, blobPlaces, buildBlobsScene, poseBlobs } from "../src/kit/backdrop3dBlobs";
+import { buildCityScene, cityHeights, cityLayout, poseCity } from "../src/kit/backdrop3dCity";
 import { buildHelixScene, helixLayout, poseHelix } from "../src/kit/backdrop3dHelix";
 import { buildTunnelScene, poseTunnel, tunnelLayout, tunnelRings } from "../src/kit/backdrop3dTunnel";
 import { BACKDROP_BUILDERS } from "../src/kit/backdrop3dVariants";
@@ -265,6 +266,78 @@ describe("blobs", () => {
     expect(surface.geometry.drawRange.count).toBeGreaterThan(0);
     expect((surface.material as THREE.MeshPhysicalMaterial).iridescence).toBeGreaterThan(0);
     expect(BACKDROP_BUILDERS.blobs!.environment).toBe("studio");
+  });
+});
+
+describe("city", () => {
+  it("lays out the same for a seed and differently for another", () => {
+    expect(cityLayout(1, "calm")).toEqual(cityLayout(1, "calm"));
+    expect(cityLayout(2, "calm")).not.toEqual(cityLayout(1, "calm"));
+  });
+
+  it("is denser and quicker when busy", () => {
+    const calm = cityLayout(1, "calm");
+    const busy = cityLayout(1, "busy");
+    expect(busy.bars.length).toBeGreaterThan(calm.bars.length);
+    expect(busy.turnPeriodMs).toBeLessThan(calm.turnPeriodMs);
+  });
+
+  it("has every bar at zero height at 0 ms and risen to its height after 1.5 s", () => {
+    for (const intensity of ["calm", "busy"] as const) {
+      const layout = cityLayout(5, intensity);
+      expect(cityHeights(layout, 0).every((h) => h === 0)).toBe(true);
+      expect(cityHeights(layout, 1500)).toEqual(layout.bars.map((b) => b.height));
+      expect(Math.min(...layout.bars.map((b) => b.height))).toBeGreaterThan(0);
+    }
+  });
+
+  it("rises in a wave from one corner", () => {
+    const layout = cityLayout(1, "calm");
+    const mid = cityHeights(layout, 600);
+    const share = (i: number) => mid[i]! / layout.bars[i]!.height;
+    const near = layout.bars.findIndex((b) => b.gx === layout.size - 1 && b.gz === layout.size - 1);
+    const far = layout.bars.findIndex((b) => b.gx === 0 && b.gz === 0);
+    expect(share(near)).toBeGreaterThan(share(far));
+    expect(share(far)).toBe(0);
+  });
+
+  it("builds instanced bars in the grey and the accent, flat at 0 ms, framed inside the stage in every aspect", () => {
+    for (const size of [
+      { width: 1920, height: 1080 },
+      { width: 1080, height: 1920 },
+      { width: 1080, height: 1350 },
+    ]) {
+      const layout = cityLayout(2, "busy");
+      const built = buildCityScene(reel, layout, size);
+      const { grey, accent } = built.state;
+      expect(grey).toBeInstanceOf(THREE.InstancedMesh);
+      expect(grey.count + accent.count).toBe(layout.bars.length);
+      expect(accent.count).toBeGreaterThan(0);
+      const m = new THREE.Matrix4();
+      poseCity(built.state, 0);
+      grey.getMatrixAt(0, m);
+      expect(new THREE.Vector3().setFromMatrixScale(m).y).toBe(0);
+      for (const ms of [1500, 6000, 13_000]) {
+        poseCity(built.state, ms);
+        built.camera.updateMatrixWorld(true);
+        let maxX = 0;
+        let maxY = 0;
+        for (const mesh of [grey, accent]) {
+          for (let i = 0; i < mesh.count; i++) {
+            mesh.getMatrixAt(i, m);
+            const top = new THREE.Vector3().setFromMatrixPosition(m);
+            const h = new THREE.Vector3().setFromMatrixScale(m).y;
+            for (const y of [0, h]) {
+              const p = new THREE.Vector3(top.x, y, top.z).project(built.camera);
+              maxX = Math.max(maxX, Math.abs(p.x));
+              maxY = Math.max(maxY, Math.abs(p.y));
+            }
+          }
+        }
+        expect(Math.max(maxX, maxY)).toBeLessThan(0.95);
+        expect(Math.max(maxX, maxY)).toBeGreaterThan(0.55);
+      }
+    }
   });
 });
 

@@ -105,3 +105,15 @@ export const BLOB_SPECS: Record<BackdropIntensity, BlobSpec> = {
   calm: { count: 6, periodMinMs: 9000, periodMaxMs: 15000 },
   busy: { count: 9, periodMinMs: 5000, periodMaxMs: 8500 },
 };
+
+export interface CitySpec {
+  /** Grid cells a side. */
+  size: number;
+  /** The camera's slow turn for the hold: ms per swing. */
+  turnPeriodMs: number;
+}
+
+export const CITY_SPECS: Record<BackdropIntensity, CitySpec> = {
+  calm: { size: 9, turnPeriodMs: 18_000 },
+  busy: { size: 12, turnPeriodMs: 9_000 },
+};
