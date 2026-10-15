@@ -7,6 +7,7 @@
 // overlapping the type. Letters are placed from measured metrics
 // (`giantTypeFaces.ts`), so the word's width is exact and it never wraps.
 
+import { INK_BOX_ATTRIBUTE } from "../checks/measure";
 import { SERIF_FAMILY } from "../render/fontFaces";
 import { frameSize } from "../layout/frame";
 import { contentArea } from "../layout/caption";
@@ -118,8 +119,8 @@ export function GiantType(props: GiantTypeProps) {
     <div
       data-block="GiantType"
       data-gianttype-word=""
-      // Sized to fill its width, not set on a ramp step.
-      {...{ [TEXT_PIECES_ATTRIBUTE]: "", [TYPE_FIT_ATTRIBUTE]: "" }}
+      // Sized to fill its width, not set on a ramp step; this box is the ink, so the checks measure it, not the line box.
+      {...{ [TEXT_PIECES_ATTRIBUTE]: "", [TYPE_FIT_ATTRIBUTE]: "", [INK_BOX_ATTRIBUTE]: "" }}
       style={{
         position: "absolute",
         left: 0,

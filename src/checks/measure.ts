@@ -20,6 +20,12 @@ export const BLOCK_ATTRIBUTE = "data-block";
  * judged against.
  */
 export const GROUND_TINT_ATTRIBUTE = "data-ground-tint";
+/**
+ * Marks a text element whose box is exactly where its ink is drawn (a giant
+ * word set from measured font metrics), so text checks use that box instead of
+ * the font's line box, which at a huge size reaches far past the letters.
+ */
+export const INK_BOX_ATTRIBUTE = "data-ink-box";
 
 function toRect(box: DOMRect, origin: DOMRect): Rect {
   return { x: box.left - origin.left, y: box.top - origin.top, width: box.width, height: box.height };
@@ -139,8 +145,9 @@ function measureText(el: Element, root: Element, origin: DOMRect): MeasuredText 
   const pieces = el.hasAttribute(TEXT_PIECES_ATTRIBUTE);
   const nodes = (pieces ? allText(el) : [...el.childNodes].filter((node): node is Text => node instanceof Text)).filter((node) => node.data.trim() !== "");
   if (nodes.length === 0) return undefined;
-  const rect = union(nodes.map((node) => textRect(node, origin)).filter((r): r is Rect => r !== undefined));
-  if (rect === undefined) return undefined;
+  const lineRect = union(nodes.map((node) => textRect(node, origin)).filter((r): r is Rect => r !== undefined));
+  if (lineRect === undefined) return undefined;
+  const rect = el.hasAttribute(INK_BOX_ATTRIBUTE) ? toRect(el.getBoundingClientRect(), origin) : lineRect;
 
   const chain = lineage(el, root);
   // A whole of pieces is only as visible as its faintest piece.
