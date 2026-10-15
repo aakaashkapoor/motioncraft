@@ -672,6 +672,20 @@
       "narration": "Every kit component lays itself out inside the section's slot."
     },
     {
+      "id": "backdrop-3d",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A 3D backdrop in the slot",
+        "content": {
+          "component": "Backdrop3D",
+          "props": { "variant": "tunnel" }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
       "id": "bento-grid",
       "component": "Section",
       "props": {

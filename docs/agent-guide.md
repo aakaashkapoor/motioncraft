@@ -991,6 +991,30 @@ for a sentence use `Headline` or `TitleCard`.
 }
 ```
 
+#### `Backdrop3D`
+
+Abstract 3D spectacle that fills the frame (or its slot) edge to edge, for an
+opener, a section break or an energetic beat; it carries no text, so pair it
+with narration or put it behind a short line. `variant` picks the look:
+`helix`, a glowing torus of small coloured squares wound like a helix, slowly
+turning (made for a dark or indigo field); `tunnel`, ink rings with exactly
+one in the accent, the camera flying in forever (made for a lime field);
+`city` and `blobs` are coming and are not built yet. It draws only theme
+colours (the ink, the accent, the palette's swatches other than the ground),
+so it reads on every palette field: set the scene's `ground` to a swatch.
+`intensity` is `calm` (default) or `busy` (denser and faster); `seed` (a
+number, default 1) picks the layout, and the same seed always draws the same
+frames. It rises in from 150 ms and is whole by 1.4 s.
+
+```json
+{
+  "id": "fly-in",
+  "component": "Backdrop3D",
+  "props": { "variant": "tunnel", "intensity": "calm", "seed": 3 },
+  "narration": "Let's go inside."
+}
+```
+
 #### `EndCard`
 
 The calm closing card from the owner's reference: a logo mark (`icon`, default
