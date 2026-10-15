@@ -690,6 +690,17 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "countdown",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A countdown in the slot",
+        "content": { "component": "Countdown", "props": { "from": 3, "to": 1 } }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

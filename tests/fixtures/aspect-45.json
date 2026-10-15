@@ -412,6 +412,13 @@
       "transition": { "type": "fade" }
     },
     {
+      "id": "countdown",
+      "component": "Countdown",
+      "props": {},
+      "durationMs": 2400,
+      "transition": { "type": "fade" }
+    },
+    {
       "id": "end-card",
       "component": "EndCard",
       "props": { "name": "Splitly", "logo": "media/logo.svg", "line": "Split your next bill", "accent": "Free forever", "cta": { "label": "Get the app", "note": "Link in bio" } },

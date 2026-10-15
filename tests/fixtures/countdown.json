@@ -1,0 +1,40 @@
+{
+  "title": "Countdown, 16:9: a giant serif numeral with a hairline ring, 3-2-1 on the reel palette (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "palette": "reel",
+  "scenes": [
+    {
+      "id": "orange",
+      "component": "Countdown",
+      "props": {},
+      "ground": "p1",
+      "durationMs": 2400,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "five-lime",
+      "component": "Countdown",
+      "props": { "from": 5, "to": 1, "stepMs": 500 },
+      "ground": "p2",
+      "durationMs": 3000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "cream",
+      "component": "Countdown",
+      "props": { "from": 3, "to": 1 },
+      "ground": "p4",
+      "durationMs": 2400,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "indigo",
+      "component": "Countdown",
+      "props": { "from": 3, "to": 1 },
+      "ground": "p3",
+      "durationMs": 2400
+    }
+  ]
+}

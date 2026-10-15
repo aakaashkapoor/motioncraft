@@ -1306,6 +1306,31 @@ total; a row labelled Subtotal is checked against the items, not added again.
 }
 ```
 
+#### `Countdown`
+
+A countdown beat: one huge high-contrast serif numeral at a time (the display
+serif, Playfair Display), hard-cut from number to number, while a thin
+hairline ring (1.5 px, the scene's ink at 70%) draws around it over its step.
+`from` (1-9, default 3) and `to` (1-9, default 1, not above `from`) are the
+first and last number; `stepMs` (300-1500, default 600) is how long each
+stays. The first number is on screen from frame 0 and its ring starts at 100 ms, so
+`3, 2, 1` are on at 100, 700 and 1300 ms. The scene must be at least `(from - to + 1) * stepMs` long (1.8 s for
+the defaults) or it fails; a longer scene only holds the last number. The
+numeral is as big as the content area lets it be and the ring circles its
+middle, with the rest of the frame left empty; it is drawn in the scene's
+ink, so it reads on every palette ground (with a `palette`, try `ground: "p1"`
+for orange or `"p2"` for lime).
+Use it for one beat, then cut to the next scene; it is not a clock or timer.
+
+```json
+{
+  "id": "countdown",
+  "component": "Countdown",
+  "props": { "from": 3, "to": 1 },
+  "durationMs": 2400
+}
+```
+
 ### Charts
 
 `DonutChart`, `BarChart` and `LineChart` share one vocabulary. `data` is a

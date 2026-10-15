@@ -119,6 +119,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
       { kind: "quote", text: "Keyframes are a language.", track: true },
     ],
   },
+  Countdown: { from: 3, to: 1 },
   EndCard: { name: "motioncraft", line: "Prompt in, video out", accent: "Open source", card: { component: "PromptCard", props: { text: "A launch video", typed: false } } },
 };
 
