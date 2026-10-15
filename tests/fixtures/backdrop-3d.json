@@ -14,6 +14,14 @@
       "transition": { "type": "cut" }
     },
     {
+      "id": "blobs",
+      "component": "Backdrop3D",
+      "props": { "variant": "blobs" },
+      "ground": "ground",
+      "durationMs": 3000,
+      "transition": { "type": "cut" }
+    },
+    {
       "id": "tunnel",
       "component": "Backdrop3D",
       "props": { "variant": "tunnel" },

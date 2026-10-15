@@ -92,3 +92,16 @@ export const TUNNEL_SPECS: Record<BackdropIntensity, TunnelSpec> = {
   calm: { rings: 14, spacing: 1.1, speed: 0.9 },
   busy: { rings: 20, spacing: 0.8, speed: 1.8 },
 };
+
+export interface BlobSpec {
+  /** Metaballs drifting at once. */
+  count: number;
+  /** Each axis of a ball's path takes this long to swing once, ms (seeded within the range). */
+  periodMinMs: number;
+  periodMaxMs: number;
+}
+
+export const BLOB_SPECS: Record<BackdropIntensity, BlobSpec> = {
+  calm: { count: 6, periodMinMs: 9000, periodMaxMs: 15000 },
+  busy: { count: 9, periodMinMs: 5000, periodMaxMs: 8500 },
+};

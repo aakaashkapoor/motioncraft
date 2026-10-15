@@ -15,6 +15,7 @@ import {
   backdropColors,
   backdropRise,
 } from "../src/kit/backdrop3dPlan";
+import { blobLayout, blobPlaces, buildBlobsScene, poseBlobs } from "../src/kit/backdrop3dBlobs";
 import { buildHelixScene, helixLayout, poseHelix } from "../src/kit/backdrop3dHelix";
 import { buildTunnelScene, poseTunnel, tunnelLayout, tunnelRings } from "../src/kit/backdrop3dTunnel";
 import { BACKDROP_BUILDERS } from "../src/kit/backdrop3dVariants";
@@ -209,6 +210,61 @@ describe("helix", () => {
         expect(span).toBeGreaterThan(0.6);
       }
     }
+  });
+});
+
+describe("blobs", () => {
+  it("lays out the same for a seed and differently for another", () => {
+    expect(blobLayout(1, "calm", true)).toEqual(blobLayout(1, "calm", true));
+    expect(blobLayout(2, "calm", true)).not.toEqual(blobLayout(1, "calm", true));
+  });
+
+  it("is denser and quicker when busy", () => {
+    const calm = blobLayout(1, "calm", true);
+    const busy = blobLayout(1, "busy", true);
+    expect(busy.blobs.length).toBeGreaterThan(calm.blobs.length);
+    const slowest = (l: typeof calm) => Math.max(...l.blobs.flatMap((b) => [b.periodMs.x, b.periodMs.y, b.periodMs.z]));
+    expect(slowest(busy)).toBeLessThan(Math.min(...calm.blobs.flatMap((b) => [b.periodMs.x, b.periodMs.y, b.periodMs.z])));
+  });
+
+  it("swells from nothing at 0 ms to whole by the settle, then keeps drifting", () => {
+    const layout = blobLayout(4, "busy", false);
+    expect(blobPlaces(layout, 0).every((b) => b.radius === 0)).toBe(true);
+    const settled = blobPlaces(layout, BACKDROP_SETTLE_MS);
+    settled.forEach((b, i) => expect(b.radius).toBeCloseTo(layout.blobs[i]!.radius, 5));
+    expect(blobPlaces(layout, 4000)).not.toEqual(blobPlaces(layout, 5000));
+    expect(blobPlaces(layout, 4000)).toEqual(blobPlaces(layout, 4000));
+  });
+
+  it("keeps every ball inside the field, wide on a wide stage and tall on a tall one", () => {
+    for (const wide of [true, false]) {
+      const layout = blobLayout(9, "busy", wide);
+      let spanX = 0;
+      let spanY = 0;
+      for (let ms = BACKDROP_SETTLE_MS; ms < 30_000; ms += 97) {
+        for (const b of blobPlaces(layout, ms)) {
+          // Clear of the field's outer cells, which marching cubes never draws.
+          for (const c of [b.x, b.y, b.z]) {
+            expect(c - b.radius).toBeGreaterThan(0.05);
+            expect(c + b.radius).toBeLessThan(0.95);
+          }
+          spanX = Math.max(spanX, Math.abs(b.x - 0.5));
+          spanY = Math.max(spanY, Math.abs(b.y - 0.5));
+        }
+      }
+      expect(wide ? spanX > spanY : spanY > spanX).toBe(true);
+    }
+  });
+
+  it("builds one marching-cubes surface, empty at 0 ms and drawn by the settle", () => {
+    const built = buildBlobsScene(reel, blobLayout(1, "calm", true), { width: 1920, height: 1080 });
+    const { surface } = built.state;
+    poseBlobs(built.state, 0);
+    expect(surface.geometry.drawRange.count).toBe(0);
+    poseBlobs(built.state, BACKDROP_SETTLE_MS);
+    expect(surface.geometry.drawRange.count).toBeGreaterThan(0);
+    expect((surface.material as THREE.MeshPhysicalMaterial).iridescence).toBeGreaterThan(0);
+    expect(BACKDROP_BUILDERS.blobs!.environment).toBe("studio");
   });
 });
 

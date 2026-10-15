@@ -53,7 +53,7 @@ export function Backdrop3D(props: Backdrop3DProps) {
       data-backdrop-rise={rise.toFixed(4)}
       style={{ position: "absolute", left: root.x, top: root.y, width: root.width, height: root.height, opacity, pointerEvents: "none" }}
     >
-      <ThreeStage area={{ x: 0, y: 0, width: root.width, height: root.height }} aspect={aspect} progress={progress} build={build} update={update} label="Backdrop3D" />
+      <ThreeStage area={{ x: 0, y: 0, width: root.width, height: root.height }} aspect={aspect} progress={progress} build={build} update={update} label="Backdrop3D" environment={builder.environment} />
     </div>
   );
 }
