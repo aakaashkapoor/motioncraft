@@ -24,6 +24,8 @@ import { captionsShown, withCaptionsShown } from "../layout/caption";
 import { frameSize } from "../layout/frame";
 import { Overlays } from "../overlays/Overlays";
 import { sceneAreaUnderOverlays } from "../overlays/sceneHeaders";
+import { storyboardViewfinderLayout, Viewfinder } from "../overlays/Viewfinder";
+import { FULL_BLEED_COMPONENTS } from "../kit/media";
 import { WIDE_SHOT, opensSettled, type Storyboard, type StoryboardScene } from "../storyboard/types";
 import { sceneTheme } from "../theme/field";
 import type { Theme } from "../theme/types";
@@ -125,8 +127,15 @@ function SceneLayer({ storyboard, theme: frameTheme, fps, scene: active, hideSha
   }
   const { aspect } = storyboard;
   const common = { progress: active.progress, theme, aspect };
+  // A viewfinder frame: the scene lays out between its rows and the caption lifts above its ruler.
+  const framed = storyboard.frame === undefined ? undefined : storyboardViewfinderLayout(theme, storyboard.frame, storyboard.scenes, aspect, fps);
   // A top-corner overlay that would crowd this scene's eyebrow or headline: the scene lays out below it instead.
-  const headerArea = sceneAreaUnderOverlays(theme, aspect, scene, storyboard.overlays ?? []);
+  const headerArea =
+    framed !== undefined
+      ? FULL_BLEED_COMPONENTS.has(scene.component)
+        ? undefined
+        : framed.contentArea(captionsShown(storyboard))
+      : sceneAreaUnderOverlays(theme, aspect, scene, storyboard.overlays ?? []);
   const view = cameraAt({
     theme,
     aspect,
@@ -149,7 +158,7 @@ function SceneLayer({ storyboard, theme: frameTheme, fps, scene: active, hideSha
         </CameraWorld>
       </SceneWordsContext.Provider>
       {scene.narration !== undefined && storyboard.captionStyle !== "off" && (
-        <div {...{ [CAPTION_ATTRIBUTE]: "" }}>
+        <div {...{ [CAPTION_ATTRIBUTE]: "" }} {...(framed !== undefined && framed.captionLift > 0 && { style: { position: "absolute", inset: 0, transform: `translateY(${-framed.captionLift}px)` } })}>
           <Caption {...common} text={scene.narration} captionStyle={storyboard.captionStyle} words={narration?.[scene.id]?.words} />
         </div>
       )}
@@ -218,7 +227,7 @@ function shownScene(drawn: readonly ActiveScene[]): ActiveScene {
 
 /**
  * Exactly what is on screen at `frame`: the ground, then each scene's
- * component and caption, then the overlays above them all. During a transition both scenes are stacked, the
+ * component and caption, then the viewfinder frame and the overlays above them all. During a transition both scenes are stacked, the
  * incoming one on top, over one shared ground; elements the two scenes share
  * (see `shared`) are drawn once, morphing, above both. The ground is the
  * shown scene's (its palette field, see `sceneTheme`). During a transition
@@ -239,7 +248,8 @@ export function Frame({ storyboard, theme, timeline, frame, shared, targets, eff
   const field = new Set(grounds).size > 1;
   const layer = { storyboard, theme, fps: timeline.fps, targets, effectTargets, camera, narration, field, ms };
   // The ground, and the overlays above everything, take the shown scene's theme.
-  const shown = storyboard.scenes[shownScene(drawn).sceneIndex]!;
+  const shownIndex = shownScene(drawn).sceneIndex;
+  const shown = storyboard.scenes[shownIndex]!;
   const onScreen = sceneTheme(theme, shown);
   const rootField = !field && sceneGround(shown) !== "ground" ? { "data-frame-field": sceneGround(shown) } : {};
 
@@ -267,6 +277,9 @@ export function Frame({ storyboard, theme, timeline, frame, shared, targets, eff
           size={size}
           renderScene={(scene) => <SceneLayer {...layer} camera="live" scene={scene} field={false} />}
         />
+      )}
+      {storyboard.frame !== undefined && (
+        <Viewfinder frameSpec={storyboard.frame} scenes={storyboard.scenes} sceneIndex={shownIndex} theme={onScreen} aspect={storyboard.aspect} timeline={timeline} frame={frame} />
       )}
       {storyboard.overlays !== undefined && (
         <Overlays overlays={storyboard.overlays} sceneIds={storyboard.scenes.map((scene) => scene.id)} theme={onScreen} aspect={storyboard.aspect} timeline={timeline} frame={frame} />

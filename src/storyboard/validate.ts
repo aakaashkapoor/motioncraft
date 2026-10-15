@@ -18,6 +18,7 @@ import {
   type SceneEffect,
   type SceneGround,
   type SceneShot,
+  type StoryboardFrame,
   type StoryboardOverlay,
   type SceneTransition,
   type Storyboard,
@@ -25,6 +26,7 @@ import {
   type StoryboardValidation,
 } from "./types";
 import { overlaysErrors } from "../overlays/errors";
+import { frameErrors, frameLabelError } from "../overlays/frameErrors";
 import { brandFontsErrors, fontOverrideErrors } from "./brandFonts";
 import { sceneComponents } from "./components";
 import { effectsErrors } from "./effects";
@@ -45,8 +47,8 @@ export function isVoiceSpeed(value: unknown): value is number {
   return typeof value === "number" && value >= MIN_VOICE_SPEED && value <= MAX_VOICE_SPEED;
 }
 
-const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "fonts", "themeOverrides", "accent", "accentIntensity", "palette", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "scenes"]);
-const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "audio", "durationMs", "transition", "shots", "effects", "ground"]);
+const STORYBOARD_FIELDS = new Set(["title", "aspect", "fps", "theme", "fonts", "themeOverrides", "accent", "accentIntensity", "palette", "safe", "captionStyle", "opening", "voice", "voiceSpeed", "pronounce", "overlays", "frame", "scenes"]);
+const SCENE_FIELDS = new Set(["id", "component", "props", "narration", "audio", "durationMs", "transition", "shots", "effects", "ground", "frameLabel"]);
 const AUDIO_FIELDS = new Set(["file", "words"]);
 const TRANSITION_FIELDS = new Set(["type", "durationMs", "direction", "origin"]);
 const ORIGIN_FIELDS = new Set(["x", "y"]);
@@ -142,7 +144,7 @@ function linesErrors(scene: { component: unknown; props: Record<string, unknown>
 /** Validates a scene, pushing errors prefixed with `label`. Returns the scene if valid. */
 function validateScene(raw: Record<string, unknown>, label: string, errors: string[]): StoryboardScene | undefined {
   const sceneErrors: string[] = unknownFields(raw, SCENE_FIELDS);
-  const { component, props, narration, audio, durationMs, transition, shots, effects, ground } = raw;
+  const { component, props, narration, audio, durationMs, transition, shots, effects, ground, frameLabel } = raw;
 
   if (!isNonEmptyString(component)) sceneErrors.push("component is required and must be a non-empty string");
   if (!isObject(props)) sceneErrors.push("props is required and must be an object");
@@ -164,6 +166,8 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   if (shots !== undefined && isObject(props)) sceneErrors.push(...shotsErrors(shots, { component, props, durationMs }));
   if (effects !== undefined && isObject(props)) sceneErrors.push(...effectsErrors(effects, { component, props, narration, durationMs }));
   if (ground !== undefined && !SCENE_GROUNDS.includes(ground as never)) sceneErrors.push(`ground must be ${oneOf(SCENE_GROUNDS)} (got ${describe(ground)})`);
+  const frameLabelProblem = frameLabel === undefined ? undefined : frameLabelError(frameLabel);
+  if (frameLabelProblem !== undefined) sceneErrors.push(frameLabelProblem);
 
   errors.push(...sceneErrors.map((e) => `${label}: ${e}`));
   if (sceneErrors.length > 0) return undefined;
@@ -176,6 +180,7 @@ function validateScene(raw: Record<string, unknown>, label: string, errors: stri
   if (shots !== undefined) scene.shots = shots as SceneShot[];
   if (effects !== undefined) scene.effects = effects as SceneEffect[];
   if (ground !== undefined) scene.ground = ground as SceneGround;
+  if (frameLabel !== undefined) scene.frameLabel = frameLabel as string;
   return scene;
 }
 
@@ -344,6 +349,8 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
     const ids = Array.isArray(input.scenes) ? input.scenes.map((scene: unknown) => (isObject(scene) ? scene.id : undefined)).filter((id): id is string => typeof id === "string") : [];
     errors.push(...overlaysErrors(overlays, ids));
   }
+  const { frame } = input;
+  if (frame !== undefined) errors.push(...frameErrors(frame, overlays));
 
   if (errors.length > 0) return { ok: false, errors };
   const storyboard: Storyboard = { title: title as string, aspect: aspect as Aspect, fps: fps as number, theme: theme as string, scenes };
@@ -359,5 +366,6 @@ export function validateStoryboard(input: unknown): StoryboardValidation {
   if (voiceSpeed !== undefined) storyboard.voiceSpeed = voiceSpeed as number;
   if (pronounce !== undefined) storyboard.pronounce = pronounce as Record<string, string>;
   if (overlays !== undefined) storyboard.overlays = overlays as StoryboardOverlay[];
+  if (frame !== undefined) storyboard.frame = frame as StoryboardFrame;
   return { ok: true, storyboard };
 }

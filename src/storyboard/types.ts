@@ -179,6 +179,8 @@ export interface StoryboardScene {
    * slide) becomes a hard cut at its midpoint.
    */
   ground?: SceneGround;
+  /** What a storyboard `frame`'s scene counter calls the scene: 1-24 characters, drawn uppercase. Defaults to the scene's `id`. */
+  frameLabel?: string;
 }
 
 export const OVERLAY_CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
@@ -200,6 +202,29 @@ export interface StoryboardOverlay {
   corner?: OverlayCorner;
   /** Ids of the scenes it shows on. Defaults to every scene. */
   scenes?: string[];
+}
+
+export const FRAME_STYLES = ["viewfinder"] as const;
+export type FrameStyle = (typeof FRAME_STYLES)[number];
+/** Most characters in a frame's label, and in a scene's `frameLabel`. */
+export const MAX_FRAME_LABEL = 32;
+export const MAX_SCENE_FRAME_LABEL = 24;
+
+/**
+ * A frame drawn over the whole video. `viewfinder`: hairline corner brackets
+ * at the safe area's corners, a label top-left, the running timecode
+ * top-right, a scene counter bottom-left, the frame size and fps bottom-right,
+ * and a ruler between them with a tick per scene that fills as the video
+ * plays. Scenes lay out between its rows and captions sit above its ruler.
+ */
+export interface StoryboardFrame {
+  style: FrameStyle;
+  /** 1-32 characters, drawn uppercase top-left. None by default. */
+  label?: string;
+  /** Show the timecode top-right. Defaults to true. */
+  showTimecode?: boolean;
+  /** Show the frame size and fps bottom-right. Defaults to true. */
+  showSpec?: boolean;
 }
 
 /** Licenses a brand font may have: each allows commercial use and modification (AGENTS.md). */
@@ -266,6 +291,8 @@ export interface Storyboard {
   pronounce?: Record<string, string>;
   /** Corner tags across chosen scenes, at most 3. */
   overlays?: StoryboardOverlay[];
+  /** A frame over the whole video (see `StoryboardFrame`); not with `overlays`. */
+  frame?: StoryboardFrame;
   scenes: StoryboardScene[];
 }
 
