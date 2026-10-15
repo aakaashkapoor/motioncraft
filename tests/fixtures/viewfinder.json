@@ -1,0 +1,41 @@
+{
+  "title": "Viewfinder frame, 16:9: brackets, label, timecode, scene counter and ruler over a showreel (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "palette": "reel",
+  "frame": { "style": "viewfinder", "label": "Claude / Motion reel 2026" },
+  "scenes": [
+    {
+      "id": "intro",
+      "component": "Headline",
+      "props": { "text": "Motion that ships", "motion": "words", "emphasis": "ships" },
+      "narration": "Every frame here is drawn by code.",
+      "durationMs": 3000,
+      "transition": { "type": "wipe" }
+    },
+    {
+      "id": "build",
+      "component": "SceneFrame",
+      "props": {
+        "eyebrow": "How it works",
+        "headline": "Write it, check it, ship it",
+        "content": {
+          "component": "CardRow",
+          "props": { "cards": [{ "icon": "chat", "title": "Write" }, { "icon": "code", "title": "Check" }, { "icon": "play", "title": "Ship" }] }
+        }
+      },
+      "narration": "Write a storyboard, check it, render it.",
+      "ground": "p2",
+      "durationMs": 5000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "ship",
+      "component": "BigNumber",
+      "props": { "value": 60, "suffix": " fps", "label": "Every frame" },
+      "frameLabel": "Outro",
+      "durationMs": 3000
+    }
+  ]
+}

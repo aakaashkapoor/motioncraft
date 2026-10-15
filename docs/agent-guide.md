@@ -212,11 +212,11 @@ A storyboard is one JSON document. Top-level fields: `title`, `aspect`
 (`"9:16"`, the primary format, `"16:9"` or `"4:5"`; see "Output"), `fps`
 (default 30), `theme` (default `"light"`), the theme fields (`accent`,
 `accentIntensity`, `palette`, `themeOverrides`) and brand `fonts` in section 3, `safe`, `captionStyle`, `voice`, `voiceSpeed`, `pronounce` and
-`overlays` (below), `opening` (below), and `scenes`. Each scene has an `id`
+`overlays` (below), `frame` (below), `opening` (below), and `scenes`. Each scene has an `id`
 (unique), a `component` (a kit name from section 5), `props`, and optionally
 `narration`, `audio` (your own recording, below), `durationMs`, `transition`,
-camera `shots` and `effects` (section 1), and `ground` (a palette colour field,
-see "Colour" in section 3).
+camera `shots` and `effects` (section 1), `ground` (a palette colour field,
+see "Colour" in section 3), and `frameLabel` (below).
 
 `opening` is `"settled"` (the default) or `"build"`. The first frame of a video
 is its thumbnail on GitHub, Slack, X and most players until someone presses
@@ -459,6 +459,41 @@ beside it, or 16 px above or below).
   "scenes": [
     { "id": "intro", "component": "Headline", "props": { "text": "Split any bill" }, "durationMs": 3000, "transition": { "type": "fade" } },
     { "id": "outro", "component": "Headline", "props": { "text": "No more math" }, "durationMs": 3000 }
+  ]
+}
+```
+
+### Viewfinder frame
+
+`frame` draws a thin camera viewfinder over the whole video while the scenes
+cut beneath it: hairline corner brackets at the safe area's corners, a label
+top-left, the running timecode (`HH:MM:SS:FF`) top-right, a scene counter
+(`01 / INTRO`) bottom-left, the frame size and fps (`1920 x 1080 / 30 FPS`)
+bottom-right, and a ruler along the bottom with a tick at every scene that
+fills as the video plays. Use it for showreels, launch videos and anything
+asked to look "cinematic"; leave it off explainers, where it is only noise.
+
+- `style` (required): `"viewfinder"`.
+- `label`: 1-32 characters, drawn uppercase (none by default).
+- `showTimecode`, `showSpec`: `true` by default.
+- A scene's `frameLabel` (1-24 characters) names it in the counter instead of
+  its `id`.
+
+It is small mono type in the scene's muted ink at 60%, fading in over the first
+300 ms, and it switches ink with the scene's `ground` on the cut. Scenes lay
+out between its top and bottom rows, and captions sit above its ruler. It
+cannot be combined with `overlays`, which share its corners. Its text is
+checked for the safe area and contrast but not for reading time, and the
+`overlay` check warns when scene text or a caption runs into it.
+
+```json
+{
+  "title": "Motion reel",
+  "aspect": "16:9",
+  "frame": { "style": "viewfinder", "label": "Motion reel 2026" },
+  "scenes": [
+    { "id": "intro", "component": "Headline", "props": { "text": "Motion that ships" }, "durationMs": 3000, "transition": { "type": "cut" } },
+    { "id": "outro", "component": "Headline", "props": { "text": "Every frame is code" }, "durationMs": 3000, "frameLabel": "The end" }
   ]
 }
 ```
