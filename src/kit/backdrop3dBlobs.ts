@@ -2,9 +2,9 @@
 // marching-cubes surface (three's `MarchingCubes`) over a few seeded balls,
 // each on its own slow Lissajous path, so they meet, melt into one another and
 // part again. The material is a clear-coated physical one in the accent with
-// a thin-film iridescence, lit by the studio lights and the studio
-// environment (the stage makes it: `environment: "studio"`). Reference: a
-// near-black ground.
+// a thin-film iridescence, lit by the studio environment alone (the stage
+// makes it: `environment: "studio"`): no lights, which keeps the frame inside
+// its SwiftShader budget and looks the same. Reference: a near-black ground.
 //
 // The world: the marching-cubes field spans -1..1 on each axis (its own
 // 0..1 coordinates, doubled); the balls stay far enough inside it that no
@@ -18,11 +18,10 @@ import { MarchingCubes } from "three/examples/jsm/objects/MarchingCubes.js";
 import { random } from "../engine/random";
 import type { Theme } from "../theme/types";
 import { BLOB_SPECS, backdropColors, stagedRise, type BackdropIntensity } from "./backdrop3dPlan";
-import { studioLights } from "./three/lights";
 import type { ThreeStageSize } from "./three/ThreeStage";
 
-/** The field's cells a side, and the most triangles its buffers hold. */
-const RESOLUTION = 44;
+/** The field's cells a side (smooth enough at 1080p, cheap enough for SwiftShader), and the most triangles its buffers hold. */
+const RESOLUTION = 34;
 const MAX_POLYS = 30_000;
 /** A ball's falloff (MarchingCubes' `subtract`) and the field level drawn as the surface. */
 const SUBTRACT = 12;
@@ -117,7 +116,6 @@ function blobMaterial(theme: Theme): THREE.MeshPhysicalMaterial {
 /** Builds the blobs for `layout` on a stage of `size`; `poseBlobs` moves them each frame. */
 export function buildBlobsScene(theme: Theme, layout: BlobLayout, size: ThreeStageSize): { scene: THREE.Scene; camera: THREE.PerspectiveCamera; state: BlobsState } {
   const scene = new THREE.Scene();
-  studioLights(scene, theme);
   const surface = new MarchingCubes(RESOLUTION, blobMaterial(theme), false, false, MAX_POLYS);
   surface.isolation = ISOLATION;
   surface.name = "blobs";

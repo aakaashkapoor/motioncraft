@@ -1,11 +1,14 @@
 // Backdrop3D: abstract full-bleed 3D spectacle behind content, after the
 // looks of a motion reel. Four variants: "helix", a glowing torus of small
-// coloured squares (reference: an indigo field); "tunnel", ink rings with one
-// in the accent, flown into forever (reference: a lime field); "city" and
-// "blobs" (to come). It fills its slot, or the whole frame, and draws only
+// coloured squares (reference: an indigo field); "blobs", glossy iridescent
+// metaballs drifting and merging (near-black); "city", an isometric block of
+// grey and accent bars rising in a wave (near-black); "tunnel", ink rings with
+// one in the accent, flown into forever (lime). It fills its slot, or the
+// whole frame, and draws only
 // theme colours: the ink, the accent, the ink's quieter steps and the
 // palette's swatches other than the ground, so it reads on every field.
-// Unlit materials throughout, glow faked with soft quads (no bloom).
+// Unlit materials where the reference glows (helix, tunnel), glow faked with
+// soft quads (no bloom); the blobs are lit by the studio environment, the city by the studio rig.
 //
 // `intensity` ("calm" or "busy") sets density and speed; `seed` the layout.
 //
@@ -35,7 +38,6 @@ export function Backdrop3D(props: Backdrop3DProps) {
   if (errors.length > 0) throw new Error(`Backdrop3D: ${errors.join("; ")}`);
   const { progress, theme, aspect, area, variant, intensity = "calm", seed = 1 } = props;
   const builder = BACKDROP_BUILDERS[variant];
-  if (builder === undefined) throw new Error(`Backdrop3D: variant "${variant}" is not built yet`);
   const visible = useVisibleRect(aspect);
   const root = area ?? visible;
   const time = useSceneTime(progress);

@@ -1,5 +1,5 @@
 // Backdrop3D: abstract full-bleed 3D behind content (a glowing helix, a
-// tunnel flown into, and later city and blobs). The pure plan validates the
+// tunnel flown into, iridescent blobs and an isometric city). The pure plan validates the
 // props, times the entrance and picks the theme's colours; each variant's
 // layout is a pure function of its seed and intensity, and its scene is
 // posed for a scene-clock ms.
@@ -71,11 +71,9 @@ describe("props", () => {
     for (const seed of [Number.NaN, Infinity, "3"]) expect(backdrop3DErrors({ variant: "helix", seed }).join()).toMatch(/seed/);
   });
 
-  it("throws through the kit on an unknown variant, and on a variant not built yet", () => {
+  it("throws through the kit on an unknown variant, and builds every known one", () => {
     expect(() => draw({ variant: "waves" }, 10)).toThrow(/Backdrop3D: .*variant/);
-    for (const variant of ["helix", "blobs", "city", "tunnel"].filter((v) => BACKDROP_BUILDERS[v as keyof typeof BACKDROP_BUILDERS] === undefined)) {
-      expect(() => draw({ variant }, 10)).toThrow(`Backdrop3D: variant "${variant}" is not built yet`);
-    }
+    expect(Object.keys(BACKDROP_BUILDERS).sort()).toEqual(["blobs", "city", "helix", "tunnel"]);
   });
 });
 
