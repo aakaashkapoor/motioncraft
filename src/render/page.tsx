@@ -20,6 +20,7 @@ import { SceneClockContext, SceneWordsContext } from "../kit/frameContext";
 import { resolveCue } from "../kit/cues";
 import { sceneWords } from "../kit/sceneWords";
 import { Ground } from "../kit/Ground";
+import { captionsShown, withCaptionsShown } from "../layout/caption";
 import { frameSize } from "../layout/frame";
 import { Overlays } from "../overlays/Overlays";
 import { sceneAreaUnderOverlays } from "../overlays/sceneHeaders";
@@ -116,7 +117,8 @@ function wordsOf(theme: Theme, scene: StoryboardScene, sceneFrames: number, fps:
  */
 function SceneLayer({ storyboard, theme: frameTheme, fps, scene: active, hideShared = false, targets, effectTargets, camera, narration, effects = true, field = false, ms = 0 }: SceneLayerProps) {
   const scene = storyboard.scenes[active.sceneIndex]!;
-  const theme = sceneTheme(frameTheme, scene);
+  // Without captions the content takes the caption band too (see `contentArea`).
+  const theme = sceneTheme(withCaptionsShown(frameTheme, captionsShown(storyboard)), scene);
   const Component = sceneComponent(scene.component);
   if (Component === undefined) {
     throw new Error(`scene "${scene.id}": unknown component "${scene.component}"`);
