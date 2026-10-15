@@ -670,6 +670,26 @@
       },
       "durationMs": 9000,
       "narration": "Every kit component lays itself out inside the section's slot."
+    },
+    {
+      "id": "bento-grid",
+      "component": "Section",
+      "props": {
+        "eyebrow": "Nesting",
+        "headline": "A dashboard in the slot",
+        "content": {
+          "component": "BentoGrid",
+          "props": {
+            "cards": [
+              { "kind": "stat", "value": "+212%", "label": "Reach" },
+              { "kind": "ring", "percent": 7 },
+              { "kind": "bars", "values": [4, 7, 5, 9] }
+            ]
+          }
+        }
+      },
+      "durationMs": 9000,
+      "narration": "Every kit component lays itself out inside the section's slot."
     }
   ]
 }

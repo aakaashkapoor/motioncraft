@@ -1,0 +1,55 @@
+{
+  "title": "BentoGrid, 16:9: a dashboard of stat cards on the reel palette (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "palette": "reel",
+  "scenes": [
+    {
+      "id": "reference",
+      "component": "BentoGrid",
+      "props": {
+        "cards": [
+          { "kind": "stat", "value": "+212%", "label": "Reach this month", "trend": [3, 4, 3.5, 6, 5.5, 9] },
+          { "kind": "title", "text": "Motion that ships", "toggle": true },
+          { "kind": "ring", "percent": 7, "label": "Rendered" },
+          { "kind": "bars", "values": [4, 7, 5, 9, 6], "label": "Weekly" },
+          { "kind": "quote", "text": "Keyframes are a language.", "track": true }
+        ]
+      },
+      "ground": "p4",
+      "durationMs": 5000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "night",
+      "component": "BentoGrid",
+      "props": {
+        "cards": [
+          { "kind": "stat", "value": "1,280", "label": "Videos rendered", "trend": [2, 3, 5, 4, 7, 8, 11] },
+          { "kind": "ring", "percent": 64, "label": "On brand", "fill": "p2" },
+          { "kind": "title", "text": "Every frame is code", "fill": "p4" },
+          { "kind": "bars", "values": [3, 5, 4, 8], "fill": "p1" },
+          { "kind": "stat", "value": "4.2s", "label": "Per scene", "fill": "p3" },
+          { "kind": "quote", "text": "Motion is meaning.", "track": true, "fill": "surface" }
+        ]
+      },
+      "ground": "ground",
+      "durationMs": 6000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "orange",
+      "component": "BentoGrid",
+      "props": {
+        "cards": [
+          { "kind": "stat", "value": "98%", "label": "Checks passed", "fill": "text" },
+          { "kind": "title", "text": "Ship it", "toggle": true, "fill": "p4" },
+          { "kind": "ring", "percent": 42, "fill": "p3" }
+        ]
+      },
+      "ground": "p1",
+      "durationMs": 4000
+    }
+  ]
+}

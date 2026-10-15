@@ -1383,6 +1383,51 @@ settled by about 1.85 s. `areaFill` (default `true`) shades under the line.
 }
 ```
 
+#### `BentoGrid`
+
+A dashboard beat: 3-6 rounded cards in palette colours on a fixed grid, the
+cards arriving 70 ms apart with a short scale-and-rise and each running its
+own motion as it lands; everything is settled by 1.5 s. `cards` is a list of
+3-6 cards, each with a `kind`:
+
+- `stat`: `value` (up to 8 characters, like `"+212%"`; its number counts up),
+  `label`, and an optional `trend` (2-12 numbers) drawn as a small line chart.
+- `title`: `text` (up to 40 characters); `toggle: true` adds a switch that
+  flips on.
+- `ring`: `percent` (0-100) as a progress ring that draws, the number in its
+  hole; optional `label`.
+- `bars`: `values` (3-6 numbers, 0 or more) as bars that grow in a cascade;
+  optional `label`.
+- `quote`: `text`, one sentence (up to 64 characters) in the italic display
+  serif; `track: true` adds a mini keyframe timeline beside or under it.
+
+`fill` picks a card's colour by role: `p1`-`p4` (the palette's swatches),
+`surface`, or `text` (a card in the scene's ink, such as a dark card on a
+light ground). Each card is drawn in its fill's own ink, so it reads on any
+palette field. By default a `stat` is `surface`, a `title` `p1`, a `ring`
+`text`, `bars` `p2` and a `quote` `p3`. The layout comes from the card count
+and the shape of the frame (or slot); the widest cells go to a quote, then a
+stat, then a title, and the cards cascade in reading order. Keep the words
+few: a dashboard is read at a glance.
+
+```json
+{
+  "id": "dashboard",
+  "component": "BentoGrid",
+  "props": {
+    "cards": [
+      { "kind": "stat", "value": "+212%", "label": "Reach this month", "trend": [3, 4, 3.5, 6, 5.5, 9] },
+      { "kind": "title", "text": "Motion that ships", "toggle": true },
+      { "kind": "ring", "percent": 7, "label": "Rendered" },
+      { "kind": "bars", "values": [4, 7, 5, 9, 6], "label": "Weekly" },
+      { "kind": "quote", "text": "Keyframes are a language.", "track": true }
+    ]
+  },
+  "narration": "Reach is up two hundred percent, and keyframes are a language.",
+  "durationMs": 6000
+}
+```
+
 ### Layout
 
 #### `Section`
