@@ -41,6 +41,7 @@ import { ExtrudedTitle } from "./ExtrudedTitle";
 import { GiantType } from "./GiantType";
 import { BentoGrid } from "./BentoGrid";
 import { Countdown } from "./Countdown";
+import { Backdrop3D } from "./Backdrop3D";
 
 export { Caption, TitleCard, captionLimits };
 export { titleCardStep } from "./TitleCard";
@@ -102,4 +103,5 @@ export const kit: Record<string, KitComponent> = {
   GiantType: asKitComponent(GiantType),
   BentoGrid: asKitComponent(BentoGrid),
   Countdown: asKitComponent(Countdown),
+  Backdrop3D: asKitComponent(Backdrop3D),
 };

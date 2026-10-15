@@ -1,0 +1,40 @@
+{
+  "title": "Backdrop3D, 16:9: each variant full-bleed on its reference ground (must pass layer-1 checks)",
+  "aspect": "16:9",
+  "fps": 30,
+  "theme": "dark",
+  "palette": "reel",
+  "scenes": [
+    {
+      "id": "helix",
+      "component": "Backdrop3D",
+      "props": { "variant": "helix" },
+      "ground": "p3",
+      "durationMs": 3000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "blobs",
+      "component": "Backdrop3D",
+      "props": { "variant": "blobs" },
+      "ground": "ground",
+      "durationMs": 3000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "city",
+      "component": "Backdrop3D",
+      "props": { "variant": "city" },
+      "ground": "ground",
+      "durationMs": 3000,
+      "transition": { "type": "cut" }
+    },
+    {
+      "id": "tunnel",
+      "component": "Backdrop3D",
+      "props": { "variant": "tunnel" },
+      "ground": "p2",
+      "durationMs": 3000
+    }
+  ]
+}

@@ -154,6 +154,8 @@ export { BENTO_FILLS, BENTO_KINDS, BENTO_MAX_CARDS, BENTO_MIN_CARDS, bentoFill, 
 export { Countdown, type CountdownProps } from "./kit/Countdown";
 export { DEFAULT_FROM as COUNTDOWN_DEFAULT_FROM, DEFAULT_STEP_MS as COUNTDOWN_DEFAULT_STEP_MS, DEFAULT_TO as COUNTDOWN_DEFAULT_TO, LEAD_MS as COUNTDOWN_LEAD_MS, countdownAt, countdownErrors, countdownLayout, countdownMs, countdownSpec, type CountdownLayout, type CountdownSpec, type CountdownState } from "./kit/countdownPlan";
 export { extrudedTitleErrors, extrudedTitleLayout, letterPose, titleCamera, titleLetters, wordPose, type ExtrudedFinish, type ExtrudedTitleLayout, type LetterPose, type TitleLetter, type WordPose } from "./kit/extrudedTitlePlan";
+export { Backdrop3D, type Backdrop3DProps } from "./kit/Backdrop3D";
+export { BACKDROP_INTENSITIES, BACKDROP_SETTLE_MS, BACKDROP_START_MS, BACKDROP_VARIANTS, backdrop3DErrors, backdropColors, backdropRise, type BackdropColors, type BackdropIntensity, type BackdropVariant } from "./kit/backdrop3dPlan";
 export { EndCard, endCardLayout, endCardTiming, type EndCardLayout, type EndCardProps, type EndCardTiming } from "./kit/EndCard";
 export { MotionDelay, NOMINAL_SCENE_MS, OPENING_SETTLE_MS, entering, SceneClockContext, SceneWordsContext, useMotionDelay, useSceneMs, useSceneTime, useSceneWords, type SceneClock, type SceneTime } from "./kit/frameContext";
 export { cueErrors, resolveCue, useCueMs, type Cue } from "./kit/cues";
