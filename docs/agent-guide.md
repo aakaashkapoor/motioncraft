@@ -18,6 +18,29 @@ word "and" to describe what a scene shows, it is two scenes. Short scenes are
 fine; the vertical format wants them. Open with a hook in the first two seconds
 (a `TitleCard` or a `BigNumber` usually does it).
 
+### One voice, no gaps
+
+A narrated video should sound like one person talking the whole way through,
+with the pictures following what they say. Never let it sound like a list of
+separate clips, each with its own pause. Write the narration first, as one
+continuous script read top to bottom, then cut it into scenes. Then:
+
+- Leave `durationMs` out of every narrated scene, so each scene lasts exactly
+  as long as its line and every pause between lines is the same short beat
+  (about 0.5 s). A hand-set length that is longer than its line leaves the
+  picture holding in silence, and the viewer hears a gap.
+- Give every scene a line. A silent scene in a narrated video (a countdown,
+  a 3D beat, a big word) is a dead stop. Speak over it, even if it only gets a
+  few words of a sentence that carries on into the next scene ("And when you
+  want it loud, / it goes bold, / and real 3D, whenever you ask for it.").
+- Let one sentence run across quick cuts, rather than starting a new thought
+  on every scene.
+- Prefer short transitions (300-500 ms). A `cut` adds a little more pause
+  between lines than a fade does. Between two colour fields, a short `fade` is
+  drawn as a hard cut anyway, and it keeps the voice moving.
+- After rendering, listen to the gaps: they should all be the same length. A
+  longer one is a scene that is held, silent or padded.
+
 ### Time windows against the narration
 
 Write the narration first, one or two sentences per scene, then size each scene
