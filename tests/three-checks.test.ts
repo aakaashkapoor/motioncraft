@@ -93,7 +93,7 @@ describe("ThreeDemo 3D text under the 9:16 button rail", () => {
   it("is flagged like flat text, while the subject stays inside the safe area", { timeout: 120_000 }, async (ctx) => {
     const unsafe = await fixture("three-stage-unsafe.json");
     const scene = unsafe.scenes[0]!;
-    const storyboard = { ...unsafe, scenes: [{ ...scene, props: { ...scene.props, shift: { x: 0.28, y: 0 } } }] };
+    const storyboard = { ...unsafe, scenes: [{ ...scene, props: { ...scene.props, shift: { x: 0.16, y: 0 } } }] };
     const result = await check(storyboard, ctx);
     expect(result.problems.length).toBeGreaterThan(0);
     for (const problem of result.problems) {
