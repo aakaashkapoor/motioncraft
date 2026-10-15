@@ -145,6 +145,12 @@ describe("viewfinder layer", () => {
     expect(html).not.toContain("FPS");
   });
 
+  it("leaves a 3D backdrop full bleed under it, not inside its rows", () => {
+    const sb = { ...storyboard, scenes: [{ id: "fly", component: "Backdrop3D", props: { variant: "tunnel" }, ground: "p2", durationMs: 3000 }] } as unknown as Storyboard;
+    const html = renderToStaticMarkup(<Frame storyboard={sb} theme={theme} timeline={buildTimeline(sb, {})} frame={45} />);
+    expect(html).toMatch(/data-backdrop="tunnel"[^>]*style="[^"]*top:0(px)?;width:1920(px)?;height:1080(px)?/);
+  });
+
   it("draws nothing when frame is absent", () => {
     const { frame: _none, ...plain } = storyboard;
     expect(viewfinderOf(draw(45, plain as Storyboard))).toBeUndefined();

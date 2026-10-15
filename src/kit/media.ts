@@ -6,5 +6,5 @@ export { Image, kenBurns, type FocusPoint, type ImageProps, type KenBurnsOptions
 export { clipMediaTime, LOGO_COMPONENTS, LOGO_TYPES, logoErrors, mediaUrl, MEDIA_URL_PREFIX, SEEK_NUDGE_MS, type ClipTiming } from "./mediaSource";
 export { BrandMark, type BrandMarkProps } from "./BrandMark";
 
-/** Media fill whatever part of their frame is visible (see `useVisibleRect`) instead of laying out in an area. */
-export const FULL_BLEED_COMPONENTS: ReadonlySet<string> = new Set(["Image", "VideoClip"]);
+/** Media (and the 3D backdrops) fill whatever part of their frame is visible (see `useVisibleRect`) instead of laying out in an area. */
+export const FULL_BLEED_COMPONENTS: ReadonlySet<string> = new Set(["Image", "VideoClip", "Backdrop3D"]);
